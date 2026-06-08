@@ -1,0 +1,10 @@
+{
+  "name": "NostrHub",
+  "short_name": "NostrHub",
+  "description": "Build the Nostr protocol together — discover, draft, and discuss NIPs.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f0a17",
+  "theme_color": "#7c3aed",
+  "icons": []
+}

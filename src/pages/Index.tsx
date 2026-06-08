@@ -1,24 +1,32 @@
 import { useSeoMeta } from '@unhead/react';
-
-// FIXME: Update this page (the content is just a fallback if you fail to update the page)
+import { Layout } from '@/components/Layout';
+import { Card, CardContent } from '@/components/ui/card';
 
 const Index = () => {
   useSeoMeta({
-    title: 'Welcome to Your Blank App',
-    description: 'A modern Nostr client application built with React, TailwindCSS, and Nostrify.',
+    title: 'NostrHub — Build Nostr Together',
+    description:
+      'NostrHub is where the developer community collaborates on building the Nostr protocol — discover, draft, and discuss NIPs together.',
   });
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4 text-gray-900 dark:text-gray-100">
-          Welcome to Your Blank App
-        </h1>
-        <p className="text-xl text-gray-600 dark:text-gray-400">
-          Start building your amazing project here!
+    <Layout sidebar={<div className="text-sm text-muted-foreground">Network stats coming soon.</div>}>
+      <section className="space-y-2">
+        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">NIPs</h1>
+        <p className="text-lg text-muted-foreground">
+          Nostr Implementation Possibilities, curated by the community.
         </p>
-      </div>
-    </div>
+      </section>
+
+      <Card className="mt-6 border-dashed">
+        <CardContent className="px-8 py-12 text-center">
+          <p className="mx-auto max-w-sm text-muted-foreground">
+            NIP browsing is being built. Soon you'll see expert-approved NIPs ranked here, with the
+            latest community drafts below.
+          </p>
+        </CardContent>
+      </Card>
+    </Layout>
   );
 };
 
