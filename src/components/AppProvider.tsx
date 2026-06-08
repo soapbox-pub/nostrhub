@@ -33,6 +33,9 @@ const AppConfigSchema = z.object({
   relayMetadata: RelayMetadataSchema,
   blossomServerMetadata: BlossomServerMetadataSchema,
   useAppBlossomServers: z.boolean(),
+  experts: z.array(z.string()),
+  communityCap: z.number().nullable(),
+  statsProvider: z.string(),
 }) satisfies z.ZodType<AppConfig>;
 
 export function AppProvider(props: AppProviderProps) {

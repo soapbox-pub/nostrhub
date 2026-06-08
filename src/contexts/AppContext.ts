@@ -30,6 +30,21 @@ export interface AppConfig {
    * are used.
    */
   useAppBlossomServers: boolean;
+  /**
+   * Hex pubkeys of the user's configured "Nostr Experts". These users are
+   * visually distinguished (🎓) and anchor the app's trust model: their NIP
+   * approvals are counted for ranking, and their follow lists derive the
+   * community author set used to filter discussion.
+   */
+  experts: string[];
+  /**
+   * Maximum size of the derived community author set (experts' most-followed
+   * follows, used as the discussion `authors` filter). `null` disables the cap
+   * entirely. Experts and the logged-in user are always included regardless.
+   */
+  communityCap: number | null;
+  /** Hex pubkey of the NIP-85 trusted-assertions provider used for network stats. */
+  statsProvider: string;
 }
 
 export interface AppContextType {
