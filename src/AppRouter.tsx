@@ -8,6 +8,7 @@ import SettingsPage from "./pages/SettingsPage";
 import OfficialNipPage from "./pages/OfficialNipPage";
 import CreateNipPage from "./pages/CreateNipPage";
 import EditNipPage from "./pages/EditNipPage";
+import StatsPage from "./pages/StatsPage";
 
 export function AppRouter() {
   return (
@@ -16,6 +17,7 @@ export function AppRouter() {
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/stats" element={<StatsPage />} />
         <Route path="/nip/:number" element={<OfficialNipPage />} />
         <Route path="/create" element={<CreateNipPage />} />
         <Route path="/edit/:naddr" element={<EditNipPage />} />
