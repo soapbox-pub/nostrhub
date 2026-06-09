@@ -1,4 +1,4 @@
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { ScrollToTop } from "./components/ScrollToTop";
 
 import Index from "./pages/Index";
@@ -9,6 +9,8 @@ import OfficialNipPage from "./pages/OfficialNipPage";
 import CreateNipPage from "./pages/CreateNipPage";
 import EditNipPage from "./pages/EditNipPage";
 import StatsPage from "./pages/StatsPage";
+import CommunityPage from "./pages/CommunityPage";
+import { DEFAULT_TOPIC } from "./lib/chat";
 
 export function AppRouter() {
   return (
@@ -18,6 +20,8 @@ export function AppRouter() {
         <Route path="/" element={<Index />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/stats" element={<StatsPage />} />
+        <Route path="/chat" element={<Navigate to={`/chat/${DEFAULT_TOPIC}`} replace />} />
+        <Route path="/chat/:topic" element={<CommunityPage />} />
         <Route path="/nip/:number" element={<OfficialNipPage />} />
         <Route path="/create" element={<CreateNipPage />} />
         <Route path="/edit/:naddr" element={<EditNipPage />} />

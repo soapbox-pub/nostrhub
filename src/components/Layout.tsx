@@ -14,7 +14,7 @@ interface LayoutProps {
 const NAV_ITEMS = [
   { to: '/', label: 'NIPs', end: true },
   { to: '/stats', label: 'Stats' },
-  { to: '/community', label: 'Community' },
+  { to: '/chat', label: 'Community' },
 ];
 
 function Logo() {
