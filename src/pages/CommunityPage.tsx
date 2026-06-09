@@ -29,51 +29,49 @@ export function CommunityPage() {
   });
 
   return (
-    <Layout className="max-w-none">
-      <div className="-my-6 sm:-my-8">
-        <div className="flex h-[calc(100vh-4rem-1px)] overflow-hidden rounded-none border-y sm:h-[calc(100vh-4rem-4rem)] sm:rounded-xl sm:border">
-          {/* Desktop channel sidebar */}
-          <aside className="hidden w-60 shrink-0 border-r bg-muted/30 md:block">
-            <ChannelSidebar activeTopic={topic} />
-          </aside>
+    <Layout fullBleed>
+      <div className="flex h-full overflow-hidden">
+        {/* Desktop channel sidebar */}
+        <aside className="hidden w-60 shrink-0 border-r bg-muted/30 md:block">
+          <ChannelSidebar activeTopic={topic} />
+        </aside>
 
-          {/* Main chat column */}
-          <div className="flex min-w-0 flex-1 flex-col">
-            {/* Channel header */}
-            <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
-              {/* Mobile channel drawer */}
-              <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-                <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon" className="md:hidden" aria-label="Open channels">
-                    <Menu className="size-5" />
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="left" className="w-64 p-0">
-                  <ChannelSidebar activeTopic={topic} onNavigate={() => setMobileNavOpen(false)} />
-                </SheetContent>
-              </Sheet>
+        {/* Main chat column */}
+        <div className="flex min-w-0 flex-1 flex-col">
+          {/* Channel header */}
+          <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
+            {/* Mobile channel drawer */}
+            <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="md:hidden" aria-label="Open channels">
+                  <Menu className="size-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-64 p-0">
+                <ChannelSidebar activeTopic={topic} onNavigate={() => setMobileNavOpen(false)} />
+              </SheetContent>
+            </Sheet>
 
-              <Hash className="size-5 shrink-0 text-muted-foreground" />
-              <div className="min-w-0">
-                <h1 className="truncate text-base font-semibold leading-tight">{channel.label}</h1>
-                <p className="hidden truncate text-xs text-muted-foreground sm:block">
-                  {channel.description}
-                </p>
-              </div>
-            </header>
-
-            {/* Scrollable transcript */}
-            <div className="flex-1 overflow-y-auto">
-              <ChatMessageList
-                messages={messages}
-                isLoading={isLoading || community.isLoading}
-                channelLabel={channel.label}
-              />
+            <Hash className="size-5 shrink-0 text-muted-foreground" />
+            <div className="min-w-0">
+              <h1 className="truncate text-base font-semibold leading-tight">{channel.label}</h1>
+              <p className="hidden truncate text-xs text-muted-foreground sm:block">
+                {channel.description}
+              </p>
             </div>
+          </header>
 
-            {/* Composer */}
-            <ChatComposer topic={topic} channelLabel={channel.label} />
+          {/* Scrollable transcript */}
+          <div className="flex-1 overflow-y-auto">
+            <ChatMessageList
+              messages={messages}
+              isLoading={isLoading || community.isLoading}
+              channelLabel={channel.label}
+            />
           </div>
+
+          {/* Composer */}
+          <ChatComposer topic={topic} channelLabel={channel.label} />
         </div>
       </div>
     </Layout>

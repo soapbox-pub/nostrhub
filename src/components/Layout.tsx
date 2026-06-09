@@ -9,6 +9,12 @@ interface LayoutProps {
   sidebar?: React.ReactNode;
   /** Constrain the main content width. Defaults to a comfortable reading width. */
   className?: string;
+  /**
+   * App-style full-bleed mode: the main area fills exactly the space below the
+   * sticky header with no container, padding, or footer. Used for full-height
+   * experiences like chat. `children` becomes the sole flex child of `<main>`.
+   */
+  fullBleed?: boolean;
 }
 
 const NAV_ITEMS = [
@@ -30,9 +36,9 @@ function Logo() {
   );
 }
 
-export function Layout({ children, sidebar, className }: LayoutProps) {
+export function Layout({ children, sidebar, className, fullBleed = false }: LayoutProps) {
   return (
-    <div className="min-h-screen flex flex-col bg-background text-foreground">
+    <div className={cn('flex flex-col bg-background text-foreground', fullBleed ? 'h-screen' : 'min-h-screen')}>
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto flex h-16 items-center gap-4 px-4 sm:px-6">
           <Logo />
@@ -92,35 +98,41 @@ export function Layout({ children, sidebar, className }: LayoutProps) {
         </nav>
       </header>
 
-      <main className="container mx-auto flex-1 px-4 py-6 sm:px-6 sm:py-8">
-        {sidebar ? (
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_320px]">
-            <div className={cn('min-w-0', className)}>{children}</div>
-            <aside className="hidden lg:block">
-              <div className="sticky top-24 space-y-6">{sidebar}</div>
-            </aside>
-          </div>
-        ) : (
-          <div className={cn('mx-auto w-full max-w-4xl', className)}>{children}</div>
-        )}
-      </main>
+      {fullBleed ? (
+        <main className={cn('min-h-0 flex-1', className)}>{children}</main>
+      ) : (
+        <main className="container mx-auto flex-1 px-4 py-6 sm:px-6 sm:py-8">
+          {sidebar ? (
+            <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_320px]">
+              <div className={cn('min-w-0', className)}>{children}</div>
+              <aside className="hidden lg:block">
+                <div className="sticky top-24 space-y-6">{sidebar}</div>
+              </aside>
+            </div>
+          ) : (
+            <div className={cn('mx-auto w-full max-w-4xl', className)}>{children}</div>
+          )}
+        </main>
+      )}
 
-      <footer className="border-t border-border/60 py-6">
-        <div className="container mx-auto flex flex-col items-center justify-between gap-2 px-4 text-sm text-muted-foreground sm:flex-row sm:px-6">
-          <p>Build the Nostr protocol together.</p>
-          <p>
-            Vibed with{' '}
-            <a
-              href="https://soapbox.pub/mkstack"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-medium text-foreground hover:text-primary"
-            >
-              MKStack
-            </a>
-          </p>
-        </div>
-      </footer>
+      {!fullBleed && (
+        <footer className="border-t border-border/60 py-6">
+          <div className="container mx-auto flex flex-col items-center justify-between gap-2 px-4 text-sm text-muted-foreground sm:flex-row sm:px-6">
+            <p>Build the Nostr protocol together.</p>
+            <p>
+              Vibed with{' '}
+              <a
+                href="https://soapbox.pub/mkstack"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-foreground hover:text-primary"
+              >
+                MKStack
+              </a>
+            </p>
+          </div>
+        </footer>
+      )}
     </div>
   );
 }
