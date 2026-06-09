@@ -1,6 +1,6 @@
 import { useSeoMeta } from '@unhead/react';
 import { Link } from 'react-router-dom';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Plus } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { NipCard } from '@/components/NipCard';
 import { CustomNipCard } from '@/components/CustomNipCard';
@@ -9,6 +9,7 @@ import { useRankedNips } from '@/hooks/useRankedNips';
 import { useCommunityAuthors } from '@/hooks/useCommunityAuthors';
 import { useCustomNips } from '@/hooks/useCustomNips';
 import { useExperts } from '@/hooks/useExperts';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -44,6 +45,7 @@ const Index = () => {
   });
 
   const { experts } = useExperts();
+  const { user } = useCurrentUser();
   const { ranked, isLoading: rankedLoading } = useRankedNips();
   const community = useCommunityAuthors();
   const draftsQuery = useCustomNips({
@@ -56,11 +58,21 @@ const Index = () => {
 
   return (
     <Layout sidebar={<StatsSidebar />}>
-      <section className="mb-8 space-y-1">
-        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">NIPs</h1>
-        <p className="text-lg text-muted-foreground">
-          Nostr Implementation Possibilities, curated by the community.
-        </p>
+      <section className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">NIPs</h1>
+          <p className="text-lg text-muted-foreground">
+            Nostr Implementation Possibilities, curated by the community.
+          </p>
+        </div>
+        {user && (
+          <Button asChild size="sm" className="shrink-0 gap-1.5 rounded-full self-start sm:self-auto">
+            <Link to="/create">
+              <Plus className="size-4" />
+              New NIP
+            </Link>
+          </Button>
+        )}
       </section>
 
       {!hasExperts && (

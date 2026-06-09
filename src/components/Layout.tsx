@@ -1,7 +1,6 @@
 import { Link, NavLink } from 'react-router-dom';
-import { Moon, Sun, Plus, Settings } from 'lucide-react';
+import { Moon, Sun, Settings } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
-import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { LoginArea } from '@/components/auth/LoginArea';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -49,8 +48,6 @@ function ThemeToggle() {
 }
 
 export function Layout({ children, sidebar, className }: LayoutProps) {
-  const { user } = useCurrentUser();
-
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -77,14 +74,6 @@ export function Layout({ children, sidebar, className }: LayoutProps) {
           </nav>
 
           <div className="ml-auto flex items-center gap-2">
-            {user && (
-              <Button asChild size="sm" className="hidden sm:inline-flex gap-1.5 rounded-full">
-                <Link to="/create">
-                  <Plus className="size-4" />
-                  New NIP
-                </Link>
-              </Button>
-            )}
             <ThemeToggle />
             <Button asChild variant="ghost" size="icon" aria-label="Settings">
               <Link to="/settings">
