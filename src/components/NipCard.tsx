@@ -43,6 +43,11 @@ export function NipCard({ nip, rank }: { nip: RankedNip; rank?: number }) {
                 Deprecated
               </Badge>
             )}
+            {nip.expertAuthored && (
+              <Badge variant="default" className="gap-1 text-xs">
+                <GraduationCap className="size-3" /> Expert author
+              </Badge>
+            )}
           </div>
 
           <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground">

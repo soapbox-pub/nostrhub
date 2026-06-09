@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useOfficialNips } from '@/hooks/useOfficialNips';
 import { useCustomNips } from '@/hooks/useCustomNips';
 import { useNipApprovals, type NipTarget, nipTargetKey } from '@/hooks/useNipApprovals';
+import { useExperts } from '@/hooks/useExperts';
 import type { CustomNip } from '@/lib/nips';
 
 export interface RankedNip {
@@ -16,16 +17,20 @@ export interface RankedNip {
   kinds?: string[];
   expertCount: number;
   totalCount: number;
+  /** True when the NIP was authored by one of the configured experts. */
+  expertAuthored?: boolean;
 }
 
 /**
  * Unified, ranked list of NIPs (official + community), ordered by how many
  * experts have applied a `nostrhub.approve` label (the homepage curation
- * signal). Approvals are synced from experts only.
+ * signal). Approvals are synced from experts only. A NIP authored by an expert
+ * is treated as implicitly expert-endorsed and surfaces here as well.
  */
 export function useRankedNips() {
   const officialQuery = useOfficialNips();
   const customQuery = useCustomNips({ limit: 200 });
+  const { expertSet } = useExperts();
 
   const official = officialQuery.data;
   const custom = customQuery.data;
@@ -64,20 +69,26 @@ export function useRankedNips() {
     for (const nip of custom ?? []) {
       const target: NipTarget = { type: 'custom', address: nip.address };
       const a = approvals?.[nipTargetKey(target)];
+      const expertAuthored = expertSet.has(nip.author);
+      // An expert authoring a NIP counts as an implicit expert endorsement.
+      // Only add to the count if that expert hasn't also explicitly approved.
+      const authoredBonus =
+        expertAuthored && !a?.experts.includes(nip.author) ? 1 : 0;
       items.push({
         key: nipTargetKey(target),
         target,
         title: nip.title,
         custom: nip,
         kinds: nip.kinds,
-        expertCount: a?.expertCount ?? 0,
-        totalCount: a?.totalCount ?? 0,
+        expertCount: (a?.expertCount ?? 0) + authoredBonus,
+        totalCount: (a?.totalCount ?? 0) + authoredBonus,
+        expertAuthored,
       });
     }
 
-    // Only surface NIPs with at least one expert approval on the ranked list.
+    // Surface NIPs with at least one expert approval or authored by an expert.
     return items
-      .filter((item) => item.expertCount > 0)
+      .filter((item) => item.expertCount > 0 || item.expertAuthored)
       .sort((a, b) => {
         if (b.expertCount !== a.expertCount) return b.expertCount - a.expertCount;
         if (b.totalCount !== a.totalCount) return b.totalCount - a.totalCount;
@@ -85,7 +96,7 @@ export function useRankedNips() {
         if (a.number && b.number) return a.number.localeCompare(b.number);
         return a.title.localeCompare(b.title);
       });
-  }, [official, custom, approvals]);
+  }, [official, custom, approvals, expertSet]);
 
   return {
     ranked,
