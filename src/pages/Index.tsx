@@ -96,7 +96,7 @@ const Index = () => {
         />
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute -bottom-32 right-0 size-72 rounded-full bg-accent/20 blur-[110px]"
+          className="pointer-events-none absolute -bottom-32 right-0 size-72 rounded-full bg-nebula/20 blur-[110px]"
         />
 
         <span className="relative inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-4 py-1.5 text-xs font-medium uppercase tracking-[0.18em] text-primary motion-safe:animate-[float-slow_6s_ease-in-out_infinite]">

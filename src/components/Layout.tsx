@@ -30,7 +30,7 @@ function Logo() {
       className="group flex items-center gap-2.5 font-display font-semibold text-lg tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md"
     >
       <span
-        className="relative grid size-9 place-items-center rounded-full bg-gradient-to-br from-primary to-accent shadow-[0_0_18px_-2px] shadow-primary/60 transition-transform duration-300 group-hover:scale-105"
+        className="relative grid size-9 place-items-center rounded-full bg-gradient-to-br from-primary to-nebula shadow-[0_0_18px_-2px] shadow-primary/60 transition-transform duration-300 group-hover:scale-105"
         aria-hidden="true"
       >
         {/* Planet + orbit mark */}
@@ -73,7 +73,7 @@ export function Layout({ children, sidebar, className, fullBleed = false }: Layo
                   cn(
                     'relative rounded-md px-3 py-2 text-sm font-medium transition-colors',
                     'hover:bg-accent/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                    'after:absolute after:inset-x-3 after:-bottom-px after:h-px after:rounded-full after:bg-gradient-to-r after:from-primary after:to-accent after:opacity-0 after:transition-opacity',
+                    'after:absolute after:inset-x-3 after:-bottom-px after:h-px after:rounded-full after:bg-gradient-to-r after:from-primary after:to-nebula after:opacity-0 after:transition-opacity',
                     isActive ? 'text-foreground after:opacity-100' : 'text-muted-foreground',
                   )
                 }
@@ -108,7 +108,7 @@ export function Layout({ children, sidebar, className, fullBleed = false }: Layo
                 cn(
                   'whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
                   isActive
-                    ? 'bg-gradient-to-r from-primary/20 to-accent/20 text-foreground'
+                    ? 'bg-gradient-to-r from-primary/20 to-nebula/20 text-foreground'
                     : 'text-muted-foreground hover:bg-accent/10',
                 )
               }
@@ -140,7 +140,7 @@ export function Layout({ children, sidebar, className, fullBleed = false }: Layo
         <footer className="border-t border-primary/15 py-6">
           <div className="container mx-auto flex flex-col items-center justify-between gap-2 px-4 text-sm text-muted-foreground sm:flex-row sm:px-6">
             <p className="flex items-center gap-1.5">
-              <span className="inline-block size-1.5 rounded-full bg-accent shadow-[0_0_8px] shadow-accent/70" aria-hidden="true" />
+              <span className="inline-block size-1.5 rounded-full bg-nebula shadow-[0_0_8px] shadow-nebula/70" aria-hidden="true" />
               Build the Nostr protocol together.
             </p>
             <p>
