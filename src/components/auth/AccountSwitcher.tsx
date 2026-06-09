@@ -88,7 +88,7 @@ export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
         })}
         <DropdownMenuSeparator />
         <div
-          className='flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-accent'
+          className='flex items-center gap-2 p-2 rounded-md text-sm cursor-pointer hover:bg-accent'
           role='button'
           tabIndex={0}
           onClick={(e) => {
