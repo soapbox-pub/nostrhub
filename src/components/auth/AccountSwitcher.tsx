@@ -1,4 +1,5 @@
-import { ChevronDown, LogOut, UserIcon, UserPlus } from 'lucide-react';
+import { ChevronDown, LogOut, Moon, Settings, Sun, UserIcon, UserPlus } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,7 +9,9 @@ import {
 } from '@/components/ui/dropdown-menu.tsx';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar.tsx';
 import { Skeleton } from '@/components/ui/skeleton.tsx';
+import { Switch } from '@/components/ui/switch.tsx';
 import { useLoggedInAccounts, type Account } from '@/hooks/useLoggedInAccounts';
+import { useTheme } from '@/hooks/useTheme';
 
 interface AccountSwitcherProps {
   onAddAccountClick: () => void;
@@ -16,6 +19,8 @@ interface AccountSwitcherProps {
 
 export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
   const { currentUser, otherUsers, isLoading, setLogin, removeLogin } = useLoggedInAccounts();
+  const { theme, setTheme } = useTheme();
+  const isDark = theme === 'dark';
 
   if (!currentUser) return null;
 
@@ -81,6 +86,37 @@ export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
             </DropdownMenuItem>
           );
         })}
+        <DropdownMenuSeparator />
+        <div
+          className='flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-accent'
+          role='button'
+          tabIndex={0}
+          onClick={(e) => {
+            e.preventDefault();
+            setTheme(isDark ? 'light' : 'dark');
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setTheme(isDark ? 'light' : 'dark');
+            }
+          }}
+        >
+          {isDark ? <Moon className='w-4 h-4' /> : <Sun className='w-4 h-4' />}
+          <span className='flex-1'>Dark mode</span>
+          <Switch
+            checked={isDark}
+            onClick={(e) => e.stopPropagation()}
+            onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')}
+            aria-label='Toggle dark mode'
+          />
+        </div>
+        <DropdownMenuItem asChild className='flex items-center gap-2 cursor-pointer p-2 rounded-md'>
+          <Link to='/settings'>
+            <Settings className='w-4 h-4' />
+            <span>Settings</span>
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={onAddAccountClick}

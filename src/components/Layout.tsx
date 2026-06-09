@@ -1,8 +1,5 @@
 import { Link, NavLink } from 'react-router-dom';
-import { Moon, Sun, Settings } from 'lucide-react';
-import { useTheme } from '@/hooks/useTheme';
 import { LoginArea } from '@/components/auth/LoginArea';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 interface LayoutProps {
@@ -29,21 +26,6 @@ function Logo() {
         Nostr<span className="text-primary">Hub</span>
       </span>
     </Link>
-  );
-}
-
-function ThemeToggle() {
-  const { theme, setTheme } = useTheme();
-  const isDark = theme === 'dark';
-  return (
-    <Button
-      variant="ghost"
-      size="icon"
-      aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-      onClick={() => setTheme(isDark ? 'light' : 'dark')}
-    >
-      {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
-    </Button>
   );
 }
 
@@ -74,12 +56,6 @@ export function Layout({ children, sidebar, className }: LayoutProps) {
           </nav>
 
           <div className="ml-auto flex items-center gap-2">
-            <ThemeToggle />
-            <Button asChild variant="ghost" size="icon" aria-label="Settings">
-              <Link to="/settings">
-                <Settings className="size-4" />
-              </Link>
-            </Button>
             <LoginArea className="max-w-60" />
           </div>
         </div>
