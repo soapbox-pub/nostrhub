@@ -40,7 +40,6 @@ function ExpertRow({ pubkey, onRemove }: { pubkey: string; onRemove: () => void 
       <UserAvatar pubkey={pubkey} showExpertBadge={false} />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">{name}</p>
-        <p className="truncate font-mono text-xs text-muted-foreground">{shortNpub(pubkey)}</p>
       </div>
       <Button variant="ghost" size="icon" onClick={onRemove} aria-label={`Remove ${name}`}>
         <X className="size-4" />
