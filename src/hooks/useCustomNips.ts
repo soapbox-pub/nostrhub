@@ -1,6 +1,7 @@
 import { useNostr } from '@nostrify/react';
 import { useQuery } from '@tanstack/react-query';
 import { nip19 } from 'nostr-tools';
+import type { NostrFilter } from '@nostrify/nostrify';
 import { CUSTOM_NIP_KIND, isValidCustomNip, parseCustomNip, type CustomNip } from '@/lib/nips';
 
 export interface UseCustomNipsOptions {
@@ -20,7 +21,7 @@ export function useCustomNips(options: UseCustomNipsOptions = {}) {
   return useQuery<CustomNip[]>({
     queryKey: ['custom-nips', authors ? [...authors].sort() : null, kind ?? null, limit],
     queryFn: async ({ signal }) => {
-      const filter: Record<string, unknown> = { kinds: [CUSTOM_NIP_KIND], limit };
+      const filter: NostrFilter = { kinds: [CUSTOM_NIP_KIND], limit };
       if (authors && authors.length > 0) filter.authors = authors;
       if (kind) filter['#k'] = [kind];
 
