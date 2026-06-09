@@ -102,7 +102,7 @@ export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
             }
           }}
         >
-          {isDark ? <Moon className='w-4 h-4' /> : <Sun className='w-4 h-4' />}
+          {isDark ? <Moon className='w-4 h-4 text-muted-foreground' /> : <Sun className='w-4 h-4 text-muted-foreground' />}
           <span className='flex-1'>Dark mode</span>
           <Switch
             checked={isDark}
