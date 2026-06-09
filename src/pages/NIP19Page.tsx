@@ -1,6 +1,8 @@
 import { nip19 } from 'nostr-tools';
 import { useParams } from 'react-router-dom';
 import NotFound from './NotFound';
+import { CustomNipPage } from './CustomNipPage';
+import { CUSTOM_NIP_KIND } from '@/lib/nips';
 
 export function NIP19Page() {
   const { nip19: identifier } = useParams<{ nip19: string }>();
@@ -21,22 +23,23 @@ export function NIP19Page() {
   switch (type) {
     case 'npub':
     case 'nprofile':
-      // AI agent should implement profile view here
+      // Profile view implemented in a later phase.
       return <div>Profile placeholder</div>;
 
     case 'note':
-      // AI agent should implement note view here
       return <div>Note placeholder</div>;
 
     case 'nevent':
-      // AI agent should implement event view here
       return <div>Event placeholder</div>;
 
     case 'naddr':
-      // AI agent should implement addressable event view here
+      // Community NIPs (kind 30817) get a dedicated detail page.
+      if (decoded.data.kind === CUSTOM_NIP_KIND) {
+        return <CustomNipPage naddr={identifier} />;
+      }
       return <div>Addressable event placeholder</div>;
 
     default:
       return <NotFound />;
   }
-} 
+}
