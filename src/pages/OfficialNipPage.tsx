@@ -5,6 +5,7 @@ import { ArrowLeft, ExternalLink, GitFork, AlertCircle } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { MarkdownContent } from '@/components/MarkdownContent';
 import { ApproveButton } from '@/components/ApproveButton';
+import { CommentsSection } from '@/components/comments/CommentsSection';
 import { useOfficialNip } from '@/hooks/useOfficialNips';
 import type { NipTarget } from '@/hooks/useNipApprovals';
 import { Button } from '@/components/ui/button';
@@ -84,6 +85,15 @@ const OfficialNipPage = () => {
               <MarkdownContent content={data.content} />
             </CardContent>
           </Card>
+
+          <section className="mt-10 space-y-4">
+            <h2 className="text-xl font-semibold tracking-tight">Discussion</h2>
+            <CommentsSection
+              root={new URL(`${GITHUB_BASE}/${code}.md`)}
+              emptyStateMessage="No discussion yet"
+              emptyStateSubtitle="Share feedback on this NIP with the community."
+            />
+          </section>
         </article>
       )}
     </Layout>

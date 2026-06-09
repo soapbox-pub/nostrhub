@@ -4,6 +4,7 @@ import { ArrowLeft, GitFork, AlertCircle, Pencil } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { MarkdownContent } from '@/components/MarkdownContent';
 import { ApproveButton } from '@/components/ApproveButton';
+import { CommentsSection } from '@/components/comments/CommentsSection';
 import { UserAvatar } from '@/components/UserAvatar';
 import { ExpertToggleButton } from '@/components/ExpertToggleButton';
 import { useCustomNip } from '@/hooks/useCustomNips';
@@ -112,6 +113,15 @@ export function CustomNipPage({ naddr }: { naddr: string }) {
               <MarkdownContent content={nip.content} />
             </CardContent>
           </Card>
+
+          <section className="mt-10 space-y-4">
+            <h2 className="text-xl font-semibold tracking-tight">Discussion</h2>
+            <CommentsSection
+              root={nip.event}
+              emptyStateMessage="No discussion yet"
+              emptyStateSubtitle="Share feedback on this NIP with the community."
+            />
+          </section>
         </article>
       )}
     </Layout>
