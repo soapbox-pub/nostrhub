@@ -16,7 +16,6 @@ const StatsPage = () => {
 
   const now7d = ago(WEEK);
 
-  const clientEvents7d = useClientCounts({ since: now7d });
   const clientUsers7d = useClientCounts({ since: now7d, search: DISTINCT });
 
   return (
@@ -36,21 +35,12 @@ const StatsPage = () => {
       </section>
 
       <section className="mt-10">
-        <h2 className="mb-4 text-lg font-semibold">By Client (last 7 days)</h2>
-        <div className="grid gap-6 lg:grid-cols-2">
-          <ClientBarChart
-            title="Events by Client"
-            description="All events per client app"
-            data={clientEvents7d.data}
-            isLoading={clientEvents7d.isLoading}
-          />
-          <ClientBarChart
-            title="Unique Users by Client"
-            description="Distinct authors per client"
-            data={clientUsers7d.data}
-            isLoading={clientUsers7d.isLoading}
-          />
-        </div>
+        <ClientBarChart
+          title="Unique Users by Client"
+          description="Distinct authors per client (last 7 days)"
+          data={clientUsers7d.data}
+          isLoading={clientUsers7d.isLoading}
+        />
       </section>
     </Layout>
   );
