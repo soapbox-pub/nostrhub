@@ -1,5 +1,6 @@
 import { Link, NavLink } from 'react-router-dom';
 import { LoginArea } from '@/components/auth/LoginArea';
+import { SearchBar } from '@/components/SearchBar';
 import { cn } from '@/lib/utils';
 
 interface LayoutProps {
@@ -55,9 +56,15 @@ export function Layout({ children, sidebar, className }: LayoutProps) {
             ))}
           </nav>
 
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex items-center gap-2 sm:gap-3">
+            <SearchBar className="hidden sm:block w-40 md:w-56 lg:w-64" />
             <LoginArea className="max-w-60" />
           </div>
+        </div>
+
+        {/* Mobile search */}
+        <div className="border-t border-border/60 px-4 py-2 sm:hidden">
+          <SearchBar />
         </div>
 
         {/* Mobile nav */}
