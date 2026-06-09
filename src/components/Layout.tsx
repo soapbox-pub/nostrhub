@@ -20,7 +20,7 @@ interface LayoutProps {
 const NAV_ITEMS = [
   { to: '/', label: 'NIPs', end: true },
   { to: '/stats', label: 'Stats' },
-  { to: '/chat', label: 'Community' },
+  { to: '/chat', label: 'Chat' },
 ];
 
 function Logo() {
