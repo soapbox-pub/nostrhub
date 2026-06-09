@@ -97,96 +97,96 @@
   --radius: 0.75rem;
 
   --background: hsl(0 0% 100%);
-  --foreground: hsl(262 30% 12%);
+  --foreground: hsl(0 10% 12%);
 
   --card: hsl(0 0% 100%);
-  --card-foreground: hsl(262 30% 12%);
+  --card-foreground: hsl(0 10% 12%);
 
   --popover: hsl(0 0% 100%);
-  --popover-foreground: hsl(262 30% 12%);
+  --popover-foreground: hsl(0 10% 12%);
 
-  --primary: hsl(262 73% 57%);
+  --primary: hsl(0 72% 51%);
   --primary-foreground: hsl(0 0% 100%);
 
-  --secondary: hsl(262 40% 96%);
-  --secondary-foreground: hsl(262 47% 24%);
+  --secondary: hsl(0 30% 96%);
+  --secondary-foreground: hsl(0 40% 24%);
 
-  --muted: hsl(260 24% 96%);
-  --muted-foreground: hsl(258 12% 46%);
+  --muted: hsl(20 14% 96%);
+  --muted-foreground: hsl(15 8% 44%);
 
-  --accent: hsl(262 60% 95%);
-  --accent-foreground: hsl(262 47% 24%);
+  --accent: hsl(270 40% 95%);
+  --accent-foreground: hsl(270 50% 24%);
 
   --destructive: hsl(0 84.2% 60.2%);
   --destructive-foreground: hsl(0 0% 100%);
 
-  --border: hsl(260 24% 90%);
-  --input: hsl(260 24% 90%);
-  --ring: hsl(262 73% 57%);
+  --border: hsl(20 14% 90%);
+  --input: hsl(20 14% 90%);
+  --ring: hsl(0 72% 51%);
 
-  --nebula: hsl(190 95% 42%);
+  --nebula: hsl(270 65% 55%);
 
-  --chart-1: hsl(262 73% 57%);
-  --chart-2: hsl(190 95% 42%);
-  --chart-3: hsl(160 60% 45%);
-  --chart-4: hsl(43 96% 56%);
-  --chart-5: hsl(330 81% 60%);
+  --chart-1: hsl(0 72% 51%);
+  --chart-2: hsl(270 65% 55%);
+  --chart-3: hsl(38 92% 50%);
+  --chart-4: hsl(199 70% 48%);
+  --chart-5: hsl(142 50% 45%);
 
-  --sidebar: hsl(260 30% 98%);
-  --sidebar-foreground: hsl(262 20% 26%);
-  --sidebar-primary: hsl(262 73% 57%);
+  --sidebar: hsl(20 20% 98%);
+  --sidebar-foreground: hsl(0 10% 26%);
+  --sidebar-primary: hsl(0 72% 51%);
   --sidebar-primary-foreground: hsl(0 0% 100%);
-  --sidebar-accent: hsl(262 40% 94%);
-  --sidebar-accent-foreground: hsl(262 47% 24%);
-  --sidebar-border: hsl(260 24% 90%);
-  --sidebar-ring: hsl(262 73% 57%);
+  --sidebar-accent: hsl(270 40% 95%);
+  --sidebar-accent-foreground: hsl(270 50% 24%);
+  --sidebar-border: hsl(20 14% 90%);
+  --sidebar-ring: hsl(0 72% 51%);
 }
 
 .dark {
-  --background: hsl(258 45% 5%);
-  --foreground: hsl(255 30% 95%);
+  --background: hsl(150 12% 5%);
+  --foreground: hsl(40 20% 95%);
 
-  --card: hsl(259 38% 9%);
-  --card-foreground: hsl(255 30% 95%);
+  --card: hsl(150 10% 9%);
+  --card-foreground: hsl(40 20% 95%);
 
-  --popover: hsl(259 40% 8%);
-  --popover-foreground: hsl(255 30% 95%);
+  --popover: hsl(150 12% 7%);
+  --popover-foreground: hsl(40 20% 95%);
 
-  --primary: hsl(264 90% 72%);
-  --primary-foreground: hsl(260 50% 8%);
+  --primary: hsl(0 80% 62%);
+  --primary-foreground: hsl(0 0% 100%);
 
-  --secondary: hsl(260 32% 16%);
-  --secondary-foreground: hsl(255 30% 95%);
+  --secondary: hsl(150 8% 16%);
+  --secondary-foreground: hsl(40 20% 95%);
 
-  --muted: hsl(260 28% 14%);
-  --muted-foreground: hsl(256 18% 68%);
+  --muted: hsl(150 8% 14%);
+  --muted-foreground: hsl(40 10% 68%);
 
-  --accent: hsl(260 32% 20%);
-  --accent-foreground: hsl(255 30% 95%);
+  --accent: hsl(270 30% 18%);
+  --accent-foreground: hsl(40 20% 95%);
 
-  --destructive: hsl(351 80% 60%);
+  --destructive: hsl(0 80% 62%);
   --destructive-foreground: hsl(0 0% 100%);
 
-  --border: hsl(262 30% 20%);
-  --input: hsl(262 30% 18%);
-  --ring: hsl(264 90% 72%);
+  --border: hsl(150 10% 18%);
+  --input: hsl(150 10% 16%);
+  --ring: hsl(0 80% 62%);
 
-  --nebula: hsl(190 90% 60%);
+  --nebula: hsl(270 70% 68%);
 
-  --chart-1: hsl(264 90% 72%);
-  --chart-2: hsl(190 90% 60%);
-  --chart-3: hsl(160 65% 55%);
-  --chart-4: hsl(43 96% 64%);
-  --chart-5: hsl(322 85% 68%);
+  --chart-1: hsl(0 80% 62%);
+  --chart-2: hsl(270 70% 68%);
+  --chart-3: hsl(38 92% 58%);
+  --chart-4: hsl(199 75% 58%);
+  --chart-5: hsl(142 55% 55%);
 
-  --sidebar: hsl(259 42% 7%);
-  --sidebar-foreground: hsl(255 24% 88%);
-  --sidebar-primary: hsl(264 90% 72%);
-  --sidebar-primary-foreground: hsl(260 50% 8%);
-  --sidebar-accent: hsl(260 32% 15%);
-  --sidebar-accent-foreground: hsl(255 30% 95%);
-  --sidebar-border: hsl(262 30% 18%);
-  --sidebar-ring: hsl(264 90% 72%);
+  --sidebar: hsl(150 12% 7%);
+  --sidebar-foreground: hsl(40 16% 88%);
+  --sidebar-primary: hsl(0 80% 62%);
+  --sidebar-primary-foreground: hsl(0 0% 100%);
+  --sidebar-accent: hsl(270 30% 16%);
+  --sidebar-accent-foreground: hsl(40 20% 95%);
+  --sidebar-border: hsl(150 10% 16%);
+  --sidebar-ring: hsl(0 80% 62%);
 }
 
 @layer base {
@@ -215,28 +215,30 @@
     background:
       radial-gradient(
         38rem 38rem at 15% 105%,
-        hsl(264 90% 60% / 0.20),
+        hsl(0 72% 50% / 0.18),
         transparent 60%
       ),
       radial-gradient(
         34rem 34rem at 85% 108%,
-        hsl(190 90% 55% / 0.16),
+        hsl(270 65% 55% / 0.16),
         transparent 60%
       ),
       radial-gradient(
         44rem 44rem at 50% 120%,
-        hsl(290 85% 62% / 0.14),
+        hsl(0 70% 52% / 0.12),
         transparent 62%
       ),
       radial-gradient(
         40rem 40rem at 80% -10%,
-        hsl(264 70% 50% / 0.10),
+        hsl(270 60% 55% / 0.10),
         transparent 60%
       );
   }
 
   /* Mycelium grove: a row of glowing mushrooms anchored to the bottom of the
-     viewport, with drifting spores floating up through the dark above them. */
+     viewport, plus drifting spores that fill the whole screen. Each spore
+     layer is a small tile repeated across both axes so the sparkle covers the
+     entire viewport (not just a band), with a slow upward drift. */
   body::after {
     content: '';
     position: fixed;
@@ -244,30 +246,29 @@
     z-index: -1;
     pointer-events: none;
     background-image:
-      /* Drifting spores rising from the grove floor. */
-      radial-gradient(1.5px 1.5px at 20% 92%, hsl(264 80% 85% / 0.9), transparent),
-      radial-gradient(1px 1px at 75% 88%, hsl(190 80% 80% / 0.8), transparent),
-      radial-gradient(1.5px 1.5px at 50% 95%, hsl(290 80% 82% / 0.85), transparent),
-      radial-gradient(1px 1px at 85% 96%, hsl(264 80% 85% / 0.7), transparent),
-      radial-gradient(1px 1px at 33% 86%, hsl(190 80% 82% / 0.7), transparent),
-      radial-gradient(1.5px 1.5px at 8% 97%, hsl(290 80% 82% / 0.8), transparent),
-      radial-gradient(1px 1px at 65% 90%, hsl(255 30% 96% / 0.5), transparent),
+      /* Drifting spores — one dot per tile, tiled across the whole screen. */
+      radial-gradient(2px 2px at 30px 40px, hsl(40 30% 96% / 0.9), transparent),
+      radial-gradient(1.5px 1.5px at 140px 90px, hsl(270 65% 75% / 0.8), transparent),
+      radial-gradient(2px 2px at 90px 180px, hsl(0 70% 70% / 0.7), transparent),
+      radial-gradient(1px 1px at 200px 50px, hsl(40 30% 96% / 0.7), transparent),
+      radial-gradient(1.5px 1.5px at 250px 160px, hsl(270 65% 78% / 0.7), transparent),
+      radial-gradient(1px 1px at 60px 120px, hsl(40 30% 96% / 0.6), transparent),
       /* The mushroom grove, anchored to the bottom edge, spanning full width. */
       image-set(url('/mushrooms.png') 1x);
     background-repeat:
-      repeat-x, repeat-x, repeat-x, repeat-x, repeat-x, repeat-x, repeat-x,
+      repeat, repeat, repeat, repeat, repeat, repeat,
       no-repeat;
     background-position:
-      0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0,
+      0 0, 0 0, 0 0, 0 0, 0 0, 0 0,
       center bottom;
     background-size:
-      320px 320px, 280px 280px, 360px 360px, 300px 300px, 340px 340px, 260px 260px, 380px 380px,
+      300px 300px, 360px 360px, 320px 320px, 280px 280px, 340px 340px, 260px 260px,
       100% auto;
-    opacity: 0.55;
+    opacity: 0.5;
   }
 
   .dark body::after {
-    opacity: 0.9;
+    opacity: 0.85;
   }
 
   @media (prefers-reduced-motion: no-preference) {
@@ -282,12 +283,12 @@
 @keyframes spore-drift {
   from {
     background-position:
-      0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0,
+      0 0, 0 0, 0 0, 0 0, 0 0, 0 0,
       center bottom;
   }
   to {
     background-position:
-      0 -200px, 0 -240px, 0 -180px, 0 -220px, 0 -260px, 0 -200px, 0 -300px,
+      0 -300px, 0 -360px, 0 -320px, 0 -280px, 0 -340px, 0 -260px,
       center bottom;
   }
 }
@@ -312,19 +313,19 @@
   }
 }
 
-/* Soft outer glow tuned to the primary nebula color. */
+/* Soft outer glow tuned to the primary mushroom-red color. */
 @utility glow {
   box-shadow:
-    0 0 0 1px hsl(264 90% 72% / 0.12),
-    0 8px 40px -8px hsl(264 90% 60% / 0.35);
+    0 0 0 1px hsl(0 80% 62% / 0.12),
+    0 8px 40px -8px hsl(0 80% 55% / 0.35);
 }
 
-/* Gradient text in the cosmic violet -> cyan sweep. */
+/* Gradient text sweeping from mushroom red through to forest purple. */
 @utility text-cosmic {
   background-image: linear-gradient(
     100deg,
     var(--primary) 0%,
-    hsl(290 85% 72%) 42%,
+    hsl(330 75% 60%) 45%,
     var(--nebula) 100%
   );
   background-clip: text;

@@ -30,7 +30,7 @@ function Logo() {
       className="group flex items-center gap-2.5 font-display font-semibold text-lg tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md"
     >
       <span
-        className="grid size-9 place-items-center text-2xl leading-none transition-transform duration-500 group-hover:rotate-[12deg] group-hover:scale-110 drop-shadow-[0_0_10px_hsl(264_90%_72%/0.55)]"
+        className="grid size-9 place-items-center text-2xl leading-none transition-transform duration-500 group-hover:rotate-[12deg] group-hover:scale-110 drop-shadow-[0_0_10px_hsl(0_80%_62%/0.55)]"
         aria-hidden="true"
       >
         🍄

@@ -44,7 +44,7 @@ export function NipCard({ nip }: { nip: RankedNip }) {
         <CardContent className="flex h-full flex-col gap-3 px-4">
           <div className="flex-1 space-y-1.5">
             {nip.number && (
-              <span className="font-mono text-sm font-semibold text-primary transition-[text-shadow] duration-300 group-hover:[text-shadow:0_0_12px_hsl(264_90%_72%/0.7)]">
+              <span className="font-mono text-sm font-semibold text-primary transition-[text-shadow] duration-300 group-hover:[text-shadow:0_0_12px_hsl(0_80%_62%/0.7)]">
                 NIP-{nip.number}
               </span>
             )}

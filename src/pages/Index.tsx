@@ -36,7 +36,7 @@ function draftToRanked(nip: CustomNip): RankedNip {
 function SectionHeading({ icon, title, subtitle }: { icon: React.ReactNode; title: string; subtitle?: string }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="text-primary drop-shadow-[0_0_8px_hsl(264_90%_72%/0.6)]">{icon}</span>
+      <span className="text-primary drop-shadow-[0_0_8px_hsl(0_80%_62%/0.6)]">{icon}</span>
       <div>
         <h2 className="font-display text-xl font-semibold tracking-tight">{title}</h2>
         {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
