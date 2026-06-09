@@ -99,11 +99,6 @@ const Index = () => {
           className="pointer-events-none absolute -bottom-32 right-0 size-72 rounded-full bg-nebula/20 blur-[110px]"
         />
 
-        <span className="relative inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-4 py-1.5 text-xs font-medium uppercase tracking-[0.18em] text-primary motion-safe:animate-[float-slow_6s_ease-in-out_infinite]">
-          <Sparkles className="size-3.5" />
-          The Nostr protocol, charted by the community
-        </span>
-
         <h1 className="relative font-display text-4xl font-bold leading-[1.05] tracking-tight sm:text-6xl">
           <span className="text-cosmic">Nostr</span> Powered by You
         </h1>
