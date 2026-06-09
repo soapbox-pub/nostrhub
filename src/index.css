@@ -195,16 +195,25 @@
 }
 
 @utility avatar-shield {
-  /* Heraldic shield: flat top, tapering to a point at the bottom-center.
-     Percentage-based polygon so it scales to any avatar size. */
+  /* Heraldic shield matching the reference art: a slight peak at the top
+     center, full-width rounded shoulders, then curving sides tapering to a
+     sharp point at the bottom-center. Percentage-based so it scales to any
+     avatar size. */
   clip-path: polygon(
-    0% 0%,
+    50% 4%,
+    72% 0%,
     100% 0%,
-    100% 55%,
-    85% 80%,
+    100% 40%,
+    96% 60%,
+    86% 78%,
+    68% 92%,
     50% 100%,
-    15% 80%,
-    0% 55%
+    32% 92%,
+    14% 78%,
+    4% 60%,
+    0% 40%,
+    0% 0%,
+    28% 0%
   );
   aspect-ratio: 1 / 1;
   border-radius: 0 !important;
