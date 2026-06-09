@@ -1,6 +1,7 @@
 import { Link, NavLink } from 'react-router-dom';
 import { LoginArea } from '@/components/auth/LoginArea';
 import { SearchBar } from '@/components/SearchBar';
+import { GalaxyLogo } from '@/components/GalaxyLogo';
 import { cn } from '@/lib/utils';
 
 interface LayoutProps {
@@ -30,24 +31,12 @@ function Logo() {
       className="group flex items-center gap-2.5 font-display font-semibold text-lg tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md"
     >
       <span
-        className="relative grid size-9 place-items-center rounded-full bg-gradient-to-br from-primary to-nebula shadow-[0_0_18px_-2px] shadow-primary/60 transition-transform duration-300 group-hover:scale-105"
+        className="relative grid size-9 place-items-center transition-transform duration-500 group-hover:rotate-[20deg] group-hover:scale-105"
         aria-hidden="true"
       >
-        {/* Planet + orbit mark */}
-        <svg viewBox="0 0 24 24" className="size-6 text-primary-foreground" fill="none">
-          <circle cx="12" cy="12" r="4.5" fill="currentColor" fillOpacity="0.95" />
-          <ellipse
-            cx="12"
-            cy="12"
-            rx="9.5"
-            ry="4"
-            stroke="currentColor"
-            strokeWidth="1.4"
-            strokeOpacity="0.85"
-            transform="rotate(-28 12 12)"
-          />
-          <circle cx="20" cy="6.2" r="1.1" fill="currentColor" />
-        </svg>
+        {/* Glow halo behind the galaxy mark */}
+        <span className="absolute inset-0 rounded-full bg-primary/40 blur-md" />
+        <GalaxyLogo className="relative size-8 text-primary drop-shadow-[0_0_6px_hsl(264_90%_72%/0.7)]" />
       </span>
       <span>
         Nostr<span className="text-cosmic">Hub</span>
