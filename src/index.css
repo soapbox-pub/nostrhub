@@ -235,7 +235,7 @@
       );
   }
 
-  /* Mycelium grove: a row of glowing mushrooms anchored to the bottom of the
+  /* Mycelium grove: an earthy forest-floor band anchored to the bottom of the
      viewport, plus drifting spores that fill the whole screen. Each spore
      layer is a small tile repeated across both axes so the sparkle covers the
      entire viewport (not just a band), with a slow upward drift. */
@@ -253,8 +253,8 @@
       radial-gradient(1px 1px at 200px 50px, hsl(40 30% 96% / 0.7), transparent),
       radial-gradient(1.5px 1.5px at 250px 160px, hsl(270 65% 78% / 0.7), transparent),
       radial-gradient(1px 1px at 60px 120px, hsl(40 30% 96% / 0.6), transparent),
-      /* The mushroom grove, anchored to the bottom edge, spanning full width. */
-      image-set(url('/mushrooms.png') 1x);
+      /* The forest-floor band, anchored to the bottom edge, spanning full width. */
+      image-set(url('/forest-floor.png') 1x);
     background-repeat:
       repeat, repeat, repeat, repeat, repeat, repeat,
       no-repeat;
@@ -278,8 +278,8 @@
   }
 }
 
-/* Slow upward drift of the floating spore layers (the mushroom image, being the
-   final background, stays fixed because background-position keeps it pinned). */
+/* Slow upward drift of the floating spore layers (the forest-floor image, being
+   the final background, stays fixed because background-position keeps it pinned). */
 @keyframes spore-drift {
   from {
     background-position:
