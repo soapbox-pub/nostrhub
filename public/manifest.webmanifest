@@ -4,7 +4,7 @@
   "description": "Build the Nostr protocol together — discover, draft, and discuss NIPs.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0b0f0c",
+  "background_color": "#0d0a0e",
   "theme_color": "#dc2626",
   "icons": []
 }
