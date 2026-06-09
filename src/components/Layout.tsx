@@ -44,7 +44,7 @@ function Logo() {
 
 export function Layout({ children, sidebar, className, fullBleed = false }: LayoutProps) {
   return (
-    <div className={cn('flex flex-col bg-background text-foreground', fullBleed ? 'h-screen' : 'min-h-screen')}>
+    <div className={cn('flex flex-col text-foreground', fullBleed ? 'h-screen' : 'min-h-screen')}>
       <header className="sticky top-0 z-40 border-b border-primary/15 bg-background/70 backdrop-blur-xl supports-[backdrop-filter]:bg-background/50">
         <div className="container mx-auto flex h-16 items-center gap-4 px-4 sm:px-6">
           <Logo />

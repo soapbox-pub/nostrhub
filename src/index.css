@@ -262,7 +262,7 @@
       center bottom;
     background-size:
       320px 320px, 280px 280px, 360px 360px, 300px 300px, 340px 340px, 260px 260px, 380px 380px,
-      auto min(46vh, 520px);
+      100% auto;
     opacity: 0.55;
   }
 
