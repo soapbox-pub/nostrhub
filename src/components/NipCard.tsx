@@ -2,27 +2,14 @@ import { Link } from 'react-router-dom';
 import { Check } from 'lucide-react';
 import type { RankedNip } from '@/hooks/useRankedNips';
 import { useAuthor } from '@/hooks/useAuthor';
+import { UserAvatar } from '@/components/UserAvatar';
 import { nipHref } from '@/lib/nips';
 import { shortNpub } from '@/lib/nostr';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage, AvatarGroup, AvatarGroupCount } from '@/components/ui/avatar';
+import { AvatarGroup, AvatarGroupCount } from '@/components/ui/avatar';
 
 const MAX_STACK = 4;
-
-function StackAvatar({ pubkey }: { pubkey: string }) {
-  const author = useAuthor(pubkey);
-  const metadata = author.data?.metadata;
-  const displayName = metadata?.name || metadata?.display_name || shortNpub(pubkey);
-  const initials = displayName.replace(/[^a-zA-Z0-9]/g, '').slice(0, 2).toUpperCase() || 'N';
-
-  return (
-    <Avatar size="sm">
-      <AvatarImage src={metadata?.picture} alt={displayName} />
-      <AvatarFallback>{initials}</AvatarFallback>
-    </Avatar>
-  );
-}
 
 export function NipCard({ nip }: { nip: RankedNip }) {
   const href = nipHref(nip);
@@ -64,7 +51,7 @@ export function NipCard({ nip }: { nip: RankedNip }) {
             {approvers.length > 0 && (
               <AvatarGroup className="ml-auto">
                 {shown.map((pubkey) => (
-                  <StackAvatar key={pubkey} pubkey={pubkey} />
+                  <UserAvatar key={pubkey} pubkey={pubkey} size="sm" />
                 ))}
                 {extra > 0 ? (
                   <AvatarGroupCount className="size-6 text-xs">+{extra}</AvatarGroupCount>
