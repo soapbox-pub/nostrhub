@@ -69,3 +69,14 @@ export function nipHref(nip: { number?: string; custom?: { naddr: string } }): s
   if (nip.custom) return `/${nip.custom.naddr}`;
   return `/nip/${nip.number}`;
 }
+
+/** Convert a title into a kebab-case slug suitable for a `d` tag. */
+export function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/[\s_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 64);
+}

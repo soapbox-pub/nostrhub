@@ -6,6 +6,8 @@ import { NIP19Page } from "./pages/NIP19Page";
 import NotFound from "./pages/NotFound";
 import SettingsPage from "./pages/SettingsPage";
 import OfficialNipPage from "./pages/OfficialNipPage";
+import CreateNipPage from "./pages/CreateNipPage";
+import EditNipPage from "./pages/EditNipPage";
 
 export function AppRouter() {
   return (
@@ -15,6 +17,8 @@ export function AppRouter() {
         <Route path="/" element={<Index />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/nip/:number" element={<OfficialNipPage />} />
+        <Route path="/create" element={<CreateNipPage />} />
+        <Route path="/edit/:naddr" element={<EditNipPage />} />
         {/* NIP-19 route for npub1, note1, naddr1, nevent1, nprofile1 */}
         <Route path="/:nip19" element={<NIP19Page />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
