@@ -195,25 +195,33 @@
 }
 
 @utility avatar-shield {
-  /* Heraldic shield matching the reference art: a slight peak at the top
-     center, full-width rounded shoulders, then curving sides tapering to a
-     sharp point at the bottom-center. Percentage-based so it scales to any
-     avatar size. */
+  /* Shield silhouette traced from the reference shield artwork
+     (shield_1f6e1-fe0f.png): peaked top center, raised shoulders, curved
+     sides tapering to a point at the bottom. Percentage-based so it scales
+     to any avatar size. */
   clip-path: polygon(
-    50% 4%,
-    72% 0%,
-    100% 0%,
-    100% 40%,
-    96% 60%,
-    86% 78%,
-    68% 92%,
-    50% 100%,
-    32% 92%,
-    14% 78%,
-    4% 60%,
-    0% 40%,
-    0% 0%,
-    28% 0%
+    51% 0%,
+    60% 5%,
+    96% 13%,
+    99% 30%,
+    97% 45%,
+    93% 58%,
+    87% 70%,
+    80% 80%,
+    72% 88%,
+    62% 95%,
+    51% 100%,
+    49% 100%,
+    38% 95%,
+    28% 88%,
+    20% 80%,
+    13% 70%,
+    7% 58%,
+    3% 45%,
+    0% 30%,
+    4% 13%,
+    41% 5%,
+    50% 0%
   );
   aspect-ratio: 1 / 1;
   border-radius: 0 !important;
