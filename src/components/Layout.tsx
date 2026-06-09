@@ -1,5 +1,5 @@
 import { Link, NavLink } from 'react-router-dom';
-import { Moon, Sun, Plus } from 'lucide-react';
+import { Moon, Sun, Plus, Settings } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { LoginArea } from '@/components/auth/LoginArea';
@@ -92,6 +92,11 @@ export function Layout({ children, sidebar, className }: LayoutProps) {
               </Button>
             )}
             <ThemeToggle />
+            <Button asChild variant="ghost" size="icon" aria-label="Settings">
+              <Link to="/settings">
+                <Settings className="size-4" />
+              </Link>
+            </Button>
             <LoginArea className="max-w-60" />
           </div>
         </div>

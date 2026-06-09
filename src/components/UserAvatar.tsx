@@ -1,9 +1,9 @@
 import { useMemo } from 'react';
-import { nip19 } from 'nostr-tools';
 import { GraduationCap } from 'lucide-react';
 import { useAuthor } from '@/hooks/useAuthor';
 import { useExperts } from '@/hooks/useExperts';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { shortNpub } from '@/lib/nostr';
 import { cn } from '@/lib/utils';
 
 interface UserAvatarProps {
@@ -12,16 +12,6 @@ interface UserAvatarProps {
   /** Show the graduation-cap marker above the avatar when this user is an expert. */
   showExpertBadge?: boolean;
   className?: string;
-}
-
-/** Deterministic short display name fallback from a pubkey. */
-export function shortNpub(pubkey: string): string {
-  try {
-    const npub = nip19.npubEncode(pubkey);
-    return `${npub.slice(0, 10)}…${npub.slice(-4)}`;
-  } catch {
-    return `${pubkey.slice(0, 8)}…`;
-  }
 }
 
 export function UserAvatar({ pubkey, size = 'default', showExpertBadge = true, className }: UserAvatarProps) {
