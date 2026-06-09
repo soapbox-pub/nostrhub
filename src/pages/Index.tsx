@@ -83,8 +83,8 @@ const Index = () => {
     <Layout
       sidebar={
         <>
-          <ChatPreviewCard />
           <StatsSidebar />
+          <ChatPreviewCard />
         </>
       }
     >

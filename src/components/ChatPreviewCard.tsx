@@ -8,7 +8,6 @@ import { useCommunityAuthors } from '@/hooks/useCommunityAuthors';
 import { useAuthor } from '@/hooks/useAuthor';
 import { DEFAULT_TOPIC } from '@/lib/chat';
 import { shortNpub } from '@/lib/nostr';
-import { UserAvatar } from '@/components/UserAvatar';
 import { ChatMessageContent } from '@/components/chat/ChatMessageContent';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -22,25 +21,20 @@ function PreviewMessage({ message }: { message: NostrEvent }) {
   const date = new Date(message.created_at * 1000);
 
   return (
-    <div className="flex gap-2">
-      <Link to={`/${npub}`} aria-label={`${displayName} profile`} className="shrink-0">
-        <UserAvatar pubkey={message.pubkey} size="sm" />
-      </Link>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-baseline gap-1.5">
-          <Link to={`/${npub}`} className="truncate text-xs font-semibold hover:underline">
-            {displayName}
-          </Link>
-          <time
-            dateTime={date.toISOString()}
-            className="shrink-0 text-[10px] text-muted-foreground"
-          >
-            {formatDistanceToNow(date, { addSuffix: true })}
-          </time>
-        </div>
-        <div className="line-clamp-2 text-xs leading-snug text-muted-foreground">
-          <ChatMessageContent content={message.content} />
-        </div>
+    <div className="min-w-0">
+      <div className="mb-0.5 flex items-baseline gap-1.5 px-1">
+        <Link to={`/${npub}`} className="truncate text-xs font-semibold hover:underline">
+          {displayName}
+        </Link>
+        <time
+          dateTime={date.toISOString()}
+          className="shrink-0 text-[10px] text-muted-foreground"
+        >
+          {formatDistanceToNow(date, { addSuffix: true })}
+        </time>
+      </div>
+      <div className="line-clamp-3 w-fit max-w-full rounded-2xl rounded-tl-sm bg-muted px-3 py-1.5 text-xs leading-snug text-foreground">
+        <ChatMessageContent content={message.content} />
       </div>
     </div>
   );
@@ -48,12 +42,9 @@ function PreviewMessage({ message }: { message: NostrEvent }) {
 
 function PreviewSkeleton() {
   return (
-    <div className="flex gap-2">
-      <Skeleton className="size-8 shrink-0 rounded-full" />
-      <div className="flex-1 space-y-1.5">
-        <Skeleton className="h-3 w-24" />
-        <Skeleton className="h-3 w-4/5" />
-      </div>
+    <div className="space-y-1">
+      <Skeleton className="h-3 w-20" />
+      <Skeleton className="h-7 w-4/5 rounded-2xl rounded-tl-sm" />
     </div>
   );
 }
@@ -77,9 +68,8 @@ export function ChatPreviewCard() {
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-1.5 text-sm font-medium">
           <Hash className="size-4 text-muted-foreground" />
-          {DEFAULT_TOPIC} chat
+          {DEFAULT_TOPIC}
         </CardTitle>
-        <p className="text-xs text-muted-foreground">Latest from the community</p>
       </CardHeader>
       <CardContent className="space-y-3">
         {isLoading || community.isLoading ? (
