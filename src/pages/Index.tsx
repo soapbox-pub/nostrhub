@@ -3,16 +3,32 @@ import { Link } from 'react-router-dom';
 import { Sparkles, Plus } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { NipCard } from '@/components/NipCard';
-import { CustomNipCard } from '@/components/CustomNipCard';
 import { StatsSidebar } from '@/components/StatsSidebar';
-import { useRankedNips } from '@/hooks/useRankedNips';
+import { useRankedNips, type RankedNip } from '@/hooks/useRankedNips';
 import { useCommunityAuthors } from '@/hooks/useCommunityAuthors';
 import { useCustomNips } from '@/hooks/useCustomNips';
 import { useExperts } from '@/hooks/useExperts';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { nipTargetKey } from '@/hooks/useNipApprovals';
+import type { CustomNip } from '@/lib/nips';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
+
+/** Adapt a community draft into the shape `NipCard` renders. */
+function draftToRanked(nip: CustomNip): RankedNip {
+  const target = { type: 'custom', address: nip.address } as const;
+  return {
+    key: nipTargetKey(target),
+    target,
+    title: nip.title,
+    custom: nip,
+    kinds: nip.kinds,
+    expertCount: 0,
+    totalCount: 0,
+    expertApprovers: [],
+  };
+}
 
 function SectionHeading({ icon, title, subtitle }: { icon: React.ReactNode; title: string; subtitle?: string }) {
   return (
@@ -119,16 +135,18 @@ const Index = () => {
           title="Latest Drafts"
           subtitle="Fresh NIPs from the developer community."
         />
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {community.isLoading || draftsQuery.isLoading ? (
             <>
               <CardSkeleton />
               <CardSkeleton />
             </>
           ) : draftsQuery.data && draftsQuery.data.length > 0 ? (
-            draftsQuery.data.map((nip) => <CustomNipCard key={nip.address} nip={nip} />)
+            draftsQuery.data.map((nip) => (
+              <NipCard key={nip.address} nip={draftToRanked(nip)} />
+            ))
           ) : (
-            <Card className="border-dashed">
+            <Card className="border-dashed sm:col-span-2 lg:col-span-3">
               <CardContent className="px-8 py-12 text-center">
                 <p className="mx-auto max-w-sm text-muted-foreground">
                   No community drafts yet.{' '}
