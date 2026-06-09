@@ -6,14 +6,18 @@
  * These hex pubkeys were resolved from verifiable NIP-05 identifiers.
  */
 export const DEFAULT_EXPERTS: string[] = [
-  // fiatjaf — creator of Nostr (_@fiatjaf.com)
   '3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d',
-  // Will (jb55) — Damus, many NIPs (jb55@jb55.com)
-  '32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245',
-  // hodlbod — Coracle, Welshman (hodlbod@coracle.social)
+  '0a2f19dc1a185792c3b0376f1d7f9971295e8932966c397935a5dddd1451a25a',
   '97c70a44366a6535c145b333f973ea86dfdc2d7a99da618c40c64705ad98e322',
-  // Vitor Pamplona — Amethyst, many NIPs (_@vitorpamplona.com)
   '460c25e682fda7832b52d1f22d3d22b3176d972f60dcdc3212ed8c92ef85065c',
+  '0461fcbecc4c3374439932d6b8f11269ccdb7cc973ad7a50ae362db135a474dd',
+  'fa984bd7dbb282f07e16e7ae87b26a2a7b9b90b7246a44771f0cf5ae58018f52',
+  '52b4a076bcbbbdc3a1aefa3735816cf74993b1b8db202b01c883c58be7fad8bd',
+  'fc7085c383ba71745704bdc1c6efcf7fab0197501de598c5e6c537ac0b32a4cb',
+  '32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245',
+  '63fe6318dc58583cfe16810f86dd09e18bfd76aabc24a0081ce2856f330504ed',
+  '7579076d9aff0a4cfdefa7e2045f2486c7e5d8bc63bfc6b45397233e1bbfcb19',
+  '2c7cc62a697ea3a7826521f3fd34f0cb273693cbe5e9310f35449f43622a5cdc',
 ];
 
 /**
