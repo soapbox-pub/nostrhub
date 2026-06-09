@@ -14,6 +14,8 @@ import type { CustomNip } from '@/lib/nips';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
+import { AvatarGroup, AvatarGroupCount } from '@/components/ui/avatar';
+import { UserAvatar } from '@/components/UserAvatar';
 
 /** Adapt a community draft into the shape `NipCard` renders. */
 function draftToRanked(nip: CustomNip): RankedNip {
@@ -72,8 +74,28 @@ const Index = () => {
 
   const hasExperts = experts.length > 0;
 
+  // Avatar stack: show up to 5 expert avatars, then a "+N" overflow count.
+  const shownExperts = experts.slice(0, 5);
+  const extraExperts = experts.length - shownExperts.length;
+
   return (
     <Layout sidebar={<StatsSidebar />}>
+      <section className="mb-10 flex flex-col items-center gap-4 text-center">
+        <h1 className="bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-3xl font-bold tracking-tight text-transparent sm:text-5xl">
+          Nostr Powered by You
+        </h1>
+        {hasExperts && (
+          <AvatarGroup>
+            {shownExperts.map((pubkey) => (
+              <UserAvatar key={pubkey} pubkey={pubkey} size="lg" />
+            ))}
+            {extraExperts > 0 && (
+              <AvatarGroupCount className="text-sm">+{extraExperts}</AvatarGroupCount>
+            )}
+          </AvatarGroup>
+        )}
+      </section>
+
       <section className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
           <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">NIPs</h1>
