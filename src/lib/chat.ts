@@ -1,11 +1,11 @@
 /**
- * Community chat is a thin layer over NIP-22 (kind 1111) comments.
+ * Community chat is built on NIP-C7 (kind 9) chat messages.
  *
  * Each chat "channel" is a topic addressed by a canonical URL of the form
- * `https://nostrhub.io/chat/<topic>`. Messages are kind 1111 events whose root
- * `I` tag points at that URL (with `K=web`). Because they are plain NIP-22
- * comments on a public URL, every message is publicly readable by any client;
- * the "community" simply scopes which authors we display.
+ * `https://nostrhub.io/chat/<topic>`. Messages are kind 9 events scoped to that
+ * channel by a NIP-73 `i` tag pointing at the URL (with `k=web`). Because they
+ * are public chat messages on a public URL, every message is publicly readable
+ * by any client; the "community" simply scopes which authors we display.
  *
  * The canonical origin is fixed (not `location.origin`) so that messages are
  * interoperable across deployments and local development.
@@ -77,7 +77,7 @@ export function getChannel(topic: string): ChatChannel {
   );
 }
 
-/** The NIP-22 root URL for a chat topic. */
+/** The chat channel URL (NIP-73 `i` reference) for a topic. */
 export function chatTopicUrl(topic: string): URL {
   return new URL(`${CHAT_ORIGIN}/chat/${normalizeTopic(topic)}`);
 }

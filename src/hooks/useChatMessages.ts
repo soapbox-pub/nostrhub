@@ -1,4 +1,4 @@
-import { NostrEvent, NostrFilter } from '@nostrify/nostrify';
+import { NostrFilter } from '@nostrify/nostrify';
 import { useNostr } from '@nostrify/react';
 import { useQuery } from '@tanstack/react-query';
 import { chatTopicUrl } from '@/lib/chat';
@@ -18,11 +18,10 @@ interface UseChatMessagesOptions {
 /**
  * Loads the chat transcript for a topic.
  *
- * A chat channel is a NIP-22 (kind 1111) thread rooted on the canonical URL
- * `https://nostrhub.io/chat/<topic>`. We query the root `#I` reference and keep
- * only the top-level messages (those whose lowercase `i` tag matches the topic
- * URL — i.e. direct messages to the channel, not nested replies), sorted oldest
- * → newest for a chat-style transcript.
+ * A chat channel is a stream of NIP-C7 (kind 9) chat messages scoped to the
+ * canonical URL `https://nostrhub.io/chat/<topic>` via a NIP-73 `i` tag. We
+ * query that `#i` reference and present the messages oldest → newest for a
+ * chat-style transcript.
  */
 export function useChatMessages(topic: string, options: UseChatMessagesOptions = {}) {
   const { nostr } = useNostr();
@@ -33,23 +32,15 @@ export function useChatMessages(topic: string, options: UseChatMessagesOptions =
   return useQuery({
     queryKey: ['chat', 'messages', url, limit, allow ? allow.size : null],
     queryFn: async (c) => {
-      const filter: NostrFilter = { kinds: [1111], '#I': [url], limit };
+      const filter: NostrFilter = { kinds: [9], '#i': [url], limit };
       const signal = AbortSignal.any([c.signal, AbortSignal.timeout(5000)]);
       const raw = await nostr.query([filter], { signal });
 
       // Spam resistance: keep only messages authored by the community set.
       const events = allow ? raw.filter((e) => allow.has(e.pubkey)) : raw;
 
-      const getTag = (event: NostrEvent, name: string): string | undefined =>
-        event.tags.find(([n]) => n === name)?.[1];
-
-      // Top-level channel messages reference the topic URL via a lowercase `i`
-      // tag (NIP-22 reply scope). Nested replies reference another event (`e`),
-      // so they are excluded from the flat transcript.
-      const topLevel = events.filter((e) => getTag(e, 'i') === url);
-
       // Oldest first for a chat transcript.
-      return topLevel.sort((a, b) => a.created_at - b.created_at || (a.id < b.id ? -1 : 1));
+      return events.sort((a, b) => a.created_at - b.created_at || (a.id < b.id ? -1 : 1));
     },
     enabled: !!topic,
     refetchInterval,
