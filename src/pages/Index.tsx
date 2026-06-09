@@ -4,6 +4,7 @@ import { Sparkles, Plus } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { NipCard } from '@/components/NipCard';
 import { StatsSidebar } from '@/components/StatsSidebar';
+import { ChatPreviewCard } from '@/components/ChatPreviewCard';
 import { useRankedNips, type RankedNip } from '@/hooks/useRankedNips';
 import { useCommunityAuthors } from '@/hooks/useCommunityAuthors';
 import { useCustomNips } from '@/hooks/useCustomNips';
@@ -79,7 +80,14 @@ const Index = () => {
   const extraExperts = experts.length - shownExperts.length;
 
   return (
-    <Layout sidebar={<StatsSidebar />}>
+    <Layout
+      sidebar={
+        <>
+          <ChatPreviewCard />
+          <StatsSidebar />
+        </>
+      }
+    >
       <section className="mb-10 flex flex-col items-center gap-4 text-center">
         <h1 className="bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-3xl font-bold tracking-tight text-transparent sm:text-5xl">
           Nostr Powered by You
