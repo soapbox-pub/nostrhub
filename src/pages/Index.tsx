@@ -124,92 +124,94 @@ const Index = () => {
         )}
       </section>
 
-      <section className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1">
-          <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">NIPs</h1>
-          <p className="text-lg text-muted-foreground">
-            Nostr Implementation Possibilities, curated by the community.
-          </p>
-        </div>
-        {user && (
-          <Button asChild size="sm" className="shrink-0 gap-1.5 rounded-full self-start shadow-lg shadow-primary/25 sm:self-auto">
-            <Link to="/create">
-              <Plus className="size-4" />
-              New NIP
-            </Link>
-          </Button>
-        )}
-      </section>
-
-      {!hasExperts && (
-        <Card className="mb-8 border-primary/40 bg-primary/5">
-          <CardContent className="flex flex-col items-start gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm">
-              No experts configured. Add Nostr Experts to curate the NIP ranking and community.
+      <Card className="border-primary/15 bg-card/70 p-6 shadow-xl shadow-primary/5 backdrop-blur-sm sm:p-8">
+        <section className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">NIPs</h1>
+            <p className="text-lg text-muted-foreground">
+              Nostr Implementation Possibilities, curated by the community.
             </p>
-            <Button asChild size="sm">
-              <Link to="/settings">Configure experts</Link>
+          </div>
+          {user && (
+            <Button asChild size="sm" className="shrink-0 gap-1.5 rounded-full self-start shadow-lg shadow-primary/25 sm:self-auto">
+              <Link to="/create">
+                <Plus className="size-4" />
+                New NIP
+              </Link>
             </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Ranked NIPs */}
-      <section className="space-y-4">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {rankedLoading ? (
-            <>
-              <CardSkeleton />
-              <CardSkeleton />
-              <CardSkeleton />
-            </>
-          ) : ranked.length > 0 ? (
-            ranked.map((nip) => <NipCard key={nip.key} nip={nip} />)
-          ) : (
-            <Card className="border-dashed sm:col-span-2 lg:col-span-3">
-              <CardContent className="px-8 py-12 text-center">
-                <p className="mx-auto max-w-sm text-muted-foreground">
-                  No expert-approved NIPs yet. When your experts approve NIPs, they'll appear here
-                  ranked by approval count.
-                </p>
-              </CardContent>
-            </Card>
           )}
-        </div>
-      </section>
+        </section>
 
-      {/* Latest community drafts */}
-      <section className="mt-12 space-y-4">
-        <SectionHeading
-          icon={<Sparkles className="size-5" />}
-          title="Latest Drafts"
-          subtitle="Fresh NIPs from the developer community."
-        />
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {community.isLoading || draftsQuery.isLoading ? (
-            <>
-              <CardSkeleton />
-              <CardSkeleton />
-            </>
-          ) : draftsQuery.data && draftsQuery.data.length > 0 ? (
-            draftsQuery.data.map((nip) => (
-              <NipCard key={nip.address} nip={draftToRanked(nip)} />
-            ))
-          ) : (
-            <Card className="border-dashed sm:col-span-2 lg:col-span-3">
-              <CardContent className="px-8 py-12 text-center">
-                <p className="mx-auto max-w-sm text-muted-foreground">
-                  No community drafts yet.{' '}
-                  <Link to="/create" className="font-medium text-primary hover:underline">
-                    Draft the first one
-                  </Link>
-                  .
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      </section>
+        {!hasExperts && (
+          <Card className="border-primary/40 bg-primary/5">
+            <CardContent className="flex flex-col items-start gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm">
+                No experts configured. Add Nostr Experts to curate the NIP ranking and community.
+              </p>
+              <Button asChild size="sm">
+                <Link to="/settings">Configure experts</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Ranked NIPs */}
+        <section className="space-y-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {rankedLoading ? (
+              <>
+                <CardSkeleton />
+                <CardSkeleton />
+                <CardSkeleton />
+              </>
+            ) : ranked.length > 0 ? (
+              ranked.map((nip) => <NipCard key={nip.key} nip={nip} />)
+            ) : (
+              <Card className="border-dashed sm:col-span-2 lg:col-span-3">
+                <CardContent className="px-8 py-12 text-center">
+                  <p className="mx-auto max-w-sm text-muted-foreground">
+                    No expert-approved NIPs yet. When your experts approve NIPs, they'll appear here
+                    ranked by approval count.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </section>
+
+        {/* Latest community drafts */}
+        <section className="mt-12 space-y-4">
+          <SectionHeading
+            icon={<Sparkles className="size-5" />}
+            title="Latest Drafts"
+            subtitle="Fresh NIPs from the developer community."
+          />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {community.isLoading || draftsQuery.isLoading ? (
+              <>
+                <CardSkeleton />
+                <CardSkeleton />
+              </>
+            ) : draftsQuery.data && draftsQuery.data.length > 0 ? (
+              draftsQuery.data.map((nip) => (
+                <NipCard key={nip.address} nip={draftToRanked(nip)} />
+              ))
+            ) : (
+              <Card className="border-dashed sm:col-span-2 lg:col-span-3">
+                <CardContent className="px-8 py-12 text-center">
+                  <p className="mx-auto max-w-sm text-muted-foreground">
+                    No community drafts yet.{' '}
+                    <Link to="/create" className="font-medium text-primary hover:underline">
+                      Draft the first one
+                    </Link>
+                    .
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </section>
+      </Card>
     </Layout>
   );
 };
