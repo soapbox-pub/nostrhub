@@ -26,12 +26,6 @@ function Logo() {
       to="/"
       className="flex items-center gap-2 font-semibold text-lg tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md"
     >
-      <span
-        aria-hidden
-        className="grid h-8 w-8 place-items-center rounded-lg bg-linear-to-br from-primary to-chart-5 text-primary-foreground font-mono text-sm font-bold shadow-sm"
-      >
-        N
-      </span>
       <span>
         Nostr<span className="text-primary">Hub</span>
       </span>
