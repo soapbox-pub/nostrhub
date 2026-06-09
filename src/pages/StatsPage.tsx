@@ -3,6 +3,7 @@ import { FileText, Heart, Users, Zap, TrendingUp } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { MetricCard } from '@/components/MetricCard';
 import { ClientBarChart } from '@/components/ClientBarChart';
+import { NetworkUsersChart } from '@/components/NetworkUsersChart';
 import { useCount } from '@/hooks/useCount';
 import { useClientCounts } from '@/hooks/useClientCounts';
 import { ago, DAY, WEEK } from '@/lib/timeRanges';
@@ -45,6 +46,10 @@ const StatsPage = () => {
         <MetricCard title="Posts (24h)" value={posts24h.data} icon={FileText} isLoading={posts24h.isLoading} isError={posts24h.isError} description="Kind 1" />
         <MetricCard title="Reactions (24h)" value={reactions24h.data} icon={Heart} isLoading={reactions24h.isLoading} isError={reactions24h.isError} description="Kind 7" />
         <MetricCard title="Zaps (24h)" value={zaps24h.data} icon={Zap} isLoading={zaps24h.isLoading} isError={zaps24h.isError} description="Kind 9735" />
+      </section>
+
+      <section className="mt-10">
+        <NetworkUsersChart />
       </section>
 
       <section className="mt-10">
