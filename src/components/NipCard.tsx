@@ -42,7 +42,7 @@ export function NipCard({ nip }: { nip: RankedNip }) {
         to={href}
         className="block h-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
-        <CardContent className="flex h-full flex-col gap-3 p-4">
+        <CardContent className="flex h-full flex-col gap-3 px-4">
           <div className="flex-1 space-y-1.5">
             {nip.number && (
               <span className="font-mono text-sm font-semibold text-primary">NIP-{nip.number}</span>
