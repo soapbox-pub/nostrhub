@@ -123,7 +123,7 @@ export function Layout({ children, sidebar, className, fullBleed = false }: Layo
       )}
 
       {!fullBleed && (
-        <footer className="border-t border-primary/15 py-6">
+        <footer className="border-t border-primary/15 bg-background/70 py-6 backdrop-blur-xl supports-[backdrop-filter]:bg-background/50">
           <div className="container mx-auto flex flex-col items-center justify-between gap-2 px-4 text-sm text-muted-foreground sm:flex-row sm:px-6">
             <p className="flex items-center gap-1.5">
               <span className="inline-block size-1.5 rounded-full bg-nebula shadow-[0_0_8px] shadow-nebula/70" aria-hidden="true" />
