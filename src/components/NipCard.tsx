@@ -2,9 +2,11 @@ import { Link } from 'react-router-dom';
 import { Check } from 'lucide-react';
 import type { RankedNip } from '@/hooks/useRankedNips';
 import { useAuthor } from '@/hooks/useAuthor';
+import { useOfficialNip } from '@/hooks/useOfficialNips';
 import { UserAvatar } from '@/components/UserAvatar';
 import { nipHref } from '@/lib/nips';
 import { shortNpub } from '@/lib/nostr';
+import { markdownPreview } from '@/lib/markdownPreview';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AvatarGroup, AvatarGroupCount } from '@/components/ui/avatar';
@@ -18,6 +20,11 @@ export function NipCard({ nip }: { nip: RankedNip }) {
   const authorName = nip.custom
     ? authorMeta?.name || authorMeta?.display_name || shortNpub(nip.custom.author)
     : undefined;
+
+  // Custom NIPs carry their body inline; official NIPs need a lazy fetch.
+  const officialNip = useOfficialNip(nip.custom ? undefined : nip.number);
+  const rawContent = nip.custom?.content ?? officialNip.data?.content ?? '';
+  const preview = markdownPreview(rawContent);
 
   const approvers = nip.expertApprovers;
   const shown = approvers.slice(0, MAX_STACK);
@@ -41,6 +48,9 @@ export function NipCard({ nip }: { nip: RankedNip }) {
               <Badge variant="outline" className="text-xs text-muted-foreground">
                 Deprecated
               </Badge>
+            )}
+            {preview && (
+              <p className="line-clamp-3 text-sm text-muted-foreground">{preview}</p>
             )}
           </div>
 

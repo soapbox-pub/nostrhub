@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useAuthor } from '@/hooks/useAuthor';
 import { UserAvatar } from '@/components/UserAvatar';
 import { shortNpub } from '@/lib/nostr';
+import { markdownPreview } from '@/lib/markdownPreview';
 import type { CustomNip } from '@/lib/nips';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -18,20 +19,10 @@ function timeAgo(unix: number): string {
   return new Date(unix * 1000).toLocaleDateString();
 }
 
-/** A snippet of the NIP body with markdown headings/markers stripped. */
-function snippet(content: string, max = 160): string {
-  const text = content
-    .replace(/^#.*$/gm, '')
-    .replace(/[*_`>#-]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-  return text.length > max ? `${text.slice(0, max)}…` : text;
-}
-
 export function CustomNipCard({ nip }: { nip: CustomNip }) {
   const author = useAuthor(nip.author);
   const name = author.data?.metadata?.name || author.data?.metadata?.display_name || shortNpub(nip.author);
-  const body = snippet(nip.content);
+  const body = markdownPreview(nip.content);
 
   return (
     <Card className="transition-colors hover:border-primary/50">
