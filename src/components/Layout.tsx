@@ -31,12 +31,10 @@ function Logo() {
       className="group flex items-center gap-2.5 font-display font-semibold text-lg tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md"
     >
       <span
-        className="relative grid size-9 place-items-center transition-transform duration-500 group-hover:rotate-[20deg] group-hover:scale-105"
+        className="grid size-9 place-items-center transition-transform duration-500 group-hover:rotate-[20deg] group-hover:scale-105"
         aria-hidden="true"
       >
-        {/* Glow halo behind the galaxy mark */}
-        <span className="absolute inset-0 rounded-full bg-primary/40 blur-md" />
-        <GalaxyLogo className="relative size-8 text-primary drop-shadow-[0_0_6px_hsl(264_90%_72%/0.7)]" />
+        <GalaxyLogo className="size-8 text-primary" />
       </span>
       <span>
         Nostr<span className="text-cosmic">Hub</span>
