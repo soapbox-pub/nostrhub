@@ -27,10 +27,30 @@ function Logo() {
   return (
     <Link
       to="/"
-      className="flex items-center gap-2 font-semibold text-lg tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md"
+      className="group flex items-center gap-2.5 font-display font-semibold text-lg tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md"
     >
+      <span
+        className="relative grid size-9 place-items-center rounded-full bg-gradient-to-br from-primary to-accent shadow-[0_0_18px_-2px] shadow-primary/60 transition-transform duration-300 group-hover:scale-105"
+        aria-hidden="true"
+      >
+        {/* Planet + orbit mark */}
+        <svg viewBox="0 0 24 24" className="size-6 text-primary-foreground" fill="none">
+          <circle cx="12" cy="12" r="4.5" fill="currentColor" fillOpacity="0.95" />
+          <ellipse
+            cx="12"
+            cy="12"
+            rx="9.5"
+            ry="4"
+            stroke="currentColor"
+            strokeWidth="1.4"
+            strokeOpacity="0.85"
+            transform="rotate(-28 12 12)"
+          />
+          <circle cx="20" cy="6.2" r="1.1" fill="currentColor" />
+        </svg>
+      </span>
       <span>
-        Nostr<span className="text-primary">Hub</span>
+        Nostr<span className="text-cosmic">Hub</span>
       </span>
     </Link>
   );
@@ -39,7 +59,7 @@ function Logo() {
 export function Layout({ children, sidebar, className, fullBleed = false }: LayoutProps) {
   return (
     <div className={cn('flex flex-col bg-background text-foreground', fullBleed ? 'h-screen' : 'min-h-screen')}>
-      <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <header className="sticky top-0 z-40 border-b border-primary/15 bg-background/70 backdrop-blur-xl supports-[backdrop-filter]:bg-background/50">
         <div className="container mx-auto flex h-16 items-center gap-4 px-4 sm:px-6">
           <Logo />
 
@@ -51,9 +71,10 @@ export function Layout({ children, sidebar, className, fullBleed = false }: Layo
                 end={item.end}
                 className={({ isActive }) =>
                   cn(
-                    'rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                    'hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                    isActive ? 'text-foreground' : 'text-muted-foreground',
+                    'relative rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                    'hover:bg-accent/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                    'after:absolute after:inset-x-3 after:-bottom-px after:h-px after:rounded-full after:bg-gradient-to-r after:from-primary after:to-accent after:opacity-0 after:transition-opacity',
+                    isActive ? 'text-foreground after:opacity-100' : 'text-muted-foreground',
                   )
                 }
               >
@@ -69,13 +90,13 @@ export function Layout({ children, sidebar, className, fullBleed = false }: Layo
         </div>
 
         {/* Mobile search */}
-        <div className="border-t border-border/60 px-4 py-2 sm:hidden">
+        <div className="border-t border-primary/15 px-4 py-2 sm:hidden">
           <SearchBar />
         </div>
 
         {/* Mobile nav */}
         <nav
-          className="md:hidden flex items-center gap-1 overflow-x-auto border-t border-border/60 px-4 py-2"
+          className="md:hidden flex items-center gap-1 overflow-x-auto border-t border-primary/15 px-4 py-2"
           aria-label="Primary mobile"
         >
           {NAV_ITEMS.map((item) => (
@@ -87,8 +108,8 @@ export function Layout({ children, sidebar, className, fullBleed = false }: Layo
                 cn(
                   'whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
                   isActive
-                    ? 'bg-accent text-accent-foreground'
-                    : 'text-muted-foreground hover:bg-accent/60',
+                    ? 'bg-gradient-to-r from-primary/20 to-accent/20 text-foreground'
+                    : 'text-muted-foreground hover:bg-accent/10',
                 )
               }
             >
@@ -116,9 +137,12 @@ export function Layout({ children, sidebar, className, fullBleed = false }: Layo
       )}
 
       {!fullBleed && (
-        <footer className="border-t border-border/60 py-6">
+        <footer className="border-t border-primary/15 py-6">
           <div className="container mx-auto flex flex-col items-center justify-between gap-2 px-4 text-sm text-muted-foreground sm:flex-row sm:px-6">
-            <p>Build the Nostr protocol together.</p>
+            <p className="flex items-center gap-1.5">
+              <span className="inline-block size-1.5 rounded-full bg-accent shadow-[0_0_8px] shadow-accent/70" aria-hidden="true" />
+              Build the Nostr protocol together.
+            </p>
             <p>
               Vibed with{' '}
               <a

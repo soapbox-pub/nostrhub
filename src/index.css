@@ -6,9 +6,12 @@
 @theme {
   --font-sans: 'Inter Variable', 'Inter', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, monospace;
+  --font-display: 'Space Grotesk Variable', 'Space Grotesk', 'Inter Variable', system-ui, sans-serif;
 }
 
 @theme inline {
+  --font-display: var(--font-display);
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
 
@@ -109,8 +112,8 @@
   --muted: hsl(260 24% 96%);
   --muted-foreground: hsl(258 12% 46%);
 
-  --accent: hsl(262 60% 95%);
-  --accent-foreground: hsl(262 47% 24%);
+  --accent: hsl(190 95% 42%);
+  --accent-foreground: hsl(0 0% 100%);
 
   --destructive: hsl(0 84.2% 60.2%);
   --destructive-foreground: hsl(0 0% 100%);
@@ -120,7 +123,7 @@
   --ring: hsl(262 73% 57%);
 
   --chart-1: hsl(262 73% 57%);
-  --chart-2: hsl(199 89% 48%);
+  --chart-2: hsl(190 95% 42%);
   --chart-3: hsl(160 60% 45%);
   --chart-4: hsl(43 96% 56%);
   --chart-5: hsl(330 81% 60%);
@@ -136,48 +139,48 @@
 }
 
 .dark {
-  --background: hsl(264 30% 7%);
-  --foreground: hsl(260 25% 96%);
+  --background: hsl(258 45% 5%);
+  --foreground: hsl(255 30% 95%);
 
-  --card: hsl(264 26% 10%);
-  --card-foreground: hsl(260 25% 96%);
+  --card: hsl(259 38% 9%);
+  --card-foreground: hsl(255 30% 95%);
 
-  --popover: hsl(264 26% 10%);
-  --popover-foreground: hsl(260 25% 96%);
+  --popover: hsl(259 40% 8%);
+  --popover-foreground: hsl(255 30% 95%);
 
-  --primary: hsl(262 83% 68%);
-  --primary-foreground: hsl(264 40% 10%);
+  --primary: hsl(264 90% 72%);
+  --primary-foreground: hsl(260 50% 8%);
 
-  --secondary: hsl(263 25% 18%);
-  --secondary-foreground: hsl(260 25% 96%);
+  --secondary: hsl(260 32% 16%);
+  --secondary-foreground: hsl(255 30% 95%);
 
-  --muted: hsl(263 22% 16%);
-  --muted-foreground: hsl(258 14% 66%);
+  --muted: hsl(260 28% 14%);
+  --muted-foreground: hsl(256 18% 68%);
 
-  --accent: hsl(263 30% 22%);
-  --accent-foreground: hsl(260 25% 96%);
+  --accent: hsl(190 90% 60%);
+  --accent-foreground: hsl(260 50% 8%);
 
-  --destructive: hsl(0 62.8% 50%);
+  --destructive: hsl(351 80% 60%);
   --destructive-foreground: hsl(0 0% 100%);
 
-  --border: hsl(263 22% 20%);
-  --input: hsl(263 22% 20%);
-  --ring: hsl(262 83% 68%);
+  --border: hsl(262 30% 20%);
+  --input: hsl(262 30% 18%);
+  --ring: hsl(264 90% 72%);
 
-  --chart-1: hsl(262 83% 68%);
-  --chart-2: hsl(199 89% 58%);
-  --chart-3: hsl(160 60% 50%);
-  --chart-4: hsl(43 96% 62%);
-  --chart-5: hsl(330 81% 65%);
+  --chart-1: hsl(264 90% 72%);
+  --chart-2: hsl(190 90% 60%);
+  --chart-3: hsl(160 65% 55%);
+  --chart-4: hsl(43 96% 64%);
+  --chart-5: hsl(322 85% 68%);
 
-  --sidebar: hsl(264 28% 9%);
-  --sidebar-foreground: hsl(260 20% 90%);
-  --sidebar-primary: hsl(262 83% 68%);
-  --sidebar-primary-foreground: hsl(264 40% 10%);
-  --sidebar-accent: hsl(263 25% 16%);
-  --sidebar-accent-foreground: hsl(260 25% 96%);
-  --sidebar-border: hsl(263 22% 18%);
-  --sidebar-ring: hsl(262 83% 68%);
+  --sidebar: hsl(259 42% 7%);
+  --sidebar-foreground: hsl(255 24% 88%);
+  --sidebar-primary: hsl(264 90% 72%);
+  --sidebar-primary-foreground: hsl(260 50% 8%);
+  --sidebar-accent: hsl(260 32% 15%);
+  --sidebar-accent-foreground: hsl(255 30% 95%);
+  --sidebar-border: hsl(262 30% 18%);
+  --sidebar-ring: hsl(264 90% 72%);
 }
 
 @layer base {
@@ -191,7 +194,113 @@
 
   body {
     @apply bg-background text-foreground;
+    position: relative;
+    min-height: 100vh;
   }
+
+  /* Cosmic backdrop: layered nebula glows that sit behind everything.
+     Fixed so the page feels like it floats in deep space while scrolling. */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    pointer-events: none;
+    background:
+      radial-gradient(
+        42rem 42rem at 12% -8%,
+        hsl(264 90% 60% / 0.22),
+        transparent 60%
+      ),
+      radial-gradient(
+        38rem 38rem at 92% 8%,
+        hsl(190 90% 55% / 0.16),
+        transparent 60%
+      ),
+      radial-gradient(
+        46rem 46rem at 70% 110%,
+        hsl(322 85% 60% / 0.14),
+        transparent 60%
+      );
+  }
+
+  /* Starfield: two tiled layers of pin-prick stars with a slow parallax drift. */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: -50%;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0.6;
+    background-image:
+      radial-gradient(1px 1px at 20% 30%, hsl(255 30% 96% / 0.9), transparent),
+      radial-gradient(1px 1px at 75% 18%, hsl(255 30% 96% / 0.7), transparent),
+      radial-gradient(1.5px 1.5px at 50% 60%, hsl(190 80% 80% / 0.8), transparent),
+      radial-gradient(1px 1px at 85% 70%, hsl(255 30% 96% / 0.6), transparent),
+      radial-gradient(1px 1px at 33% 85%, hsl(264 80% 85% / 0.7), transparent),
+      radial-gradient(1.5px 1.5px at 8% 75%, hsl(255 30% 96% / 0.8), transparent),
+      radial-gradient(1px 1px at 65% 45%, hsl(255 30% 96% / 0.5), transparent);
+    background-size: 320px 320px, 280px 280px, 360px 360px, 300px 300px, 340px 340px, 260px 260px, 380px 380px;
+  }
+
+  .dark body::after {
+    opacity: 1;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    body::after {
+      animation: drift 120s linear infinite;
+    }
+  }
+}
+
+@keyframes drift {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-160px, -160px, 0);
+  }
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes float-slow {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+/* Soft outer glow tuned to the primary nebula color. */
+@utility glow {
+  box-shadow:
+    0 0 0 1px hsl(264 90% 72% / 0.12),
+    0 8px 40px -8px hsl(264 90% 60% / 0.35);
+}
+
+/* Gradient text in the cosmic violet -> cyan sweep. */
+@utility text-cosmic {
+  background-image: linear-gradient(
+    100deg,
+    var(--primary) 0%,
+    hsl(290 85% 72%) 42%,
+    var(--accent) 100%
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
 }
 
 @utility avatar-shield {

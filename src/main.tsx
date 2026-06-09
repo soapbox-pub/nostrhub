@@ -9,6 +9,7 @@ import './index.css';
 
 import '@fontsource-variable/inter';
 import '@fontsource-variable/jetbrains-mono';
+import '@fontsource-variable/space-grotesk';
 
 createRoot(document.getElementById("root")!).render(
   <ErrorBoundary>

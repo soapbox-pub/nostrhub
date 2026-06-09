@@ -36,9 +36,9 @@ function draftToRanked(nip: CustomNip): RankedNip {
 function SectionHeading({ icon, title, subtitle }: { icon: React.ReactNode; title: string; subtitle?: string }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="text-primary">{icon}</span>
+      <span className="text-primary drop-shadow-[0_0_8px_hsl(264_90%_72%/0.6)]">{icon}</span>
       <div>
-        <h2 className="text-xl font-semibold tracking-tight">{title}</h2>
+        <h2 className="font-display text-xl font-semibold tracking-tight">{title}</h2>
         {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
       </div>
     </div>
@@ -88,31 +88,56 @@ const Index = () => {
         </>
       }
     >
-      <section className="mb-10 flex flex-col items-center gap-4 text-center">
-        <h1 className="bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-3xl font-bold tracking-tight text-transparent sm:text-5xl">
-          Nostr Powered by You
+      <section className="relative mb-12 flex flex-col items-center gap-5 overflow-hidden rounded-3xl border border-primary/15 bg-card/40 px-6 py-14 text-center backdrop-blur-sm sm:py-20">
+        {/* Nebula halo behind the headline */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -top-24 left-1/2 size-[28rem] -translate-x-1/2 rounded-full bg-primary/25 blur-[120px]"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -bottom-32 right-0 size-72 rounded-full bg-accent/20 blur-[110px]"
+        />
+
+        <span className="relative inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-4 py-1.5 text-xs font-medium uppercase tracking-[0.18em] text-primary motion-safe:animate-[float-slow_6s_ease-in-out_infinite]">
+          <Sparkles className="size-3.5" />
+          The Nostr protocol, charted by the community
+        </span>
+
+        <h1 className="relative font-display text-4xl font-bold leading-[1.05] tracking-tight sm:text-6xl">
+          <span className="text-cosmic">Nostr</span> Powered by You
         </h1>
+
+        <p className="relative max-w-xl text-base text-muted-foreground sm:text-lg">
+          Explore the constellation of NIPs, draft new ideas, and steer the protocol forward — all in the open.
+        </p>
+
         {hasExperts && (
-          <AvatarGroup>
-            {shownExperts.map((pubkey) => (
-              <UserAvatar key={pubkey} pubkey={pubkey} size="lg" />
-            ))}
-            {extraExperts > 0 && (
-              <AvatarGroupCount className="text-sm">+{extraExperts}</AvatarGroupCount>
-            )}
-          </AvatarGroup>
+          <div className="relative flex flex-col items-center gap-2">
+            <AvatarGroup>
+              {shownExperts.map((pubkey) => (
+                <UserAvatar key={pubkey} pubkey={pubkey} size="lg" />
+              ))}
+              {extraExperts > 0 && (
+                <AvatarGroupCount className="text-sm">+{extraExperts}</AvatarGroupCount>
+              )}
+            </AvatarGroup>
+            <span className="text-xs uppercase tracking-wider text-muted-foreground">
+              Curated by Nostr experts
+            </span>
+          </div>
         )}
       </section>
 
       <section className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">NIPs</h1>
+          <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">NIPs</h1>
           <p className="text-lg text-muted-foreground">
             Nostr Implementation Possibilities, curated by the community.
           </p>
         </div>
         {user && (
-          <Button asChild size="sm" className="shrink-0 gap-1.5 rounded-full self-start sm:self-auto">
+          <Button asChild size="sm" className="shrink-0 gap-1.5 rounded-full self-start shadow-lg shadow-primary/25 sm:self-auto">
             <Link to="/create">
               <Plus className="size-4" />
               New NIP

@@ -31,15 +31,22 @@ export function NipCard({ nip }: { nip: RankedNip }) {
   const extra = approvers.length - shown.length;
 
   return (
-    <Card className="group h-full transition-colors hover:border-primary/50">
+    <Card className="group relative h-full overflow-hidden border-border/70 bg-card/60 backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-[0_8px_40px_-8px] hover:shadow-primary/30">
+      {/* Nebula sheen that fades in on hover */}
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute -right-8 -top-10 size-32 rounded-full bg-primary/20 opacity-0 blur-2xl transition-opacity duration-300 group-hover:opacity-100"
+      />
       <Link
         to={href}
-        className="block h-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="relative block h-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <CardContent className="flex h-full flex-col gap-3 px-4">
           <div className="flex-1 space-y-1.5">
             {nip.number && (
-              <span className="font-mono text-sm font-semibold text-primary">NIP-{nip.number}</span>
+              <span className="font-mono text-sm font-semibold text-primary transition-[text-shadow] duration-300 group-hover:[text-shadow:0_0_12px_hsl(264_90%_72%/0.7)]">
+                NIP-{nip.number}
+              </span>
             )}
             <h3 className="font-semibold leading-snug tracking-tight group-hover:text-primary">
               {nip.title}
