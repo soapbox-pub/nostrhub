@@ -37,7 +37,7 @@ function ExpertRow({ pubkey, onRemove }: { pubkey: string; onRemove: () => void 
 
   return (
     <li className="flex items-center gap-3 rounded-lg border border-border/60 bg-card px-3 py-2">
-      <UserAvatar pubkey={pubkey} showExpertBadge={false} />
+      <UserAvatar pubkey={pubkey} />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">{name}</p>
       </div>

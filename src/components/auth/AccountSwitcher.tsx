@@ -1,4 +1,4 @@
-import { ChevronDown, LogOut, Moon, Settings, Sun, UserIcon, UserPlus } from 'lucide-react';
+import { ChevronDown, LogOut, Moon, Settings, Sun, UserPlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
   DropdownMenu,
@@ -7,9 +7,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu.tsx';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar.tsx';
 import { Skeleton } from '@/components/ui/skeleton.tsx';
 import { Switch } from '@/components/ui/switch.tsx';
+import { UserAvatar } from '@/components/UserAvatar';
 import { useLoggedInAccounts, type Account } from '@/hooks/useLoggedInAccounts';
 import { useTheme } from '@/hooks/useTheme';
 
@@ -36,19 +36,11 @@ export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <button className='flex items-center gap-2 h-10 p-1 pr-2.5 rounded-full hover:bg-accent transition-all text-foreground'>
-          <Avatar className='w-8 h-8'>
-            <AvatarImage
-              src={currentUser.metadata.picture}
-              alt={isCurrentUserPending ? '' : getDisplayName(currentUser)}
-            />
-            <AvatarFallback>
-              {isCurrentUserPending ? (
-                <Skeleton className='size-full rounded-full' />
-              ) : (
-                getDisplayName(currentUser).charAt(0)
-              )}
-            </AvatarFallback>
-          </Avatar>
+          {isCurrentUserPending ? (
+            <Skeleton className='w-8 h-8 rounded-full' />
+          ) : (
+            <UserAvatar pubkey={currentUser.pubkey} />
+          )}
           <ChevronDown className='w-4 h-4 text-muted-foreground' />
         </button>
       </DropdownMenuTrigger>
@@ -62,19 +54,11 @@ export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
               onClick={() => setLogin(user.id)}
               className='flex items-center gap-2 cursor-pointer p-2 rounded-md'
             >
-              <Avatar className='w-8 h-8'>
-                <AvatarImage
-                  src={user.metadata.picture}
-                  alt={isPending ? '' : getDisplayName(user)}
-                />
-                <AvatarFallback>
-                  {isPending ? (
-                    <Skeleton className='size-full rounded-full' />
-                  ) : (
-                    getDisplayName(user)?.charAt(0) || <UserIcon />
-                  )}
-                </AvatarFallback>
-              </Avatar>
+              {isPending ? (
+                <Skeleton className='w-8 h-8 rounded-full' />
+              ) : (
+                <UserAvatar pubkey={user.pubkey} />
+              )}
               <div className='flex-1 truncate'>
                 {isPending ? (
                   <Skeleton className='h-4 w-24' />
