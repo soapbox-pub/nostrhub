@@ -193,3 +193,20 @@
     @apply bg-background text-foreground;
   }
 }
+
+@utility avatar-shield {
+  /* Heraldic shield: flat top, tapering to a point at the bottom-center.
+     Percentage-based polygon so it scales to any avatar size. */
+  clip-path: polygon(
+    0% 0%,
+    100% 0%,
+    100% 55%,
+    85% 80%,
+    50% 100%,
+    15% 80%,
+    0% 55%
+  );
+  aspect-ratio: 1 / 1;
+  border-radius: 0 !important;
+}
+
