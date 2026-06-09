@@ -1,6 +1,6 @@
 import { useSeoMeta } from '@unhead/react';
 import { Link } from 'react-router-dom';
-import { GraduationCap, Sparkles } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { NipCard } from '@/components/NipCard';
 import { CustomNipCard } from '@/components/CustomNipCard';
@@ -78,12 +78,7 @@ const Index = () => {
 
       {/* Ranked NIPs */}
       <section className="space-y-4">
-        <SectionHeading
-          icon={<GraduationCap className="size-5" />}
-          title="Expert-Approved"
-          subtitle="Ranked by how many of your experts have approved each NIP."
-        />
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {rankedLoading ? (
             <>
               <CardSkeleton />
@@ -91,9 +86,9 @@ const Index = () => {
               <CardSkeleton />
             </>
           ) : ranked.length > 0 ? (
-            ranked.map((nip, i) => <NipCard key={nip.key} nip={nip} rank={i + 1} />)
+            ranked.map((nip) => <NipCard key={nip.key} nip={nip} />)
           ) : (
-            <Card className="border-dashed">
+            <Card className="border-dashed sm:col-span-2 lg:col-span-3">
               <CardContent className="px-8 py-12 text-center">
                 <p className="mx-auto max-w-sm text-muted-foreground">
                   No expert-approved NIPs yet. When your experts approve NIPs, they'll appear here
