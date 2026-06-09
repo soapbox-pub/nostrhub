@@ -17,6 +17,8 @@ export interface RankedNip {
   kinds?: string[];
   expertCount: number;
   totalCount: number;
+  /** Pubkeys of experts who approved this NIP (for the avatar stack). */
+  expertApprovers: string[];
   /** True when the NIP was authored by one of the configured experts. */
   expertAuthored?: boolean;
 }
@@ -63,6 +65,7 @@ export function useRankedNips() {
         kinds: nip.eventKinds?.map((ek) => ek.kind),
         expertCount: a?.expertCount ?? 0,
         totalCount: a?.totalCount ?? 0,
+        expertApprovers: a?.experts ?? [],
       });
     }
 
@@ -74,6 +77,8 @@ export function useRankedNips() {
       // Only add to the count if that expert hasn't also explicitly approved.
       const authoredBonus =
         expertAuthored && !a?.experts.includes(nip.author) ? 1 : 0;
+      const expertApprovers =
+        authoredBonus > 0 ? [nip.author, ...(a?.experts ?? [])] : a?.experts ?? [];
       items.push({
         key: nipTargetKey(target),
         target,
@@ -82,6 +87,7 @@ export function useRankedNips() {
         kinds: nip.kinds,
         expertCount: (a?.expertCount ?? 0) + authoredBonus,
         totalCount: (a?.totalCount ?? 0) + authoredBonus,
+        expertApprovers,
         expertAuthored,
       });
     }

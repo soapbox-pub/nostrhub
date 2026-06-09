@@ -1,52 +1,83 @@
 import { Link } from 'react-router-dom';
-import { GraduationCap } from 'lucide-react';
+import { Check } from 'lucide-react';
 import type { RankedNip } from '@/hooks/useRankedNips';
-import { UserAvatar } from '@/components/UserAvatar';
+import { useAuthor } from '@/hooks/useAuthor';
 import { nipHref } from '@/lib/nips';
+import { shortNpub } from '@/lib/nostr';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage, AvatarGroup, AvatarGroupCount } from '@/components/ui/avatar';
+
+const MAX_STACK = 4;
+
+function StackAvatar({ pubkey }: { pubkey: string }) {
+  const author = useAuthor(pubkey);
+  const metadata = author.data?.metadata;
+  const displayName = metadata?.name || metadata?.display_name || shortNpub(pubkey);
+  const initials = displayName.replace(/[^a-zA-Z0-9]/g, '').slice(0, 2).toUpperCase() || 'N';
+
+  return (
+    <Avatar size="sm">
+      <AvatarImage src={metadata?.picture} alt={displayName} />
+      <AvatarFallback>{initials}</AvatarFallback>
+    </Avatar>
+  );
+}
 
 export function NipCard({ nip }: { nip: RankedNip }) {
   const href = nipHref(nip);
+  const author = useAuthor(nip.custom?.author ?? '');
+  const authorMeta = author.data?.metadata;
+  const authorName = nip.custom
+    ? authorMeta?.name || authorMeta?.display_name || shortNpub(nip.custom.author)
+    : undefined;
+
+  const approvers = nip.expertApprovers;
+  const shown = approvers.slice(0, MAX_STACK);
+  const extra = approvers.length - shown.length;
 
   return (
     <Card className="group h-full transition-colors hover:border-primary/50">
-      <CardContent className="flex h-full flex-col gap-3 p-4">
-        <div className="flex-1 space-y-1.5">
-          {nip.number && (
-            <span className="font-mono text-sm font-semibold text-primary">NIP-{nip.number}</span>
-          )}
-          <Link
-            to={href}
-            className="block font-semibold leading-snug tracking-tight hover:text-primary focus-visible:underline focus-visible:outline-none"
-          >
-            {nip.title}
-          </Link>
-          {nip.deprecated && (
-            <Badge variant="outline" className="text-xs text-muted-foreground">
-              Deprecated
-            </Badge>
-          )}
-        </div>
+      <Link
+        to={href}
+        className="block h-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <CardContent className="flex h-full flex-col gap-3 p-4">
+          <div className="flex-1 space-y-1.5">
+            {nip.number && (
+              <span className="font-mono text-sm font-semibold text-primary">NIP-{nip.number}</span>
+            )}
+            <h3 className="font-semibold leading-snug tracking-tight group-hover:text-primary">
+              {nip.title}
+            </h3>
+            {nip.deprecated && (
+              <Badge variant="outline" className="text-xs text-muted-foreground">
+                Deprecated
+              </Badge>
+            )}
+          </div>
 
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground">
-          <span className="inline-flex items-center gap-1 font-medium text-foreground">
-            <GraduationCap className="size-3.5 text-primary" />
-            {nip.expertCount} expert{nip.expertCount === 1 ? '' : 's'}
-          </span>
-          {nip.custom && (
-            <span className="inline-flex items-center gap-1.5">
-              by <UserAvatar pubkey={nip.custom.author} size="sm" />
-            </span>
-          )}
-          {nip.kinds && nip.kinds.length > 0 && (
-            <span className="font-mono">
-              kind{nip.kinds.length === 1 ? '' : 's'} {nip.kinds.slice(0, 4).join(', ')}
-              {nip.kinds.length > 4 ? '…' : ''}
-            </span>
-          )}
-        </div>
-      </CardContent>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            {authorName && (
+              <span className="truncate text-xs text-muted-foreground">by {authorName}</span>
+            )}
+            {approvers.length > 0 && (
+              <AvatarGroup className="ml-auto">
+                {shown.map((pubkey) => (
+                  <StackAvatar key={pubkey} pubkey={pubkey} />
+                ))}
+                {extra > 0 ? (
+                  <AvatarGroupCount className="size-6 text-xs">+{extra}</AvatarGroupCount>
+                ) : (
+                  <AvatarGroupCount className="size-6 bg-primary text-primary-foreground">
+                    <Check className="size-3" strokeWidth={3} />
+                  </AvatarGroupCount>
+                )}
+              </AvatarGroup>
+            )}
+          </div>
+        </CardContent>
+      </Link>
     </Card>
   );
 }
