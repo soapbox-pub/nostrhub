@@ -63,3 +63,9 @@ export function parseCustomNip(event: NostrEvent): CustomNip {
     fork,
   };
 }
+
+/** Internal route for a NIP, official (by number) or custom (by naddr). */
+export function nipHref(nip: { number?: string; custom?: { naddr: string } }): string {
+  if (nip.custom) return `/${nip.custom.naddr}`;
+  return `/nip/${nip.number}`;
+}
