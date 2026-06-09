@@ -1,7 +1,6 @@
 import { Link, NavLink } from 'react-router-dom';
 import { LoginArea } from '@/components/auth/LoginArea';
 import { SearchBar } from '@/components/SearchBar';
-import { GalaxyLogo } from '@/components/GalaxyLogo';
 import { cn } from '@/lib/utils';
 
 interface LayoutProps {
@@ -31,10 +30,10 @@ function Logo() {
       className="group flex items-center gap-2.5 font-display font-semibold text-lg tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md"
     >
       <span
-        className="grid size-9 place-items-center transition-transform duration-500 group-hover:rotate-[20deg] group-hover:scale-105"
+        className="grid size-9 place-items-center text-2xl leading-none transition-transform duration-500 group-hover:rotate-[12deg] group-hover:scale-110 drop-shadow-[0_0_10px_hsl(264_90%_72%/0.55)]"
         aria-hidden="true"
       >
-        <GalaxyLogo className="size-8 text-primary" />
+        🍄
       </span>
       <span>
         Nostr<span className="text-cosmic">Hub</span>

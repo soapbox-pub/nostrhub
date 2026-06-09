@@ -204,8 +204,8 @@
     min-height: 100vh;
   }
 
-  /* Cosmic backdrop: layered nebula glows that sit behind everything.
-     Fixed so the page feels like it floats in deep space while scrolling. */
+  /* Ethereal forest haze: soft magical glows drifting through the dark.
+     Fixed so the page feels suspended in an enchanted mycelial grove. */
   body::before {
     content: '';
     position: fixed;
@@ -214,58 +214,81 @@
     pointer-events: none;
     background:
       radial-gradient(
-        42rem 42rem at 12% -8%,
-        hsl(264 90% 60% / 0.22),
+        38rem 38rem at 15% 105%,
+        hsl(264 90% 60% / 0.20),
         transparent 60%
       ),
       radial-gradient(
-        38rem 38rem at 92% 8%,
+        34rem 34rem at 85% 108%,
         hsl(190 90% 55% / 0.16),
         transparent 60%
       ),
       radial-gradient(
-        46rem 46rem at 70% 110%,
-        hsl(322 85% 60% / 0.14),
+        44rem 44rem at 50% 120%,
+        hsl(290 85% 62% / 0.14),
+        transparent 62%
+      ),
+      radial-gradient(
+        40rem 40rem at 80% -10%,
+        hsl(264 70% 50% / 0.10),
         transparent 60%
       );
   }
 
-  /* Starfield: two tiled layers of pin-prick stars with a slow parallax drift. */
+  /* Mycelium grove: a row of glowing mushrooms anchored to the bottom of the
+     viewport, with drifting spores floating up through the dark above them. */
   body::after {
     content: '';
     position: fixed;
-    inset: -50%;
+    inset: 0;
     z-index: -1;
     pointer-events: none;
-    opacity: 0.6;
     background-image:
-      radial-gradient(1px 1px at 20% 30%, hsl(255 30% 96% / 0.9), transparent),
-      radial-gradient(1px 1px at 75% 18%, hsl(255 30% 96% / 0.7), transparent),
-      radial-gradient(1.5px 1.5px at 50% 60%, hsl(190 80% 80% / 0.8), transparent),
-      radial-gradient(1px 1px at 85% 70%, hsl(255 30% 96% / 0.6), transparent),
-      radial-gradient(1px 1px at 33% 85%, hsl(264 80% 85% / 0.7), transparent),
-      radial-gradient(1.5px 1.5px at 8% 75%, hsl(255 30% 96% / 0.8), transparent),
-      radial-gradient(1px 1px at 65% 45%, hsl(255 30% 96% / 0.5), transparent);
-    background-size: 320px 320px, 280px 280px, 360px 360px, 300px 300px, 340px 340px, 260px 260px, 380px 380px;
+      /* Drifting spores rising from the grove floor. */
+      radial-gradient(1.5px 1.5px at 20% 92%, hsl(264 80% 85% / 0.9), transparent),
+      radial-gradient(1px 1px at 75% 88%, hsl(190 80% 80% / 0.8), transparent),
+      radial-gradient(1.5px 1.5px at 50% 95%, hsl(290 80% 82% / 0.85), transparent),
+      radial-gradient(1px 1px at 85% 96%, hsl(264 80% 85% / 0.7), transparent),
+      radial-gradient(1px 1px at 33% 86%, hsl(190 80% 82% / 0.7), transparent),
+      radial-gradient(1.5px 1.5px at 8% 97%, hsl(290 80% 82% / 0.8), transparent),
+      radial-gradient(1px 1px at 65% 90%, hsl(255 30% 96% / 0.5), transparent),
+      /* The mushroom grove, anchored to the bottom edge, spanning full width. */
+      image-set(url('/mushrooms.png') 1x);
+    background-repeat:
+      repeat-x, repeat-x, repeat-x, repeat-x, repeat-x, repeat-x, repeat-x,
+      no-repeat;
+    background-position:
+      0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0,
+      center bottom;
+    background-size:
+      320px 320px, 280px 280px, 360px 360px, 300px 300px, 340px 340px, 260px 260px, 380px 380px,
+      auto min(46vh, 520px);
+    opacity: 0.55;
   }
 
   .dark body::after {
-    opacity: 1;
+    opacity: 0.9;
   }
 
   @media (prefers-reduced-motion: no-preference) {
     body::after {
-      animation: drift 120s linear infinite;
+      animation: spore-drift 90s linear infinite;
     }
   }
 }
 
-@keyframes drift {
+/* Slow upward drift of the floating spore layers (the mushroom image, being the
+   final background, stays fixed because background-position keeps it pinned). */
+@keyframes spore-drift {
   from {
-    transform: translate3d(0, 0, 0);
+    background-position:
+      0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0,
+      center bottom;
   }
   to {
-    transform: translate3d(-160px, -160px, 0);
+    background-position:
+      0 -200px, 0 -240px, 0 -180px, 0 -220px, 0 -260px, 0 -200px, 0 -300px,
+      center bottom;
   }
 }
 
