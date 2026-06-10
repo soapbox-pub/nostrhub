@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import type { NostrEvent } from '@nostrify/nostrify';
 import { useNostrPublish } from '@/hooks/useNostrPublish';
 import { chatTopicUrl } from '@/lib/chat';
 
@@ -30,9 +31,18 @@ export function useSendChatMessage() {
       ];
       return publishEvent({ kind: 9, content, tags });
     },
-    onSuccess: (_event, { topic }) => {
+    onSuccess: (event: NostrEvent, { topic }) => {
       const url = chatTopicUrl(topic).toString();
-      queryClient.invalidateQueries({ queryKey: ['chat', 'messages', url] });
+      // Optimistically insert the published event into every matching chat
+      // transcript cache so the message appears instantly, rather than waiting
+      // for the next relay poll/refetch (which can take several seconds).
+      queryClient.setQueriesData<NostrEvent[]>({ queryKey: ['chat', 'messages', url] }, (old) => {
+        if (!old) return old;
+        if (old.some((m) => m.id === event.id)) return old;
+        return [...old, event].sort(
+          (a, b) => a.created_at - b.created_at || (a.id < b.id ? -1 : 1),
+        );
+      });
     },
   });
 }

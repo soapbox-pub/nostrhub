@@ -8,7 +8,7 @@ import { useAppContext } from '@/hooks/useAppContext';
 import { useToast } from '@/hooks/useToast';
 import { chatTopicUrl } from '@/lib/chat';
 import { aiLabelTags, createAIClient, isAiConfigured } from '@/lib/ai';
-import type { NostrFilter } from '@nostrify/nostrify';
+import type { NostrEvent, NostrFilter } from '@nostrify/nostrify';
 
 /** Hard ceiling on agent steps to prevent runaway tool loops. */
 const MAX_STEPS = 8;
@@ -167,13 +167,24 @@ export function useAiChatAgent() {
         // Publish the AI's reply as the user's own kind 9 message, tagged as
         // AI-generated content (NIP-32).
         const url = chatTopicUrl(topic).toString();
-        await publishEvent({
+        const event = await publishEvent({
           kind: 9,
           content: finalText,
           tags: [['i', url], ['k', 'web'], ...aiLabelTags()],
         });
 
-        queryClient.invalidateQueries({ queryKey: ['chat', 'messages', url] });
+        // Optimistically insert so the reply appears the instant the typing
+        // indicator clears, rather than after the next relay poll.
+        queryClient.setQueriesData<NostrEvent[]>(
+          { queryKey: ['chat', 'messages', url] },
+          (old) => {
+            if (!old) return old;
+            if (old.some((m) => m.id === event.id)) return old;
+            return [...old, event].sort(
+              (a, b) => a.created_at - b.created_at || (a.id < b.id ? -1 : 1),
+            );
+          },
+        );
       } catch (error) {
         toast({
           title: 'AI reply failed',
