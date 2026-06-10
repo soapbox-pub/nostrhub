@@ -75,7 +75,9 @@ export function ExpertCard({ pubkey, onRemove }: ExpertCardProps) {
           </div>
 
           {about && (
-            <p className="line-clamp-3 text-sm text-muted-foreground">{about}</p>
+            <p className="line-clamp-3 w-full break-words text-sm text-muted-foreground">
+              {about}
+            </p>
           )}
         </CardContent>
       </Link>
