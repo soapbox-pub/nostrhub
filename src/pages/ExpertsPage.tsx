@@ -1,33 +1,64 @@
 import { useSeoMeta } from '@unhead/react';
+import { Link } from 'react-router-dom';
+import { Settings, RotateCcw } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { ExpertCard } from '@/components/ExpertCard';
 import { useExperts } from '@/hooks/useExperts';
+import { DEFAULT_EXPERTS } from '@/lib/experts';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+
+const isDefaultExperts = (experts: string[]): boolean =>
+  experts.length === DEFAULT_EXPERTS.length &&
+  experts.every((pk, i) => pk === DEFAULT_EXPERTS[i]);
 
 const ExpertsPage = () => {
   useSeoMeta({
     title: 'Experts | NostrHub',
     description:
-      'The Nostr Experts who anchor NostrHub\u2019s trust model \u2014 their approvals rank NIPs and their follows shape the community.',
+      'The Nostr Experts who anchor NostrHub\u2019s trust model \u2014 their approvals rank NIPs and their follows shape the community. Fully configurable by you.',
   });
 
-  const { experts } = useExperts();
+  const { experts, removeExpert, setExperts } = useExperts();
+  const hasChanges = !isDefaultExperts(experts);
 
   return (
     <Layout>
-      <div className="mx-auto max-w-2xl space-y-3 text-center">
+      <div className="mx-auto max-w-2xl space-y-4 text-center">
         <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Experts</h1>
         <p className="text-lg text-muted-foreground">
-          The people who anchor NostrHub&rsquo;s trust model. Their NIP approvals rank the homepage,
-          and their follow lists derive the community that powers discussion.
+          The people who anchor NostrHub&rsquo;s trust model &mdash; their NIP approvals rank the
+          homepage, and their follow lists derive the community. This list is{' '}
+          <span className="font-medium text-foreground">entirely yours to configure</span>: add or
+          remove anyone whose judgement you trust.
         </p>
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <Button asChild className="gap-1.5">
+            <Link to="/settings">
+              <Settings className="size-4" /> Configure Experts
+            </Link>
+          </Button>
+          {hasChanges && (
+            <Button
+              variant="outline"
+              className="gap-1.5"
+              onClick={() => setExperts(DEFAULT_EXPERTS)}
+            >
+              <RotateCcw className="size-4" /> Restore defaults
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="mt-10">
         {experts.length > 0 ? (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {experts.map((pubkey) => (
-              <ExpertCard key={pubkey} pubkey={pubkey} />
+              <ExpertCard
+                key={pubkey}
+                pubkey={pubkey}
+                onRemove={() => removeExpert(pubkey)}
+              />
             ))}
           </div>
         ) : (
@@ -41,13 +72,6 @@ const ExpertsPage = () => {
           </Card>
         )}
       </div>
-
-      <p className="mx-auto mt-10 max-w-2xl text-center text-sm text-muted-foreground">
-        Experts are not gatekeepers &mdash; anyone can publish to Nostr. They are simply a set of
-        trusted voices whose curation and follow graph NostrHub uses to surface signal over noise.
-        You can review, add, or remove experts at any time from your Settings, tailoring the trust
-        model to the people whose judgement you value.
-      </p>
     </Layout>
   );
 };

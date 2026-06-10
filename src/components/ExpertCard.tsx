@@ -1,14 +1,21 @@
 import { Link } from 'react-router-dom';
-import { BadgeCheck } from 'lucide-react';
+import { BadgeCheck, X } from 'lucide-react';
 import { nip19 } from 'nostr-tools';
 import { useAuthor } from '@/hooks/useAuthor';
 import { UserAvatar } from '@/components/UserAvatar';
 import { shortNpub } from '@/lib/nostr';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+
+interface ExpertCardProps {
+  pubkey: string;
+  /** Show a remove button and invoke this when clicked. */
+  onRemove?: () => void;
+}
 
 /** A profile card for a single Nostr expert. */
-export function ExpertCard({ pubkey }: { pubkey: string }) {
+export function ExpertCard({ pubkey, onRemove }: ExpertCardProps) {
   const author = useAuthor(pubkey);
   const metadata = author.data?.metadata;
 
@@ -31,6 +38,21 @@ export function ExpertCard({ pubkey }: { pubkey: string }) {
         aria-hidden="true"
         className="pointer-events-none absolute -right-8 -top-10 size-32 rounded-full bg-primary/20 opacity-0 blur-2xl transition-opacity duration-300 group-hover:opacity-100"
       />
+      {onRemove && (
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onRemove();
+          }}
+          aria-label={`Remove ${displayName}`}
+          className="absolute right-2 top-2 z-10 size-7 text-muted-foreground hover:text-foreground"
+        >
+          <X className="size-4" />
+        </Button>
+      )}
       <Link
         to={`/${npub}`}
         className="relative block h-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
