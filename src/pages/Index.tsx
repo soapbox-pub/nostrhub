@@ -109,14 +109,20 @@ const Index = () => {
 
         {hasExperts && (
           <div className="relative flex flex-col items-center gap-2">
-            <AvatarGroup>
-              {shownExperts.map((pubkey) => (
-                <UserAvatar key={pubkey} pubkey={pubkey} size="lg" />
-              ))}
-              {extraExperts > 0 && (
-                <AvatarGroupCount className="text-sm">+{extraExperts}</AvatarGroupCount>
-              )}
-            </AvatarGroup>
+            <Link
+              to="/experts"
+              aria-label="View all experts"
+              className="rounded-full transition-transform hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
+              <AvatarGroup>
+                {shownExperts.map((pubkey) => (
+                  <UserAvatar key={pubkey} pubkey={pubkey} size="lg" />
+                ))}
+                {extraExperts > 0 && (
+                  <AvatarGroupCount className="text-sm">+{extraExperts}</AvatarGroupCount>
+                )}
+              </AvatarGroup>
+            </Link>
             <span className="text-xs uppercase tracking-wider text-muted-foreground">
               Curated by Nostr experts
             </span>
