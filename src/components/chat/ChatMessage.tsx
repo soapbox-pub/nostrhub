@@ -90,7 +90,7 @@ export function ChatMessage({ message, grouped = false }: ChatMessageProps) {
             {format(date, 'HH:mm')}
           </span>
         ) : isAi ? (
-          <AiAvatar authorPubkey={message.pubkey} size="default" />
+          <AiAvatar size="default" />
         ) : (
           <Link to={`/${npub}`} aria-label={`${displayName} profile`}>
             <UserAvatar pubkey={message.pubkey} size="default" />
