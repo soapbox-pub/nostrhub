@@ -20,6 +20,7 @@ interface LayoutProps {
 const NAV_ITEMS = [
   { to: '/', label: 'NIPs', end: true },
   { to: '/stats', label: 'Stats' },
+  { to: '/experts', label: 'Experts' },
   { to: '/chat', label: 'Chat' },
 ];
 

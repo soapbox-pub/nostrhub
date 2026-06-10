@@ -9,6 +9,7 @@ import OfficialNipPage from "./pages/OfficialNipPage";
 import CreateNipPage from "./pages/CreateNipPage";
 import EditNipPage from "./pages/EditNipPage";
 import StatsPage from "./pages/StatsPage";
+import ExpertsPage from "./pages/ExpertsPage";
 import CommunityPage from "./pages/CommunityPage";
 import { DEFAULT_TOPIC } from "./lib/chat";
 
@@ -20,6 +21,7 @@ export function AppRouter() {
         <Route path="/" element={<Index />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/stats" element={<StatsPage />} />
+        <Route path="/experts" element={<ExpertsPage />} />
         <Route path="/chat" element={<Navigate to={`/chat/${DEFAULT_TOPIC}`} replace />} />
         <Route path="/chat/:topic" element={<CommunityPage />} />
         <Route path="/nip/:number" element={<OfficialNipPage />} />
