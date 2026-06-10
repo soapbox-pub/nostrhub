@@ -10,7 +10,9 @@ import { useNostrPublish } from '@/hooks/useNostrPublish';
 import { useToast } from '@/hooks/useToast';
 import { useQueryClient } from '@tanstack/react-query';
 import { UserAvatar } from '@/components/UserAvatar';
+import { AiAvatar } from './AiAvatar';
 import { ChatMessageContent } from './ChatMessageContent';
+import { isAiContent } from '@/lib/ai';
 import { shortNpub } from '@/lib/nostr';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -47,7 +49,11 @@ export function ChatMessage({ message, grouped = false }: ChatMessageProps) {
   const queryClient = useQueryClient();
 
   const metadata = author.data?.metadata;
-  const displayName = metadata?.name ?? metadata?.display_name ?? shortNpub(message.pubkey);
+  const isAi = isAiContent(message);
+  const authorName = metadata?.name ?? metadata?.display_name ?? shortNpub(message.pubkey);
+  // AI-generated messages are presented as if posted by "AI", ignoring the
+  // signing user's own profile.
+  const displayName = isAi ? 'AI' : authorName;
   const npub = nip19.npubEncode(message.pubkey);
   const nevent = nip19.neventEncode({ id: message.id, author: message.pubkey, kind: message.kind });
   const date = new Date(message.created_at * 1000);
@@ -83,6 +89,8 @@ export function ChatMessage({ message, grouped = false }: ChatMessageProps) {
           <span className="block w-10 select-none text-right text-[10px] leading-6 text-muted-foreground opacity-0 group-hover:opacity-100">
             {format(date, 'HH:mm')}
           </span>
+        ) : isAi ? (
+          <AiAvatar authorPubkey={message.pubkey} size="default" />
         ) : (
           <Link to={`/${npub}`} aria-label={`${displayName} profile`}>
             <UserAvatar pubkey={message.pubkey} size="default" />
@@ -94,9 +102,22 @@ export function ChatMessage({ message, grouped = false }: ChatMessageProps) {
       <div className="min-w-0 flex-1">
         {!grouped && (
           <div className="flex items-baseline gap-2">
-            <Link to={`/${npub}`} className="text-sm font-semibold hover:underline">
-              {displayName}
-            </Link>
+            {isAi ? (
+              <span className="inline-flex items-baseline gap-1.5">
+                <span className="text-sm font-semibold text-primary">AI</span>
+                <Link
+                  to={`/${npub}`}
+                  className="text-[11px] text-muted-foreground hover:underline"
+                  title="The user whose key signed this message"
+                >
+                  via {authorName}
+                </Link>
+              </span>
+            ) : (
+              <Link to={`/${npub}`} className="text-sm font-semibold hover:underline">
+                {displayName}
+              </Link>
+            )}
             <time
               dateTime={date.toISOString()}
               title={format(date, 'PPpp')}

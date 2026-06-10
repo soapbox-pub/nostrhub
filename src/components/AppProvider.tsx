@@ -1,7 +1,7 @@
 import { ReactNode, useEffect } from 'react';
 import { z } from 'zod';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { AppContext, type AppConfig, type AppContextType, type Theme, type RelayMetadata, type BlossomServerMetadata } from '@/contexts/AppContext';
+import { AppContext, type AppConfig, type AppContextType, type Theme, type RelayMetadata, type BlossomServerMetadata, type AISettings } from '@/contexts/AppContext';
 
 interface AppProviderProps {
   children: ReactNode;
@@ -27,6 +27,13 @@ const BlossomServerMetadataSchema = z.object({
   updatedAt: z.number(),
 }) satisfies z.ZodType<BlossomServerMetadata>;
 
+// Zod schema for AISettings validation
+const AISettingsSchema = z.object({
+  baseURL: z.string(),
+  model: z.string(),
+  apiKey: z.string(),
+}) satisfies z.ZodType<AISettings>;
+
 // Zod schema for AppConfig validation
 const AppConfigSchema = z.object({
   theme: z.enum(['dark', 'light', 'system']),
@@ -36,6 +43,7 @@ const AppConfigSchema = z.object({
   experts: z.array(z.string()),
   communityCap: z.number().nullable(),
   statsProvider: z.string(),
+  ai: AISettingsSchema,
 }) satisfies z.ZodType<AppConfig>;
 
 export function AppProvider(props: AppProviderProps) {

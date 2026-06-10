@@ -46,6 +46,11 @@ const defaultConfig: AppConfig = {
   experts: DEFAULT_EXPERTS,
   communityCap: DEFAULT_COMMUNITY_CAP,
   statsProvider: DEFAULT_STATS_PROVIDER,
+  ai: {
+    baseURL: 'https://openrouter.ai/api/v1',
+    model: '',
+    apiKey: '',
+  },
 };
 
 export function App() {

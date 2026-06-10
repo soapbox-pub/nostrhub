@@ -8,6 +8,7 @@ import { ChatMessageList } from '@/components/chat/ChatMessageList';
 import { ChatComposer } from '@/components/chat/ChatComposer';
 import { useChatMessages } from '@/hooks/useChatMessages';
 import { useCommunityAuthors } from '@/hooks/useCommunityAuthors';
+import { useAiChatAgent } from '@/hooks/useAiChatAgent';
 import { getChannel, normalizeTopic } from '@/lib/chat';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -22,6 +23,8 @@ export function CommunityPage() {
   const { data: messages = [], isLoading } = useChatMessages(topic, {
     communityAuthors: community.data?.authors,
   });
+  const { runAiReply, typingTopic } = useAiChatAgent();
+  const aiTyping = typingTopic === topic;
 
   useSeoMeta({
     title: `#${channel.label} — NostrHub Community`,
@@ -67,11 +70,17 @@ export function CommunityPage() {
               messages={messages}
               isLoading={isLoading || community.isLoading}
               channelLabel={channel.label}
+              aiTyping={aiTyping}
             />
           </div>
 
           {/* Composer */}
-          <ChatComposer topic={topic} channelLabel={channel.label} />
+          <ChatComposer
+            topic={topic}
+            channelLabel={channel.label}
+            aiBusy={aiTyping}
+            onAiPrompt={(prompt) => runAiReply({ topic, prompt })}
+          />
         </div>
       </div>
     </Layout>

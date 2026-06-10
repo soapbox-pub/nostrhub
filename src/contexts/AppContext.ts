@@ -9,6 +9,20 @@ export interface RelayMetadata {
   updatedAt: number;
 }
 
+/**
+ * Configuration for the OpenAI-compatible AI provider used by the in-chat
+ * `@ai` assistant. The request is made directly from the browser to
+ * `baseURL`, so the API key is exposed to anyone with access to this device.
+ */
+export interface AISettings {
+  /** OpenAI-compatible API base URL, e.g. `https://api.openai.com/v1`. */
+  baseURL: string;
+  /** Model identifier passed to the chat completions endpoint. */
+  model: string;
+  /** API key (stored in plaintext in localStorage — treat as a local secret). */
+  apiKey: string;
+}
+
 /** Blossom server list metadata (BUD-03 / kind 10063), mirroring RelayMetadata for parity. */
 export interface BlossomServerMetadata {
   /** Ordered list of Blossom server URLs (most trusted/reliable first per BUD-03). */
@@ -45,6 +59,8 @@ export interface AppConfig {
   communityCap: number | null;
   /** Hex pubkey of the NIP-85 trusted-assertions provider used for network stats. */
   statsProvider: string;
+  /** OpenAI-compatible AI provider config for the in-chat `@ai` assistant. */
+  ai: AISettings;
 }
 
 export interface AppContextType {

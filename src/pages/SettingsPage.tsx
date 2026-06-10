@@ -132,6 +132,97 @@ function ExpertsSettings() {
   );
 }
 
+function AiSettings() {
+  const { config, updateConfig } = useAppContext();
+  const { toast } = useToast();
+  const [baseURL, setBaseURL] = useState(config.ai.baseURL);
+  const [model, setModel] = useState(config.ai.model);
+  const [apiKey, setApiKey] = useState(config.ai.apiKey);
+
+  const dirty =
+    baseURL !== config.ai.baseURL || model !== config.ai.model || apiKey !== config.ai.apiKey;
+
+  const save = () => {
+    const trimmedUrl = baseURL.trim();
+    if (!trimmedUrl) {
+      toast({ title: 'Base URL is required', variant: 'destructive' });
+      return;
+    }
+    try {
+      // Validate it's a URL.
+      new URL(trimmedUrl);
+    } catch {
+      toast({ title: 'Enter a valid base URL', variant: 'destructive' });
+      return;
+    }
+    updateConfig((c) => ({
+      ...c,
+      ai: { baseURL: trimmedUrl, model: model.trim(), apiKey: apiKey.trim() },
+    }));
+    toast({ title: 'AI settings saved' });
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>AI Assistant</CardTitle>
+        <CardDescription>
+          Start a chat message with <span className="font-mono text-foreground">@ai</span> to get a
+          reply from an OpenAI-compatible model. Requests are made directly from your browser to the
+          provider below. Your reply is posted by you, tagged as AI-generated.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="ai-base-url">Base URL</Label>
+          <Input
+            id="ai-base-url"
+            value={baseURL}
+            onChange={(e) => setBaseURL(e.target.value)}
+            placeholder="https://openrouter.ai/api/v1"
+            autoComplete="off"
+          />
+          <p className="text-xs text-muted-foreground">
+            The OpenAI-compatible endpoint, e.g. OpenAI, OpenRouter, or a local server.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="ai-model">Model</Label>
+          <Input
+            id="ai-model"
+            value={model}
+            onChange={(e) => setModel(e.target.value)}
+            placeholder="openai/gpt-4o-mini"
+            autoComplete="off"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="ai-api-key">API key</Label>
+          <Input
+            id="ai-api-key"
+            type="password"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            placeholder="sk-…"
+            autoComplete="off"
+          />
+          <p className="text-xs text-muted-foreground">
+            Stored locally in this browser only. Treat it as a secret on this device.
+          </p>
+        </div>
+
+        <div className="flex justify-end border-t border-border/60 pt-4">
+          <Button onClick={save} disabled={!dirty}>
+            Save
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function CommunitySettings() {
   const { config, updateConfig } = useAppContext();
   const { toast } = useToast();
@@ -218,6 +309,7 @@ const SettingsPage = () => {
       <div className="mt-6 space-y-6">
         <ExpertsSettings />
         <CommunitySettings />
+        <AiSettings />
       </div>
     </Layout>
   );
