@@ -1,9 +1,12 @@
 import { nip19 } from 'nostr-tools';
 import { useParams } from 'react-router-dom';
 import NotFound from './NotFound';
+import { ArticlePage } from './ArticlePage';
 import { CustomNipPage } from './CustomNipPage';
 import { GitRepoPage } from './GitRepoPage';
+import { NotePage } from './NotePage';
 import { ProfilePage } from './ProfilePage';
+import { ARTICLE_KIND } from '@/hooks/useExpertPress';
 import { CUSTOM_NIP_KIND } from '@/lib/nips';
 import { GIT_REPO_KIND, GIT_STATE_KIND } from '@/lib/git';
 
@@ -31,15 +34,19 @@ export function NIP19Page() {
       return <ProfilePage pubkey={decoded.data.pubkey} />;
 
     case 'note':
-      return <div>Note placeholder</div>;
+      return <NotePage id={decoded.data} />;
 
     case 'nevent':
-      return <div>Event placeholder</div>;
+      return <NotePage id={decoded.data.id} />;
 
     case 'naddr': {
       // Community NIPs (kind 30817) get a dedicated detail page.
       if (decoded.data.kind === CUSTOM_NIP_KIND) {
         return <CustomNipPage naddr={identifier} />;
+      }
+      // NIP-23 long-form articles.
+      if (decoded.data.kind === ARTICLE_KIND) {
+        return <ArticlePage pubkey={decoded.data.pubkey} identifier={decoded.data.identifier} />;
       }
       // NIP-34 git repositories: announcement (30617) or state (30618)
       // addresses both resolve to the repository page.

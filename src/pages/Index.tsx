@@ -1,13 +1,20 @@
+import { useMemo } from 'react';
 import { useSeoMeta } from '@unhead/react';
 import { Link } from 'react-router-dom';
 import { Plus, Zap } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { NipCard } from '@/components/NipCard';
+import { BreakingTicker } from '@/components/BreakingTicker';
 import { ExpertCoverStory } from '@/components/ExpertCoverStory';
 import { ExpertFeatureCard } from '@/components/ExpertFeatureCard';
+import { LeadArticleCard, ArticleCard } from '@/components/ArticleCards';
+import { PulseQuoteCard } from '@/components/PulseQuoteCard';
+import { DemoReelCard } from '@/components/DemoReelCard';
 import { StatsSidebar } from '@/components/StatsSidebar';
 import { ChatPreviewCard } from '@/components/ChatPreviewCard';
 import { useAuthor } from '@/hooks/useAuthor';
+import { useExpertPress } from '@/hooks/useExpertPress';
+import { useNostrSearch } from '@/hooks/useNostrSearch';
 import { useRankedNips, type RankedNip } from '@/hooks/useRankedNips';
 import { useCommunityAuthors } from '@/hooks/useCommunityAuthors';
 import { useCustomNips } from '@/hooks/useCustomNips';
@@ -15,6 +22,7 @@ import { useExperts } from '@/hooks/useExperts';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { nipTargetKey } from '@/hooks/useNipApprovals';
 import type { CustomNip } from '@/lib/nips';
+import { noteExcerpt } from '@/lib/noteText';
 import { shortNpub } from '@/lib/nostr';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -42,32 +50,42 @@ function ExpertName({ pubkey }: { pubkey: string }) {
   return <>{metadata?.display_name || metadata?.name || shortNpub(pubkey)}</>;
 }
 
-/** Editorial department header: kicker, slab title, rule, and a dek. */
+/** Editorial department header: kicker rule, slab title with a highlighter swipe, dek. */
 function Department({
   kicker,
   title,
   subtitle,
+  accent = 'primary',
   action,
 }: {
   kicker: string;
   title: string;
   subtitle?: string;
+  accent?: 'primary' | 'nebula';
   action?: React.ReactNode;
 }) {
+  const accentText = accent === 'primary' ? 'text-primary' : 'text-nebula';
+  const accentSwipe = accent === 'primary' ? 'bg-primary/30' : 'bg-nebula/30';
+  const accentRule =
+    accent === 'primary'
+      ? 'from-primary/60 via-nebula/40 to-transparent'
+      : 'from-nebula/60 via-primary/40 to-transparent';
+
   return (
     <div className="space-y-1.5">
       <div className="flex items-center gap-3">
-        <span className="shrink-0 font-mono text-[11px] font-bold uppercase tracking-[0.3em] text-nebula">
+        <span className={`shrink-0 font-mono text-[11px] font-bold uppercase tracking-[0.3em] ${accentText}`}>
           {kicker}
         </span>
-        <span
-          aria-hidden="true"
-          className="h-px flex-1 bg-gradient-to-r from-nebula/50 via-primary/40 to-transparent"
-        />
+        <span aria-hidden="true" className={`h-px flex-1 bg-gradient-to-r ${accentRule}`} />
       </div>
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <h2 className="font-display text-3xl font-bold uppercase tracking-tight sm:text-4xl">
-          {title}
+        <h2 className="relative inline-block font-display text-3xl font-bold uppercase tracking-tight sm:text-4xl">
+          <span
+            aria-hidden="true"
+            className={`absolute -inset-x-2 bottom-0 h-3.5 -skew-x-12 ${accentSwipe}`}
+          />
+          <span className="relative">{title}</span>
         </h2>
         {action}
       </div>
@@ -76,10 +94,11 @@ function Department({
   );
 }
 
-function CardSkeleton() {
+function CardSkeleton({ withImage = false }: { withImage?: boolean }) {
   return (
-    <Card>
-      <CardContent className="space-y-2 p-4">
+    <Card className={withImage ? 'overflow-hidden py-0' : undefined}>
+      {withImage && <Skeleton className="aspect-[16/9] w-full rounded-none" />}
+      <CardContent className={withImage ? 'space-y-2 p-5' : 'space-y-2 p-4'}>
         <Skeleton className="h-5 w-2/3" />
         <Skeleton className="h-4 w-1/3" />
       </CardContent>
@@ -98,15 +117,42 @@ const Index = () => {
   const { user } = useCurrentUser();
   const { ranked, isLoading: rankedLoading } = useRankedNips();
   const community = useCommunityAuthors();
+  const press = useExpertPress();
   const draftsQuery = useCustomNips({
     authors: community.data?.authors,
     limit: 30,
     enabled: !community.isLoading,
   });
 
+  // NIP-50: scour the search relays for fresh demos, launches, and ships.
+  const demoSearch = useNostrSearch({
+    searches: ['nostr demo', 'just shipped', 'built on nostr'],
+    kinds: [1],
+    sinceDays: 30,
+    limit: 20,
+  });
+
   const hasExperts = experts.length > 0;
   const [coverStar, ...panel] = experts;
   const coverLineExperts = experts.slice(1, 5);
+
+  const articles = press.data?.articles ?? [];
+  const [leadArticle, ...moreArticles] = articles;
+  const tickerNotes = useMemo(() => (press.data?.notes ?? []).slice(0, 10), [press.data]);
+  const pullQuotes = useMemo(
+    () =>
+      (press.data?.notes ?? [])
+        .filter((note) => noteExcerpt(note.event.content).length >= 60)
+        .slice(0, 6),
+    [press.data],
+  );
+  const demos = useMemo(
+    () =>
+      (demoSearch.data ?? [])
+        .filter((ev) => !ev.tags.some(([n]) => n === 'e') && noteExcerpt(ev.content).length >= 30)
+        .slice(0, 9),
+    [demoSearch.data],
+  );
 
   // Issue numbering counted from Nostr's genesis (fiatjaf's first relay,
   // November 2020), so every month really is a new issue.
@@ -117,18 +163,20 @@ const Index = () => {
   return (
     <Layout className="max-w-6xl">
       {/* ── Masthead ─────────────────────────────────────────────── */}
-      <header className="mb-10 space-y-4">
+      <header className="mb-8 space-y-4">
         <div className="flex items-center justify-between gap-3 border-y-2 border-foreground/80 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.25em] sm:text-xs">
           <span>Issue No. {issueNo}</span>
           <span className="hidden sm:inline text-muted-foreground">{issueDate}</span>
-          <span className="text-primary">The Future Issue</span>
+          <span className="rounded-sm bg-primary px-2 py-0.5 text-primary-foreground">
+            The Future Issue
+          </span>
         </div>
 
         <h1 className="text-center font-display text-6xl font-bold uppercase leading-[0.9] tracking-tighter sm:text-8xl lg:text-9xl">
           Nostr<span className="text-cosmic">Hub</span>
         </h1>
         <p className="text-center text-lg text-muted-foreground sm:text-xl">
-          The people building the next internet — open, unstoppable, and shipping monthly.
+          The people building the next internet — open, unstoppable, and shipping daily.
         </p>
 
         {/* Cover lines */}
@@ -142,10 +190,17 @@ const Index = () => {
           ))}
           <span className="text-muted-foreground">
             {rankedLoading ? 'The expert-approved NIPs' : `${ranked.length} expert-approved NIPs`}
-            {' '}+ the rumor mill
+            {' '}+ the demo reel + the rumor mill
           </span>
         </p>
       </header>
+
+      {/* ── Live wire ticker ─────────────────────────────────────── */}
+      {tickerNotes.length > 0 && (
+        <div className="mb-12">
+          <BreakingTicker notes={tickerNotes} />
+        </div>
+      )}
 
       <div className="space-y-16">
         {/* ── Subscription insert (no experts configured) ──────────── */}
@@ -170,13 +225,46 @@ const Index = () => {
         {/* ── Cover story ──────────────────────────────────────────── */}
         {coverStar && <ExpertCoverStory pubkey={coverStar} />}
 
-        {/* ── Feature well: the expert panel ───────────────────────── */}
+        {/* ── Dept. 01: the features (expert long-form articles) ───── */}
+        {hasExperts && (press.isLoading || articles.length > 0) && (
+          <section className="space-y-6" aria-label="Feature articles from the experts">
+            <Department
+              kicker="Dept. 01 · Features"
+              title="The Features"
+              subtitle="Long-form dispatches written by the panel themselves. Hot off the relays."
+            />
+            {press.isLoading ? (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="sm:col-span-2 lg:col-span-3">
+                  <CardSkeleton withImage />
+                </div>
+                <CardSkeleton withImage />
+                <CardSkeleton withImage />
+                <CardSkeleton withImage />
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {leadArticle && <LeadArticleCard article={leadArticle} />}
+                {moreArticles.length > 0 && (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {moreArticles.slice(0, 6).map((article) => (
+                      <ArticleCard key={article.naddr} article={article} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* ── Dept. 02: the expert panel ───────────────────────────── */}
         {panel.length > 0 && (
           <section className="space-y-6" aria-label="The expert panel">
             <Department
-              kicker="Dept. 01 · Features"
+              kicker="Dept. 02 · The Panel"
               title="The Expert Panel"
               subtitle="The minds steering the protocol. Their approvals decide what makes print."
+              accent="nebula"
               action={
                 <Link
                   to="/experts"
@@ -194,10 +282,33 @@ const Index = () => {
           </section>
         )}
 
-        {/* ── The review section: expert-approved NIPs ─────────────── */}
+        {/* ── Dept. 03: overheard on the wire (pull quotes) ────────── */}
+        {hasExperts && (press.isLoading || pullQuotes.length > 0) && (
+          <section className="space-y-6" aria-label="Recent posts from the experts">
+            <Department
+              kicker="Dept. 03 · Overheard"
+              title="Overheard on the Wire"
+              subtitle="Unfiltered takes straight from the panel's feeds."
+              accent="nebula"
+            />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {press.isLoading ? (
+                <>
+                  <CardSkeleton />
+                  <CardSkeleton />
+                  <CardSkeleton />
+                </>
+              ) : (
+                pullQuotes.map((note) => <PulseQuoteCard key={note.event.id} note={note} />)
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* ── Dept. 04: the review section (expert-approved NIPs) ──── */}
         <section className="space-y-6" aria-label="Expert-approved NIPs">
           <Department
-            kicker="Dept. 02 · Reviews"
+            kicker="Dept. 04 · Reviews"
             title="The Review Section"
             subtitle="Every NIP below earned the panel's seal. Rated, stamped, shipped."
           />
@@ -234,12 +345,42 @@ const Index = () => {
           </div>
         </section>
 
-        {/* ── Rumor mill: fresh community drafts ───────────────────── */}
+        {/* ── Dept. 05: the demo reel (NIP-50 search) ──────────────── */}
+        <section className="space-y-6" aria-label="Fresh demos and launches from across the network">
+          <Department
+            kicker="Dept. 05 · The Demo Reel"
+            title="Shipping Now"
+            subtitle="Live NIP-50 sweep of the network: demos, launches, and things that didn't exist last month."
+            accent="nebula"
+          />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {demoSearch.isLoading ? (
+              <>
+                <CardSkeleton withImage />
+                <CardSkeleton withImage />
+                <CardSkeleton withImage />
+              </>
+            ) : demos.length > 0 ? (
+              demos.map((event) => <DemoReelCard key={event.id} event={event} />)
+            ) : (
+              <Card className="border-dashed sm:col-span-2 lg:col-span-3">
+                <CardContent className="px-8 py-12 text-center">
+                  <p className="mx-auto max-w-sm text-muted-foreground">
+                    The wire is quiet — no fresh demos surfaced by the search relays right now.
+                    Check back soon; this network ships fast.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </section>
+
+        {/* ── Dept. 06: rumor mill (fresh community drafts) ────────── */}
         <section className="space-y-6" aria-label="Latest community drafts">
           <Department
-            kicker="Dept. 03 · Previews"
+            kicker="Dept. 06 · Previews"
             title="The Rumor Mill"
-            subtitle="Unreviewed. Unreleased. Unbelievably close. Fresh drafts straight from the community lab."
+            subtitle="Unreviewed. Unreleased. Unbelievably close. Fresh NIP drafts straight from the community lab."
             action={
               user && (
                 <Button asChild size="sm" className="gap-1.5 rounded-full shadow-lg shadow-primary/25">
@@ -277,12 +418,13 @@ const Index = () => {
           </div>
         </section>
 
-        {/* ── Back of the book ─────────────────────────────────────── */}
+        {/* ── Dept. 07: back of the book ───────────────────────────── */}
         <section className="space-y-6" aria-label="Community dispatches and network stats">
           <Department
-            kicker="Dept. 04 · Back of the Book"
+            kicker="Dept. 07 · Back of the Book"
             title="Letters & Numbers"
             subtitle="Live dispatches from the community wire, and the network by the numbers."
+            accent="nebula"
           />
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <ChatPreviewCard />
