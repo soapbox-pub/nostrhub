@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  Check,
   ChevronDown,
   ChevronRight,
   Code2,
+  Download,
+  ExternalLink,
   FileCode2,
   FileText,
   Folder,
@@ -28,14 +31,15 @@ import type { GitRepoAnnouncement, GitRepoState } from '@/lib/git';
 import { shortCommit } from '@/lib/git';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 
 const MAX_TEXT_BYTES = 1024 * 1024; // 1 MB
@@ -193,6 +197,37 @@ function FileViewer({ snapshot, path }: { snapshot: RepoSnapshot; path: string }
     }
   }, [bytes]);
 
+  const basename = path.slice(path.lastIndexOf('/') + 1);
+
+  /** Build a Blob of the file's bytes with a sensible MIME type. */
+  const toBlob = (forViewing: boolean) => {
+    if (!bytes) return undefined;
+    const mime = imageMimeType(path) ?? (forViewing && text !== undefined
+      ? 'text/plain;charset=utf-8'
+      : 'application/octet-stream');
+    return new Blob([new Uint8Array(bytes)], { type: mime });
+  };
+
+  const openRaw = () => {
+    const blob = toBlob(true);
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank', 'noopener');
+    // Give the new tab time to load the blob before releasing it.
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  };
+
+  const download = () => {
+    const blob = toBlob(false);
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = basename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex items-center gap-2 border-b border-border/60 bg-muted/40 px-4 py-2">
@@ -217,6 +252,32 @@ function FileViewer({ snapshot, path }: { snapshot: RepoSnapshot; path: string }
             </Button>
           )}
           {text !== undefined && <CopyButton value={text} label={`Copy contents of ${path}`} />}
+          {bytes && (
+            <>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                onClick={openRaw}
+                aria-label={`View raw ${basename}`}
+                title="View raw"
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <ExternalLink className="size-3.5" aria-hidden="true" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                onClick={download}
+                aria-label={`Download ${basename}`}
+                title="Download"
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <Download className="size-3.5" aria-hidden="true" />
+              </Button>
+            </>
+          )}
         </span>
       </div>
 
@@ -253,6 +314,7 @@ export function RepoFileBrowser({ repo, state }: RepoFileBrowserProps) {
   const branches = state?.branches ?? [];
   const tags = state?.tags ?? [];
   const [branch, setBranch] = useState<string | undefined>(state?.headBranch ?? branches[0]?.name);
+  const [branchOpen, setBranchOpen] = useState(false);
   const { data: snapshot, isLoading, isError, error } = useRepoSnapshot(repo, branch);
 
   const [selectedPath, setSelectedPath] = useState<string>();
@@ -296,19 +358,51 @@ export function RepoFileBrowser({ repo, state }: RepoFileBrowserProps) {
       <CardHeader className="pb-4">
         <div className="flex flex-wrap items-center gap-2">
           {branches.length > 0 ? (
-            <Select value={branch} onValueChange={setBranch}>
-              <SelectTrigger size="sm" className="h-8 gap-1.5 font-mono text-xs" aria-label="Branch">
-                <GitBranch className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                <SelectValue placeholder="branch" />
-              </SelectTrigger>
-              <SelectContent>
-                {branches.map((b) => (
-                  <SelectItem key={b.name} value={b.name} className="font-mono text-xs">
-                    {b.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={branchOpen} onOpenChange={setBranchOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 max-w-48 gap-1.5 font-mono text-xs"
+                  aria-label="Switch branch"
+                >
+                  <GitBranch className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  <span className="min-w-0 truncate">{branch}</span>
+                  <ChevronDown className="size-3.5 shrink-0 opacity-60" aria-hidden="true" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-64 p-0">
+                <Command>
+                  <CommandInput placeholder="Find a branch…" />
+                  <CommandList className="max-h-64">
+                    <CommandEmpty>No branches found.</CommandEmpty>
+                    <CommandGroup>
+                      {branches.map((b) => (
+                        <CommandItem
+                          key={b.name}
+                          value={b.name}
+                          onSelect={(value) => {
+                            setBranch(value);
+                            setBranchOpen(false);
+                          }}
+                          className="gap-2 font-mono text-xs"
+                        >
+                          <span className="min-w-0 truncate">{b.name}</span>
+                          {b.name === state?.headBranch && (
+                            <span className="shrink-0 rounded-full border border-border/60 px-1.5 py-px font-sans text-[10px] text-muted-foreground">
+                              default
+                            </span>
+                          )}
+                          {b.name === branch && (
+                            <Check className="ml-auto size-3.5 shrink-0" aria-hidden="true" />
+                          )}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           ) : (
             <CardTitle className="flex items-center gap-2 text-base">
               <FolderGit2 className="size-4 text-primary" aria-hidden="true" /> Files
@@ -323,23 +417,23 @@ export function RepoFileBrowser({ repo, state }: RepoFileBrowserProps) {
                   {tags.length} {tags.length === 1 ? 'tag' : 'tags'}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent align="start" className="w-64 p-2">
-                <ul className="max-h-64 overflow-y-auto">
-                  {tags.map((tag) => (
-                    <li
-                      key={tag.name}
-                      className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent/10"
-                    >
-                      <span className="min-w-0 truncate font-mono text-xs">{tag.name}</span>
-                      <code
-                        className="ml-auto shrink-0 font-mono text-xs text-muted-foreground"
-                        title={tag.commit}
-                      >
-                        {shortCommit(tag.commit)}
-                      </code>
-                    </li>
-                  ))}
-                </ul>
+              <PopoverContent align="start" className="w-64 p-0">
+                <Command>
+                  <CommandInput placeholder="Find a tag…" />
+                  <CommandList className="max-h-64">
+                    <CommandEmpty>No tags found.</CommandEmpty>
+                    <CommandGroup>
+                      {tags.map((tag) => (
+                        <CommandItem key={tag.name} value={tag.name} className="gap-2 font-mono text-xs">
+                          <span className="min-w-0 truncate">{tag.name}</span>
+                          <code className="ml-auto shrink-0 text-muted-foreground" title={tag.commit}>
+                            {shortCommit(tag.commit)}
+                          </code>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
               </PopoverContent>
             </Popover>
           )}
@@ -387,7 +481,7 @@ export function RepoFileBrowser({ repo, state }: RepoFileBrowserProps) {
           </p>
         ) : (
           <div className="grid md:grid-cols-[250px_minmax(0,1fr)]">
-            <div className="max-h-56 overflow-y-auto border-b border-border/60 md:max-h-[34rem] md:border-b-0 md:border-r">
+            <div className="max-h-56 overflow-y-auto border-b border-border/60 md:max-h-[46rem] md:border-b-0 md:border-r">
               <nav aria-label="Repository files" className="p-2">
                 {snapshot.tree.map((node) => (
                   <TreeRow
@@ -403,7 +497,7 @@ export function RepoFileBrowser({ repo, state }: RepoFileBrowserProps) {
               </nav>
             </div>
 
-            <div className="flex min-h-64 flex-col md:max-h-[34rem] md:overflow-y-auto">
+            <div className="flex min-h-96 flex-col md:max-h-[46rem] md:overflow-y-auto">
               {selected ? (
                 <FileViewer snapshot={snapshot} path={selected} />
               ) : (
