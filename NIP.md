@@ -209,6 +209,82 @@ Nostr clients (e.g. Clawstr) for interoperability.
 
 ---
 
+## App Compatibility Reports — Kind `31986` (Borkstr-compatible)
+
+NostrHub's `/apps` directory lists applications announced via **kind `31990`**
+([NIP-89](https://github.com/nostr-protocol/nips/blob/master/89.md) Handler Information) and rates
+them **ProtonDB-style** using per-NIP compatibility reports. The report schema is shared 1:1 with
+the [Borkstr](https://borkstr.com) directory for interoperability — NostrHub introduces no new
+kinds here.
+
+A report is a **kind `31986`** addressable event (proposed NIP-85 Reviews), self-labeled via
+[NIP-32](https://github.com/nostr-protocol/nips/blob/master/32.md) with the `borkstr` namespace,
+targeting an app's kind `31990` listing. One report exists per author per app+NIP combination
+(enforced by the `d` tag).
+
+### Structure
+
+```jsonc
+{
+  "kind": 31986,
+  "content": "Human-readable explanation of the user's experience",
+  "tags": [
+    // Target: the app's kind 31990 handler event
+    ["a", "31990:<app-pubkey>:<d-tag>"],
+    ["p", "<app-pubkey>"],
+    ["k", "31990"],
+
+    // One report per app+NIP per author
+    ["d", "31990:<app-pubkey>:<d-tag>:<nip-identifier>"],
+
+    // Rating (0.0–1.0 scale, per proposed NIP-85 Reviews)
+    ["rating", "<0.0-1.0>", "<nip-identifier>"],
+
+    // Self-labeling as a compatibility report (NIP-32)
+    ["L", "borkstr"],
+    ["l", "nip-compatibility", "borkstr"],
+
+    // Which NIP is being rated (lowercase, e.g. "nip-17")
+    ["t", "<nip-identifier>"],
+
+    ["alt", "Borkstr NIP compatibility report"]
+  ]
+}
+```
+
+### Rating scale → tiers
+
+| Rating range | Tier       | Description                                                  |
+| ------------ | ---------- | ------------------------------------------------------------ |
+| 0.75 – 1.0   | Flawless   | Every expected feature is interoperable with all other apps  |
+| 0.50 – 0.74  | Incomplete | Doesn't comply with the entire NIP; things are missing       |
+| 0.25 – 0.49  | Isolated   | Not interoperable with other clients                         |
+| 0.00 – 0.24  | Borked     | Doesn't load basic events or crashes                         |
+
+When submitting through NostrHub, the selected tier publishes a fixed rating: Flawless = `1.0`,
+Incomplete = `0.6`, Isolated = `0.3`, Borked = `0.1`.
+
+### Aggregation
+
+1. Collect kind `31986` events labeled `["l", "nip-compatibility", "borkstr"]` targeting the app,
+   keeping only each author's latest revision per `d` tag.
+2. Group by NIP (`t` tag) and compute the **median** rating per NIP.
+3. Map each median to its tier; the overall app tier is the median of the per-NIP medians.
+
+Medians are preferred over means to blunt outlier ratings.
+
+### Querying
+
+```ts
+// All reports for a specific app
+nostr.query([{ kinds: [31986], "#l": ["nip-compatibility"], "#a": ["31990:<pubkey>:<d>"] }]);
+
+// All reports across all apps (directory aggregation)
+nostr.query([{ kinds: [31986], "#l": ["nip-compatibility"], limit: 1000 }]);
+```
+
+---
+
 ## Related standard kinds used by NostrHub
 
 These are **not** custom — NostrHub reuses standard NIPs:
@@ -218,3 +294,5 @@ These are **not** custom — NostrHub reuses standard NIPs:
 - **Kind `3`** — Follow lists ([NIP-02](https://github.com/nostr-protocol/nips/blob/master/02.md)); used to derive the community author set from experts.
 - **Kind `0`** — Profile metadata ([NIP-01](https://github.com/nostr-protocol/nips/blob/master/01.md)).
 - **Kind `9`** — Community chat messages ([NIP-C7](https://github.com/nostr-protocol/nips/blob/master/C7.md)); see the dedicated section above.
+- **Kind `31990`** — App listings ([NIP-89](https://github.com/nostr-protocol/nips/blob/master/89.md) Handler Information); powers the `/apps` directory.
+- **Kind `31986`** — App compatibility reports (proposed NIP-85 Reviews, Borkstr-compatible); see the dedicated section above.

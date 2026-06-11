@@ -2,12 +2,14 @@ import { nip19 } from 'nostr-tools';
 import { useParams } from 'react-router-dom';
 import NotFound from './NotFound';
 import { ArticlePage } from './ArticlePage';
+import { AppPage } from './AppPage';
 import { CustomNipPage } from './CustomNipPage';
 import { GitRepoPage } from './GitRepoPage';
 import { NotePage } from './NotePage';
 import { ProfilePage } from './ProfilePage';
 import { ARTICLE_KIND } from '@/hooks/useExpertPress';
 import { CUSTOM_NIP_KIND } from '@/lib/nips';
+import { APP_HANDLER_KIND } from '@/lib/apps';
 import { GIT_REPO_KIND, GIT_STATE_KIND } from '@/lib/git';
 
 export function NIP19Page() {
@@ -53,6 +55,10 @@ export function NIP19Page() {
       if (decoded.data.kind === GIT_REPO_KIND || decoded.data.kind === GIT_STATE_KIND) {
         const { pubkey, identifier: d, relays } = decoded.data;
         return <GitRepoPage pubkey={pubkey} identifier={d} relays={relays} />;
+      }
+      // NIP-89 app handler events get the app detail page.
+      if (decoded.data.kind === APP_HANDLER_KIND) {
+        return <AppPage pubkey={decoded.data.pubkey} identifier={decoded.data.identifier} />;
       }
       return <div>Addressable event placeholder</div>;
     }

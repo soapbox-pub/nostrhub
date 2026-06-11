@@ -1,10 +1,11 @@
 import { useMemo } from 'react';
 import { useSeoMeta } from '@unhead/react';
 import { nip19 } from 'nostr-tools';
-import { BadgeCheck, FileText, FolderGit2, Globe, Zap } from 'lucide-react';
+import { BadgeCheck, Blocks, FileText, FolderGit2, Globe, Zap } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { UserAvatar } from '@/components/UserAvatar';
 import { NipCard } from '@/components/NipCard';
+import { AppCard, AppCardSkeleton } from '@/components/AppCard';
 import { ContributionChart } from '@/components/ContributionChart';
 import { RepoList, RepoListItem, RepoListItemSkeleton } from '@/components/git/RepoListItem';
 import { CopyButton } from '@/components/git/CopyButton';
@@ -13,6 +14,7 @@ import { useAuthor } from '@/hooks/useAuthor';
 import { useExperts } from '@/hooks/useExperts';
 import { useCustomNips } from '@/hooks/useCustomNips';
 import { useGitRepos } from '@/hooks/useGitRepos';
+import { useApps } from '@/hooks/useApps';
 import { nipTargetKey, type NipTarget } from '@/hooks/useNipApprovals';
 import type { RankedNip } from '@/hooks/useRankedNips';
 import { shortNpub } from '@/lib/nostr';
@@ -58,6 +60,8 @@ export function ProfilePage({ pubkey }: ProfilePageProps) {
 
   const nipsQuery = useCustomNips({ authors: [pubkey] });
   const reposQuery = useGitRepos({ authors: [pubkey] });
+  // Show all of this author's own listings, even with incomplete metadata.
+  const appsQuery = useApps({ authors: [pubkey], requireFullMetadata: false });
 
   const npub = useMemo(() => {
     try {
@@ -98,6 +102,7 @@ export function ProfilePage({ pubkey }: ProfilePageProps) {
   }, [nipsQuery.data]);
 
   const repos = reposQuery.data ?? [];
+  const apps = appsQuery.data ?? [];
 
   return (
     <Layout className="max-w-5xl">
@@ -209,6 +214,15 @@ export function ProfilePage({ pubkey }: ProfilePageProps) {
                 </Badge>
               )}
             </TabsTrigger>
+            <TabsTrigger value="apps" className="gap-1.5">
+              <Blocks className="size-4" aria-hidden="true" />
+              Apps
+              {appsQuery.data && apps.length > 0 && (
+                <Badge variant="secondary" className="h-5 px-1.5 text-[11px]">
+                  {apps.length}
+                </Badge>
+              )}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="nips" className="mt-4">
@@ -248,6 +262,24 @@ export function ProfilePage({ pubkey }: ProfilePageProps) {
                   />
                 ))}
               </RepoList>
+            )}
+          </TabsContent>
+
+          <TabsContent value="apps" className="mt-4">
+            {appsQuery.isLoading ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {Array.from({ length: 2 }).map((_, i) => (
+                  <AppCardSkeleton key={i} />
+                ))}
+              </div>
+            ) : apps.length === 0 ? (
+              <EmptyState message={`${displayName} hasn't published any app listings yet.`} />
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {apps.map((app) => (
+                  <AppCard key={app.address} app={app} />
+                ))}
+              </div>
             )}
           </TabsContent>
         </Tabs>

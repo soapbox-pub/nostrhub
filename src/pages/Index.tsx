@@ -7,9 +7,11 @@ import { NipCard } from '@/components/NipCard';
 import { LeadArticleCard, ArticleCard } from '@/components/ArticleCards';
 import { PulseQuoteCard } from '@/components/PulseQuoteCard';
 import { DemoReelCard } from '@/components/DemoReelCard';
+import { AppCard, AppCardSkeleton } from '@/components/AppCard';
 import { UserAvatar } from '@/components/UserAvatar';
 import { useExpertPress } from '@/hooks/useExpertPress';
 import { useNostrSearch } from '@/hooks/useNostrSearch';
+import { useApps } from '@/hooks/useApps';
 import { useRankedNips, type RankedNip } from '@/hooks/useRankedNips';
 import { useCommunityAuthors } from '@/hooks/useCommunityAuthors';
 import { useCustomNips } from '@/hooks/useCustomNips';
@@ -109,6 +111,9 @@ const Index = () => {
 
   const hasExperts = experts.length > 0;
 
+  // Recent NIP-89 app listings published by the experts themselves.
+  const expertApps = useApps({ authors: experts, limit: 50, enabled: hasExperts });
+
   // Hero avatar stack: up to 5 expert avatars, then a "+N" overflow count.
   const shownExperts = experts.slice(0, 5);
   const extraExperts = experts.length - shownExperts.length;
@@ -131,6 +136,7 @@ const Index = () => {
   );
   const topNips = ranked.slice(0, 7);
   const drafts = (draftsQuery.data ?? []).slice(0, 6);
+  const showroomApps = (expertApps.data ?? []).slice(0, 3);
 
   return (
     <Layout className="max-w-6xl">
@@ -292,6 +298,32 @@ const Index = () => {
                 </>
               ) : (
                 demos.map((event) => <DemoReelCard key={event.id} event={event} />)
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* ── The showroom (recent expert apps) ────────────────────── */}
+        {hasExperts && (expertApps.isLoading || showroomApps.length > 0) && (
+          <section className="space-y-5" aria-label="Recent apps published by the experts">
+            <Department
+              title="The Showroom"
+              subtitle="Fresh apps straight from the panel's workbenches."
+              action={
+                <Button asChild variant="outline" size="sm" className="rounded-full">
+                  <Link to="/apps">Browse all apps</Link>
+                </Button>
+              }
+            />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {expertApps.isLoading ? (
+                <>
+                  <AppCardSkeleton />
+                  <AppCardSkeleton />
+                  <AppCardSkeleton />
+                </>
+              ) : (
+                showroomApps.map((app) => <AppCard key={app.address} app={app} />)
               )}
             </div>
           </section>
