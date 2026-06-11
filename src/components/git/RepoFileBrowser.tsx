@@ -29,7 +29,6 @@ import { shortCommit } from '@/lib/git';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Select,
   SelectContent,
@@ -293,38 +292,39 @@ export function RepoFileBrowser({ repo, state }: RepoFileBrowserProps) {
 
   return (
     <Card className="overflow-hidden">
-      <CardHeader className="flex-row flex-wrap items-center gap-2 space-y-0 pb-4">
-        {branches.length > 0 ? (
-          <Select value={branch} onValueChange={setBranch}>
-            <SelectTrigger size="sm" className="h-8 gap-1.5 font-mono text-xs" aria-label="Branch">
-              <GitBranch className="size-3.5 text-muted-foreground" aria-hidden="true" />
-              <SelectValue placeholder="branch" />
-            </SelectTrigger>
-            <SelectContent>
-              {branches.map((b) => (
-                <SelectItem key={b.name} value={b.name} className="font-mono text-xs">
-                  {b.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        ) : (
-          <CardTitle className="flex items-center gap-2 text-base">
-            <FolderGit2 className="size-4 text-primary" aria-hidden="true" /> Files
-          </CardTitle>
-        )}
+      {/* CardHeader is a grid (one row per child), so the toolbar lives in a single flex child. */}
+      <CardHeader className="pb-4">
+        <div className="flex flex-wrap items-center gap-2">
+          {branches.length > 0 ? (
+            <Select value={branch} onValueChange={setBranch}>
+              <SelectTrigger size="sm" className="h-8 gap-1.5 font-mono text-xs" aria-label="Branch">
+                <GitBranch className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                <SelectValue placeholder="branch" />
+              </SelectTrigger>
+              <SelectContent>
+                {branches.map((b) => (
+                  <SelectItem key={b.name} value={b.name} className="font-mono text-xs">
+                    {b.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <CardTitle className="flex items-center gap-2 text-base">
+              <FolderGit2 className="size-4 text-primary" aria-hidden="true" /> Files
+            </CardTitle>
+          )}
 
-        {tags.length > 0 && (
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs text-muted-foreground">
-                <TagIcon className="size-3.5" aria-hidden="true" />
-                {tags.length} {tags.length === 1 ? 'tag' : 'tags'}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="start" className="w-64 p-2">
-              <ScrollArea className="max-h-64">
-                <ul>
+          {tags.length > 0 && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs text-muted-foreground">
+                  <TagIcon className="size-3.5" aria-hidden="true" />
+                  {tags.length} {tags.length === 1 ? 'tag' : 'tags'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-64 p-2">
+                <ul className="max-h-64 overflow-y-auto">
                   {tags.map((tag) => (
                     <li
                       key={tag.name}
@@ -340,18 +340,18 @@ export function RepoFileBrowser({ repo, state }: RepoFileBrowserProps) {
                     </li>
                   ))}
                 </ul>
-              </ScrollArea>
-            </PopoverContent>
-          </Popover>
-        )}
-
-        <div className="ml-auto flex items-center gap-2">
-          {snapshot && (
-            <code className="hidden font-mono text-xs text-muted-foreground sm:inline" title={snapshot.commit}>
-              {shortCommit(snapshot.commit)}
-            </code>
+              </PopoverContent>
+            </Popover>
           )}
-          <CloneButton repo={repo} />
+
+          <div className="ml-auto flex items-center gap-2">
+            {snapshot && (
+              <code className="hidden font-mono text-xs text-muted-foreground sm:inline" title={snapshot.commit}>
+                {shortCommit(snapshot.commit)}
+              </code>
+            )}
+            <CloneButton repo={repo} />
+          </div>
         </div>
       </CardHeader>
 
@@ -387,7 +387,7 @@ export function RepoFileBrowser({ repo, state }: RepoFileBrowserProps) {
           </p>
         ) : (
           <div className="grid md:grid-cols-[250px_minmax(0,1fr)]">
-            <ScrollArea className="max-h-56 border-b border-border/60 md:max-h-[34rem] md:border-b-0 md:border-r">
+            <div className="max-h-56 overflow-y-auto border-b border-border/60 md:max-h-[34rem] md:border-b-0 md:border-r">
               <nav aria-label="Repository files" className="p-2">
                 {snapshot.tree.map((node) => (
                   <TreeRow
@@ -401,7 +401,7 @@ export function RepoFileBrowser({ repo, state }: RepoFileBrowserProps) {
                   />
                 ))}
               </nav>
-            </ScrollArea>
+            </div>
 
             <div className="flex min-h-64 flex-col md:max-h-[34rem] md:overflow-y-auto">
               {selected ? (
