@@ -63,22 +63,14 @@ function parseArticle(event: NostrEvent): ExpertArticle | null {
   };
 }
 
-/** Articles published within this window lead the feature well. */
-const ARTICLE_FRESH_DAYS = 365;
 const NOTE_WINDOW_DAYS = 30;
 
 /**
- * The experts' own publishing output, hot-ranked: long-form articles
- * (kind 30023) for the feature well and top-level notes (kind 1) for pull
- * quotes. Queries go to the NIP-50 search relays with `sort:hot` so the
- * relay's engagement ranking decides what leads, and the returned order is
- * preserved rather than re-sorted by time.
- *
- * Articles are fetched twice — once windowed to the past year and once
- * all-time — because an all-time hot ranking alone lets old viral pieces
- * crowd recent work out of the result limit entirely. Articles published
- * within the window always rank ahead of older ones; older hot articles only
- * backfill so the section never starves when the panel is quiet.
+ * The experts' own publishing output. Long-form articles (kind 30023) come
+ * from the app's relay pool via a normal REQ — no NIP-50 — and are simply
+ * ordered newest-first by publish date. Top-level notes (kind 1) for the
+ * pull quotes still go to the search relays with `sort:hot`, preserving the
+ * relay's engagement ranking.
  */
 export function useExpertPress() {
   const { nostr } = useNostr();
@@ -87,48 +79,35 @@ export function useExpertPress() {
   return useQuery<ExpertPress>({
     queryKey: ['expert-press', [...experts].sort()],
     queryFn: async ({ signal }) => {
-      const nowSec = Math.floor(Date.now() / 1000);
-      const articleFreshSince = nowSec - ARTICLE_FRESH_DAYS * 86400;
-      const noteSince = nowSec - NOTE_WINDOW_DAYS * 86400;
+      const noteSince = Math.floor(Date.now() / 1000) - NOTE_WINDOW_DAYS * 86400;
+      const opts = { signal: AbortSignal.any([signal, AbortSignal.timeout(8000)]) };
 
-      const group = nostr.group(SEARCH_RELAYS);
-      const events = await group.query(
-        [
-          // Recent articles first — guaranteed a seat regardless of all-time heat.
-          { kinds: [ARTICLE_KIND], authors: experts, search: 'sort:hot', since: articleFreshSince, limit: 50 },
-          // All-time hot articles as backfill candidates.
-          { kinds: [ARTICLE_KIND], authors: experts, search: 'sort:hot', limit: 50 },
-          { kinds: [1], authors: experts, search: 'sort:hot', since: noteSince, limit: 48 },
-        ],
-        { signal: AbortSignal.any([signal, AbortSignal.timeout(8000)]) },
-      );
+      const [articleEvents, noteEvents] = await Promise.all([
+        nostr.query([{ kinds: [ARTICLE_KIND], authors: experts, limit: 50 }], opts),
+        nostr
+          .group(SEARCH_RELAYS)
+          .query([{ kinds: [1], authors: experts, search: 'sort:hot', since: noteSince, limit: 48 }], opts),
+      ]);
 
-      // Articles: keep only the latest event per (author, d) address, in the
-      // relay's hot order (first appearance wins the rank slot).
-      const addressOrder: string[] = [];
+      // Articles: keep only the latest event per (author, d) address,
+      // newest-first by publish date.
       const latestArticles = new Map<string, NostrEvent>();
-      for (const ev of events) {
+      for (const ev of articleEvents) {
         if (ev.kind !== ARTICLE_KIND) continue;
         const d = ev.tags.find(([n]) => n === 'd')?.[1] ?? '';
         const key = `${ev.pubkey}:${d}`;
         const prev = latestArticles.get(key);
-        if (!prev) addressOrder.push(key);
         if (!prev || ev.created_at > prev.created_at) latestArticles.set(key, ev);
       }
-      const rankedArticles = addressOrder
-        .map((key) => parseArticle(latestArticles.get(key)!))
-        .filter((a): a is ExpertArticle => a !== null);
-
-      // Fresh articles lead; older hot articles backfill, each tier in hot order.
-      const articles = [
-        ...rankedArticles.filter((a) => a.publishedAt >= articleFreshSince),
-        ...rankedArticles.filter((a) => a.publishedAt < articleFreshSince),
-      ];
+      const articles = Array.from(latestArticles.values())
+        .map(parseArticle)
+        .filter((a): a is ExpertArticle => a !== null)
+        .sort((a, b) => b.publishedAt - a.publishedAt);
 
       // Notes: top-level posts only (no `e` tags), in hot order.
       const seen = new Set<string>();
       const notes: ExpertNote[] = [];
-      for (const ev of events) {
+      for (const ev of noteEvents) {
         if (ev.kind !== 1 || seen.has(ev.id)) continue;
         seen.add(ev.id);
         if (ev.created_at < noteSince) continue;
