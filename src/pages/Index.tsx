@@ -6,13 +6,10 @@ import { Layout } from '@/components/Layout';
 import { NipCard } from '@/components/NipCard';
 import { BreakingTicker } from '@/components/BreakingTicker';
 import { ExpertCoverStory } from '@/components/ExpertCoverStory';
-import { ExpertFeatureCard } from '@/components/ExpertFeatureCard';
+import { ExpertPanelStrip } from '@/components/ExpertPanelStrip';
 import { LeadArticleCard, ArticleCard } from '@/components/ArticleCards';
 import { PulseQuoteCard } from '@/components/PulseQuoteCard';
 import { DemoReelCard } from '@/components/DemoReelCard';
-import { StatsSidebar } from '@/components/StatsSidebar';
-import { ChatPreviewCard } from '@/components/ChatPreviewCard';
-import { useAuthor } from '@/hooks/useAuthor';
 import { useExpertPress } from '@/hooks/useExpertPress';
 import { useNostrSearch } from '@/hooks/useNostrSearch';
 import { useRankedNips, type RankedNip } from '@/hooks/useRankedNips';
@@ -23,7 +20,6 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { nipTargetKey } from '@/hooks/useNipApprovals';
 import type { CustomNip } from '@/lib/nips';
 import { noteExcerpt } from '@/lib/noteText';
-import { shortNpub } from '@/lib/nostr';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -43,42 +39,22 @@ function draftToRanked(nip: CustomNip): RankedNip {
   };
 }
 
-/** Inline display name for the cover-lines strip. */
-function ExpertName({ pubkey }: { pubkey: string }) {
-  const author = useAuthor(pubkey);
-  const metadata = author.data?.metadata;
-  return <>{metadata?.display_name || metadata?.name || shortNpub(pubkey)}</>;
-}
-
-/** Editorial department header: kicker rule, slab title with a highlighter swipe, dek. */
+/** Editorial department header: slab title with a highlighter swipe and a short dek. */
 function Department({
-  kicker,
   title,
   subtitle,
   accent = 'primary',
   action,
 }: {
-  kicker: string;
   title: string;
   subtitle?: string;
   accent?: 'primary' | 'nebula';
   action?: React.ReactNode;
 }) {
-  const accentText = accent === 'primary' ? 'text-primary' : 'text-nebula';
   const accentSwipe = accent === 'primary' ? 'bg-primary/30' : 'bg-nebula/30';
-  const accentRule =
-    accent === 'primary'
-      ? 'from-primary/60 via-nebula/40 to-transparent'
-      : 'from-nebula/60 via-primary/40 to-transparent';
 
   return (
-    <div className="space-y-1.5">
-      <div className="flex items-center gap-3">
-        <span className={`shrink-0 font-mono text-[11px] font-bold uppercase tracking-[0.3em] ${accentText}`}>
-          {kicker}
-        </span>
-        <span aria-hidden="true" className={`h-px flex-1 bg-gradient-to-r ${accentRule}`} />
-      </div>
+    <div className="space-y-1">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <h2 className="relative inline-block font-display text-3xl font-bold uppercase tracking-tight sm:text-4xl">
           <span
@@ -89,7 +65,7 @@ function Department({
         </h2>
         {action}
       </div>
-      {subtitle && <p className="max-w-2xl text-base text-muted-foreground">{subtitle}</p>}
+      {subtitle && <p className="max-w-2xl text-muted-foreground">{subtitle}</p>}
     </div>
   );
 }
@@ -134,25 +110,26 @@ const Index = () => {
 
   const hasExperts = experts.length > 0;
   const [coverStar, ...panel] = experts;
-  const coverLineExperts = experts.slice(1, 5);
 
   const articles = press.data?.articles ?? [];
   const [leadArticle, ...moreArticles] = articles;
-  const tickerNotes = useMemo(() => (press.data?.notes ?? []).slice(0, 10), [press.data]);
+  const tickerNotes = useMemo(() => (press.data?.notes ?? []).slice(0, 8), [press.data]);
   const pullQuotes = useMemo(
     () =>
       (press.data?.notes ?? [])
         .filter((note) => noteExcerpt(note.event.content).length >= 60)
-        .slice(0, 6),
+        .slice(0, 3),
     [press.data],
   );
   const demos = useMemo(
     () =>
       (demoSearch.data ?? [])
         .filter((ev) => !ev.tags.some(([n]) => n === 'e') && noteExcerpt(ev.content).length >= 30)
-        .slice(0, 9),
+        .slice(0, 6),
     [demoSearch.data],
   );
+  const topNips = ranked.slice(0, 7);
+  const drafts = (draftsQuery.data ?? []).slice(0, 6);
 
   // Issue numbering counted from Nostr's genesis (fiatjaf's first relay,
   // November 2020), so every month really is a new issue.
@@ -163,7 +140,7 @@ const Index = () => {
   return (
     <Layout className="max-w-6xl">
       {/* ── Masthead ─────────────────────────────────────────────── */}
-      <header className="mb-8 space-y-4">
+      <header className="mb-6 space-y-4">
         <div className="flex items-center justify-between gap-3 border-y-2 border-foreground/80 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.25em] sm:text-xs">
           <span>Issue No. {issueNo}</span>
           <span className="hidden sm:inline text-muted-foreground">{issueDate}</span>
@@ -172,37 +149,22 @@ const Index = () => {
           </span>
         </div>
 
-        <h1 className="text-center font-display text-6xl font-bold uppercase leading-[0.9] tracking-tighter sm:text-8xl lg:text-9xl">
+        <h1 className="text-center font-display text-6xl font-bold uppercase leading-[0.9] tracking-tighter sm:text-8xl">
           Nostr<span className="text-cosmic">Hub</span>
         </h1>
-        <p className="text-center text-lg text-muted-foreground sm:text-xl">
-          The people building the next internet — open, unstoppable, and shipping daily.
-        </p>
-
-        {/* Cover lines */}
-        <p className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 border-y border-border py-2.5 text-center text-xs font-semibold uppercase tracking-wider">
-          <span className="text-primary">Inside:</span>
-          {coverLineExperts.map((pubkey) => (
-            <span key={pubkey} className="flex items-center gap-2.5">
-              <ExpertName pubkey={pubkey} />
-              <span aria-hidden="true" className="text-nebula">✦</span>
-            </span>
-          ))}
-          <span className="text-muted-foreground">
-            {rankedLoading ? 'The expert-approved NIPs' : `${ranked.length} expert-approved NIPs`}
-            {' '}+ the demo reel + the rumor mill
-          </span>
+        <p className="text-center text-lg text-muted-foreground">
+          The people building the next internet.
         </p>
       </header>
 
       {/* ── Live wire ticker ─────────────────────────────────────── */}
       {tickerNotes.length > 0 && (
-        <div className="mb-12">
+        <div className="mb-10">
           <BreakingTicker notes={tickerNotes} />
         </div>
       )}
 
-      <div className="space-y-16">
+      <div className="space-y-14">
         {/* ── Subscription insert (no experts configured) ──────────── */}
         {!hasExperts && (
           <Card className="rotate-[-0.5deg] border-2 border-dashed border-primary/50 bg-primary/5">
@@ -222,32 +184,26 @@ const Index = () => {
           </Card>
         )}
 
-        {/* ── Cover story ──────────────────────────────────────────── */}
-        {coverStar && <ExpertCoverStory pubkey={coverStar} />}
+        {/* ── The experts, front and center ────────────────────────── */}
+        {coverStar && (
+          <section className="space-y-4" aria-label="The expert panel">
+            <ExpertCoverStory pubkey={coverStar} />
+            <ExpertPanelStrip pubkeys={panel} />
+          </section>
+        )}
 
-        {/* ── Dept. 01: the features (expert long-form articles) ───── */}
+        {/* ── The features (expert long-form articles) ─────────────── */}
         {hasExperts && (press.isLoading || articles.length > 0) && (
-          <section className="space-y-6" aria-label="Feature articles from the experts">
-            <Department
-              kicker="Dept. 01 · Features"
-              title="The Features"
-              subtitle="Long-form dispatches written by the panel themselves. Hot off the relays."
-            />
+          <section className="space-y-5" aria-label="Feature articles from the experts">
+            <Department title="The Features" subtitle="Long-form dispatches from the panel." />
             {press.isLoading ? (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <div className="sm:col-span-2 lg:col-span-3">
-                  <CardSkeleton withImage />
-                </div>
-                <CardSkeleton withImage />
-                <CardSkeleton withImage />
-                <CardSkeleton withImage />
-              </div>
+              <CardSkeleton withImage />
             ) : (
               <div className="space-y-4">
                 {leadArticle && <LeadArticleCard article={leadArticle} />}
                 {moreArticles.length > 0 && (
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {moreArticles.slice(0, 6).map((article) => (
+                    {moreArticles.slice(0, 3).map((article) => (
                       <ArticleCard key={article.naddr} article={article} />
                     ))}
                   </div>
@@ -257,38 +213,12 @@ const Index = () => {
           </section>
         )}
 
-        {/* ── Dept. 02: the expert panel ───────────────────────────── */}
-        {panel.length > 0 && (
-          <section className="space-y-6" aria-label="The expert panel">
-            <Department
-              kicker="Dept. 02 · The Panel"
-              title="The Expert Panel"
-              subtitle="The minds steering the protocol. Their approvals decide what makes print."
-              accent="nebula"
-              action={
-                <Link
-                  to="/experts"
-                  className="text-xs font-semibold uppercase tracking-wider text-primary hover:underline"
-                >
-                  Meet the full panel →
-                </Link>
-              }
-            />
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {panel.map((pubkey, i) => (
-                <ExpertFeatureCard key={pubkey} pubkey={pubkey} index={i} />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* ── Dept. 03: overheard on the wire (pull quotes) ────────── */}
+        {/* ── Overheard on the wire (pull quotes) ──────────────────── */}
         {hasExperts && (press.isLoading || pullQuotes.length > 0) && (
-          <section className="space-y-6" aria-label="Recent posts from the experts">
+          <section className="space-y-5" aria-label="Recent posts from the experts">
             <Department
-              kicker="Dept. 03 · Overheard"
               title="Overheard on the Wire"
-              subtitle="Unfiltered takes straight from the panel's feeds."
+              subtitle="Hot takes from the panel's feeds."
               accent="nebula"
             />
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -305,12 +235,21 @@ const Index = () => {
           </section>
         )}
 
-        {/* ── Dept. 04: the review section (expert-approved NIPs) ──── */}
-        <section className="space-y-6" aria-label="Expert-approved NIPs">
+        {/* ── The review section (expert-approved NIPs) ────────────── */}
+        <section className="space-y-5" aria-label="Expert-approved NIPs">
           <Department
-            kicker="Dept. 04 · Reviews"
             title="The Review Section"
-            subtitle="Every NIP below earned the panel's seal. Rated, stamped, shipped."
+            subtitle="NIPs that earned the panel's seal."
+            action={
+              user && (
+                <Button asChild size="sm" className="gap-1.5 rounded-full shadow-lg shadow-primary/25">
+                  <Link to="/create">
+                    <Plus className="size-4" />
+                    New NIP
+                  </Link>
+                </Button>
+              )
+            }
           />
           <div className="grid grid-cols-1 gap-4 pt-2 sm:grid-cols-2 lg:grid-cols-3">
             {rankedLoading ? (
@@ -319,8 +258,8 @@ const Index = () => {
                 <CardSkeleton />
                 <CardSkeleton />
               </>
-            ) : ranked.length > 0 ? (
-              ranked.map((nip, i) =>
+            ) : topNips.length > 0 ? (
+              topNips.map((nip, i) =>
                 i === 0 ? (
                   <div key={nip.key} className="relative sm:col-span-2">
                     <span className="absolute -top-3 left-4 z-10 rotate-[-3deg] rounded-sm border-2 border-primary bg-background px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.25em] text-primary shadow-sm">
@@ -345,63 +284,39 @@ const Index = () => {
           </div>
         </section>
 
-        {/* ── Dept. 05: the demo reel (NIP-50 search) ──────────────── */}
-        <section className="space-y-6" aria-label="Fresh demos and launches from across the network">
-          <Department
-            kicker="Dept. 05 · The Demo Reel"
-            title="Shipping Now"
-            subtitle="Live NIP-50 sweep of the network: demos, launches, and things that didn't exist last month."
-            accent="nebula"
-          />
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {demoSearch.isLoading ? (
-              <>
-                <CardSkeleton withImage />
-                <CardSkeleton withImage />
-                <CardSkeleton withImage />
-              </>
-            ) : demos.length > 0 ? (
-              demos.map((event) => <DemoReelCard key={event.id} event={event} />)
-            ) : (
-              <Card className="border-dashed sm:col-span-2 lg:col-span-3">
-                <CardContent className="px-8 py-12 text-center">
-                  <p className="mx-auto max-w-sm text-muted-foreground">
-                    The wire is quiet — no fresh demos surfaced by the search relays right now.
-                    Check back soon; this network ships fast.
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </section>
+        {/* ── The demo reel (NIP-50 search) ────────────────────────── */}
+        {(demoSearch.isLoading || demos.length > 0) && (
+          <section className="space-y-5" aria-label="Fresh demos and launches from across the network">
+            <Department
+              title="Shipping Now"
+              subtitle="Demos and launches, live from the search relays."
+              accent="nebula"
+            />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {demoSearch.isLoading ? (
+                <>
+                  <CardSkeleton withImage />
+                  <CardSkeleton withImage />
+                  <CardSkeleton withImage />
+                </>
+              ) : (
+                demos.map((event) => <DemoReelCard key={event.id} event={event} />)
+              )}
+            </div>
+          </section>
+        )}
 
-        {/* ── Dept. 06: rumor mill (fresh community drafts) ────────── */}
-        <section className="space-y-6" aria-label="Latest community drafts">
-          <Department
-            kicker="Dept. 06 · Previews"
-            title="The Rumor Mill"
-            subtitle="Unreviewed. Unreleased. Unbelievably close. Fresh NIP drafts straight from the community lab."
-            action={
-              user && (
-                <Button asChild size="sm" className="gap-1.5 rounded-full shadow-lg shadow-primary/25">
-                  <Link to="/create">
-                    <Plus className="size-4" />
-                    Submit a story
-                  </Link>
-                </Button>
-              )
-            }
-          />
+        {/* ── Rumor mill (fresh community drafts) ──────────────────── */}
+        <section className="space-y-5" aria-label="Latest community drafts">
+          <Department title="The Rumor Mill" subtitle="Fresh NIP drafts from the community lab." />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {community.isLoading || draftsQuery.isLoading ? (
               <>
                 <CardSkeleton />
                 <CardSkeleton />
               </>
-            ) : draftsQuery.data && draftsQuery.data.length > 0 ? (
-              draftsQuery.data.map((nip) => (
-                <NipCard key={nip.address} nip={draftToRanked(nip)} />
-              ))
+            ) : drafts.length > 0 ? (
+              drafts.map((nip) => <NipCard key={nip.address} nip={draftToRanked(nip)} />)
             ) : (
               <Card className="border-dashed sm:col-span-2 lg:col-span-3">
                 <CardContent className="px-8 py-12 text-center">
@@ -415,20 +330,6 @@ const Index = () => {
                 </CardContent>
               </Card>
             )}
-          </div>
-        </section>
-
-        {/* ── Dept. 07: back of the book ───────────────────────────── */}
-        <section className="space-y-6" aria-label="Community dispatches and network stats">
-          <Department
-            kicker="Dept. 07 · Back of the Book"
-            title="Letters & Numbers"
-            subtitle="Live dispatches from the community wire, and the network by the numbers."
-            accent="nebula"
-          />
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <ChatPreviewCard />
-            <StatsSidebar />
           </div>
         </section>
 

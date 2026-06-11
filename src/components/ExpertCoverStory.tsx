@@ -50,20 +50,17 @@ export function ExpertCoverStory({ pubkey }: { pubkey: string }) {
         className="pointer-events-none absolute -bottom-32 -left-16 size-80 rounded-full bg-nebula/20 blur-[110px]"
       />
 
-      <div className="relative grid gap-8 p-6 sm:p-10 lg:grid-cols-[1fr_auto] lg:items-center lg:gap-12">
+      <div className="relative grid gap-8 p-6 sm:p-8 lg:grid-cols-[1fr_auto] lg:items-center lg:gap-12">
         <div className="min-w-0 space-y-5">
           <div className="flex flex-wrap items-center gap-3">
             <span className="rounded-sm bg-primary px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.25em] text-primary-foreground">
               Cover Story
             </span>
-            <span className="-rotate-2 rounded-sm border-2 border-nebula px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.2em] text-nebula">
-              World Exclusive
-            </span>
           </div>
 
           <h2
             id="cover-story-heading"
-            className="font-display text-5xl font-bold uppercase leading-[0.95] tracking-tight sm:text-7xl"
+            className="font-display text-4xl font-bold uppercase leading-[0.95] tracking-tight sm:text-6xl"
           >
             <span className="text-cosmic break-words">{displayName}</span>
           </h2>
