@@ -99,9 +99,9 @@ const Index = () => {
     enabled: !community.isLoading,
   });
 
-  // NIP-50: scour the search relays for fresh demos, launches, and ships.
+  // NIP-50: hot-ranked sweep of the search relays for fresh demos and ships.
   const demoSearch = useNostrSearch({
-    searches: ['nostr demo', 'just shipped', 'built on nostr'],
+    searches: ['nostr demo sort:hot', 'just shipped sort:hot', 'built on nostr sort:hot'],
     kinds: [1],
     sinceDays: 30,
     limit: 20,

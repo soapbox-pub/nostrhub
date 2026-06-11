@@ -17,8 +17,8 @@ export interface UseNostrSearchOptions {
 /**
  * NIP-50 full-text search across the dedicated search relay group
  * (relay.ditto.pub + relay.dreamith.to — most pool relays ignore the `search`
- * filter field). Results are deduplicated, kind-checked, and sorted newest
- * first.
+ * filter field). Results are deduplicated and kind-checked, preserving the
+ * relay's result ranking (e.g. `sort:hot`) instead of re-sorting by time.
  */
 export function useNostrSearch(options: UseNostrSearchOptions) {
   const { nostr } = useNostr();
@@ -44,14 +44,12 @@ export function useNostrSearch(options: UseNostrSearchOptions) {
       });
 
       const seen = new Set<string>();
-      return events
-        .filter((ev) => {
-          if (!kinds.includes(ev.kind) || seen.has(ev.id)) return false;
-          if (since !== undefined && ev.created_at < since) return false;
-          seen.add(ev.id);
-          return true;
-        })
-        .sort((a, b) => b.created_at - a.created_at);
+      return events.filter((ev) => {
+        if (!kinds.includes(ev.kind) || seen.has(ev.id)) return false;
+        if (since !== undefined && ev.created_at < since) return false;
+        seen.add(ev.id);
+        return true;
+      });
     },
     enabled: enabled && searches.length > 0,
     staleTime: 5 * 60 * 1000,

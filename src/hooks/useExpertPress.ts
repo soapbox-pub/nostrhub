@@ -4,6 +4,7 @@ import { nip19 } from 'nostr-tools';
 import type { NostrEvent } from '@nostrify/nostrify';
 import { useExperts } from '@/hooks/useExperts';
 import { sanitizeUrl } from '@/lib/sanitizeUrl';
+import { SEARCH_RELAYS } from '@/lib/searchRelays';
 
 /** NIP-23 long-form article kind. */
 export const ARTICLE_KIND = 30023;
@@ -56,9 +57,11 @@ function parseArticle(event: NostrEvent): ExpertArticle | null {
 }
 
 /**
- * The experts' own publishing output, fetched in a single round-trip:
- * long-form articles (kind 30023) for the feature well, and top-level notes
- * (kind 1) for pull quotes and the live ticker.
+ * The experts' own publishing output, hot-ranked: long-form articles
+ * (kind 30023) for the feature well and top-level notes (kind 1) for pull
+ * quotes. Queries go to the NIP-50 search relays with `sort:hot` so the
+ * relay's engagement ranking decides what leads, and the returned order is
+ * preserved rather than re-sorted by time.
  */
 export function useExpertPress() {
   const { nostr } = useNostr();
@@ -67,32 +70,35 @@ export function useExpertPress() {
   return useQuery<ExpertPress>({
     queryKey: ['expert-press', [...experts].sort()],
     queryFn: async ({ signal }) => {
-      const events = await nostr.query(
+      const group = nostr.group(SEARCH_RELAYS);
+      const events = await group.query(
         [
-          { kinds: [ARTICLE_KIND], authors: experts, limit: 24 },
-          { kinds: [1], authors: experts, limit: 48 },
+          { kinds: [ARTICLE_KIND], authors: experts, search: 'sort:hot', limit: 24 },
+          { kinds: [1], authors: experts, search: 'sort:hot', limit: 48 },
         ],
         { signal: AbortSignal.any([signal, AbortSignal.timeout(8000)]) },
       );
 
-      // Articles: keep only the latest event per (author, d) address.
+      // Articles: keep only the latest event per (author, d) address, in the
+      // relay's hot order (first appearance wins the rank slot).
+      const addressOrder: string[] = [];
       const latestArticles = new Map<string, NostrEvent>();
       for (const ev of events) {
         if (ev.kind !== ARTICLE_KIND) continue;
         const d = ev.tags.find(([n]) => n === 'd')?.[1] ?? '';
         const key = `${ev.pubkey}:${d}`;
         const prev = latestArticles.get(key);
+        if (!prev) addressOrder.push(key);
         if (!prev || ev.created_at > prev.created_at) latestArticles.set(key, ev);
       }
-      const articles = Array.from(latestArticles.values())
-        .map(parseArticle)
-        .filter((a): a is ExpertArticle => a !== null)
-        .sort((a, b) => b.publishedAt - a.publishedAt);
+      const articles = addressOrder
+        .map((key) => parseArticle(latestArticles.get(key)!))
+        .filter((a): a is ExpertArticle => a !== null);
 
-      // Notes: top-level posts only (no `e` tags), newest first.
+      // Notes: top-level posts only (no `e` tags), in hot order.
       const seen = new Set<string>();
       const notes: ExpertNote[] = [];
-      for (const ev of events.sort((a, b) => b.created_at - a.created_at)) {
+      for (const ev of events) {
         if (ev.kind !== 1 || seen.has(ev.id)) continue;
         seen.add(ev.id);
         if (ev.tags.some(([n]) => n === 'e')) continue;
