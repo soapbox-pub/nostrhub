@@ -48,7 +48,7 @@ export function Layout({ children, sidebar, className, fullBleed = false }: Layo
   return (
     <div className={cn('flex flex-col text-foreground', fullBleed ? 'h-screen' : 'min-h-screen')}>
       <header className="sticky top-0 z-40 border-b border-primary/15 bg-background/70 backdrop-blur-xl supports-[backdrop-filter]:bg-background/50">
-        <div className="container mx-auto flex h-16 items-center gap-4 px-4 sm:px-6">
+        <div className="container mx-auto max-w-6xl flex h-16 items-center gap-4 px-4 sm:px-6">
           <Logo />
 
           <nav className="hidden md:flex items-center gap-1 ml-2" aria-label="Primary">
@@ -79,12 +79,14 @@ export function Layout({ children, sidebar, className, fullBleed = false }: Layo
 
         {/* Mobile search */}
         <div className="border-t border-primary/15 px-4 py-2 sm:hidden">
-          <SearchBar />
+          <div className="mx-auto max-w-6xl">
+            <SearchBar />
+          </div>
         </div>
 
         {/* Mobile nav */}
         <nav
-          className="md:hidden flex items-center gap-1 overflow-x-auto border-t border-primary/15 px-4 py-2"
+          className="md:hidden flex items-center gap-1 overflow-x-auto border-t border-primary/15 px-4 py-2 mx-auto max-w-6xl w-full"
           aria-label="Primary mobile"
         >
           {NAV_ITEMS.map((item) => (
