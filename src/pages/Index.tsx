@@ -241,16 +241,6 @@ const Index = () => {
           <Department
             title="The Review Section"
             subtitle="NIPs that earned the panel's seal."
-            action={
-              user && (
-                <Button asChild size="sm" className="gap-1.5 rounded-full shadow-lg shadow-primary/25">
-                  <Link to="/create">
-                    <Plus className="size-4" />
-                    New NIP
-                  </Link>
-                </Button>
-              )
-            }
           />
           <div className="grid grid-cols-1 gap-4 pt-2 sm:grid-cols-2 lg:grid-cols-3">
             {rankedLoading ? (
@@ -309,7 +299,20 @@ const Index = () => {
 
         {/* ── Rumor mill (fresh community drafts) ──────────────────── */}
         <section className="space-y-5" aria-label="Latest community drafts">
-          <Department title="The Rumor Mill" subtitle="Fresh NIP drafts from the community lab." />
+          <Department
+            title="The Rumor Mill"
+            subtitle="Fresh NIP drafts from the community lab."
+            action={
+              user && (
+                <Button asChild size="sm" className="gap-1.5 rounded-full shadow-lg shadow-primary/25">
+                  <Link to="/create">
+                    <Plus className="size-4" />
+                    New NIP
+                  </Link>
+                </Button>
+              )
+            }
+          />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {community.isLoading || draftsQuery.isLoading ? (
               <>
