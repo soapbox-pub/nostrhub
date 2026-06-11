@@ -10,9 +10,11 @@ import {
   FolderOpen,
   GitBranch,
   Loader2,
+  Tag as TagIcon,
 } from 'lucide-react';
 import { MarkdownContent } from '@/components/MarkdownContent';
 import { CopyButton } from '@/components/git/CopyButton';
+import { CloneButton } from '@/components/git/CloneButton';
 import { useRepoSnapshot, useRepoFile } from '@/hooks/useRepoSnapshot';
 import {
   findReadme,
@@ -26,6 +28,7 @@ import type { GitRepoAnnouncement, GitRepoState } from '@/lib/git';
 import { shortCommit } from '@/lib/git';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Select,
@@ -249,6 +252,7 @@ function FileViewer({ snapshot, path }: { snapshot: RepoSnapshot; path: string }
  */
 export function RepoFileBrowser({ repo, state }: RepoFileBrowserProps) {
   const branches = state?.branches ?? [];
+  const tags = state?.tags ?? [];
   const [branch, setBranch] = useState<string | undefined>(state?.headBranch ?? branches[0]?.name);
   const { data: snapshot, isLoading, isError, error } = useRepoSnapshot(repo, branch);
 
@@ -285,45 +289,78 @@ export function RepoFileBrowser({ repo, state }: RepoFileBrowserProps) {
     });
   };
 
-  if (repo.cloneUrls.length === 0) return null;
+  const hasMirrors = repo.cloneUrls.length > 0;
 
   return (
     <Card className="overflow-hidden">
-      <CardHeader className="flex-row flex-wrap items-center gap-3 space-y-0 pb-4">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <FolderGit2 className="size-4 text-primary" aria-hidden="true" /> Files
-          {snapshot && (
-            <span className="text-sm font-normal text-muted-foreground">
-              {snapshot.fileCount.toLocaleString()}
-            </span>
-          )}
-        </CardTitle>
+      <CardHeader className="flex-row flex-wrap items-center gap-2 space-y-0 pb-4">
+        {branches.length > 0 ? (
+          <Select value={branch} onValueChange={setBranch}>
+            <SelectTrigger size="sm" className="h-8 gap-1.5 font-mono text-xs" aria-label="Branch">
+              <GitBranch className="size-3.5 text-muted-foreground" aria-hidden="true" />
+              <SelectValue placeholder="branch" />
+            </SelectTrigger>
+            <SelectContent>
+              {branches.map((b) => (
+                <SelectItem key={b.name} value={b.name} className="font-mono text-xs">
+                  {b.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <CardTitle className="flex items-center gap-2 text-base">
+            <FolderGit2 className="size-4 text-primary" aria-hidden="true" /> Files
+          </CardTitle>
+        )}
+
+        {tags.length > 0 && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs text-muted-foreground">
+                <TagIcon className="size-3.5" aria-hidden="true" />
+                {tags.length} {tags.length === 1 ? 'tag' : 'tags'}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-64 p-2">
+              <ScrollArea className="max-h-64">
+                <ul>
+                  {tags.map((tag) => (
+                    <li
+                      key={tag.name}
+                      className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent/10"
+                    >
+                      <span className="min-w-0 truncate font-mono text-xs">{tag.name}</span>
+                      <code
+                        className="ml-auto shrink-0 font-mono text-xs text-muted-foreground"
+                        title={tag.commit}
+                      >
+                        {shortCommit(tag.commit)}
+                      </code>
+                    </li>
+                  ))}
+                </ul>
+              </ScrollArea>
+            </PopoverContent>
+          </Popover>
+        )}
+
         <div className="ml-auto flex items-center gap-2">
           {snapshot && (
             <code className="hidden font-mono text-xs text-muted-foreground sm:inline" title={snapshot.commit}>
               {shortCommit(snapshot.commit)}
             </code>
           )}
-          {branches.length > 0 && (
-            <Select value={branch} onValueChange={setBranch}>
-              <SelectTrigger size="sm" className="h-8 gap-1.5 font-mono text-xs" aria-label="Branch">
-                <GitBranch className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                <SelectValue placeholder="branch" />
-              </SelectTrigger>
-              <SelectContent>
-                {branches.map((b) => (
-                  <SelectItem key={b.name} value={b.name} className="font-mono text-xs">
-                    {b.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+          <CloneButton repo={repo} />
         </div>
       </CardHeader>
 
       <CardContent className="p-0">
-        {isLoading ? (
+        {!hasMirrors ? (
+          <p className="px-8 py-12 text-center text-sm text-muted-foreground">
+            This repository doesn't list any clone mirrors, so its files can't be browsed here.
+          </p>
+        ) : isLoading ? (
           <div className="flex flex-col items-center gap-3 px-8 py-14 text-center">
             <span className="grid size-12 place-items-center rounded-2xl bg-gradient-to-br from-primary/15 to-nebula/15 ring-1 ring-primary/20">
               <Loader2 className="size-5 animate-spin text-primary" aria-hidden="true" />

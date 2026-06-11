@@ -8,12 +8,8 @@ import {
   ExternalLink,
   Fingerprint,
   FolderGit2,
-  GitBranch,
   Globe,
-  Link2,
   Radio,
-  Sparkles,
-  Tag,
   Users,
 } from 'lucide-react';
 import { Layout } from '@/components/Layout';
@@ -24,13 +20,12 @@ import { CommentsSection } from '@/components/comments/CommentsSection';
 import { useGitRepo } from '@/hooks/useGitRepo';
 import { useAuthor } from '@/hooks/useAuthor';
 import { shortNpub } from '@/lib/nostr';
-import { nostrCloneUri, shortCommit, type GitRef, type GitRepoAnnouncement } from '@/lib/git';
+import type { GitRepoAnnouncement } from '@/lib/git';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { cn } from '@/lib/utils';
 
 interface GitRepoPageProps {
   /** Repository owner (hex pubkey). */
@@ -61,57 +56,6 @@ function PersonRow({ pubkey, owner = false }: { pubkey: string; owner?: boolean 
         </span>
       )}
     </Link>
-  );
-}
-
-/** A mono code row with a copy button — the clone-command staple. */
-function CopyRow({
-  value,
-  display,
-  label,
-  prominent = false,
-}: {
-  value: string;
-  display?: string;
-  label: string;
-  prominent?: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        'flex items-center gap-2 rounded-lg border px-3 py-2',
-        prominent
-          ? 'border-primary/25 bg-gradient-to-r from-primary/[0.07] to-nebula/[0.07]'
-          : 'border-border/60 bg-muted/50',
-      )}
-    >
-      <code className="min-w-0 flex-1 truncate font-mono text-[13px]" title={value}>
-        {display ?? value}
-      </code>
-      <CopyButton value={value} label={label} />
-    </div>
-  );
-}
-
-/** One ref (branch or tag) with its short commit id. */
-function RefRow({ refItem, isDefault = false }: { refItem: GitRef; isDefault?: boolean }) {
-  return (
-    <li className="flex items-center gap-2 py-1.5">
-      <span className="min-w-0 truncate font-mono text-sm" title={refItem.name}>
-        {refItem.name}
-      </span>
-      {isDefault && (
-        <Badge variant="secondary" className="h-5 px-1.5 text-[10px] uppercase tracking-wide">
-          default
-        </Badge>
-      )}
-      <span className="ml-auto flex items-center gap-1">
-        <code className="font-mono text-xs text-muted-foreground" title={refItem.commit}>
-          {shortCommit(refItem.commit)}
-        </code>
-        <CopyButton value={refItem.commit} label={`Copy commit id for ${refItem.name}`} />
-      </span>
-    </li>
   );
 }
 
@@ -213,10 +157,6 @@ export function GitRepoPage({ pubkey, identifier, relays }: GitRepoPageProps) {
       repo?.description ?? (repo ? `${repo.name} — a git repository announced on Nostr.` : undefined),
   });
 
-  const cloneUri = nostrCloneUri(pubkey, identifier);
-  const defaultBranch = state?.headBranch
-    ? state.branches.find((b) => b.name === state.headBranch)
-    : undefined;
   const updatedAt = repo
     ? Math.max(repo.createdAt, state?.createdAt ?? 0)
     : state?.createdAt;
@@ -244,17 +184,9 @@ export function GitRepoPage({ pubkey, identifier, relays }: GitRepoPageProps) {
                 <FolderGit2 className="size-7 text-primary" />
               </span>
               <div className="min-w-0 space-y-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
-                    {repo.name}
-                  </h1>
-                  {defaultBranch && (
-                    <Badge variant="outline" className="gap-1 font-mono text-xs">
-                      <GitBranch className="size-3" aria-hidden="true" />
-                      {defaultBranch.name}
-                    </Badge>
-                  )}
-                </div>
+                <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
+                  {repo.name}
+                </h1>
                 <p className="truncate font-mono text-sm text-muted-foreground">{identifier}</p>
               </div>
             </div>
@@ -305,134 +237,8 @@ export function GitRepoPage({ pubkey, identifier, relays }: GitRepoPageProps) {
             )}
           </header>
 
-          {/* ——— Clone ——— */}
-          <Card className="overflow-hidden">
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Link2 className="size-4 text-primary" aria-hidden="true" /> Clone this repository
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-1.5">
-                <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  <Sparkles className="size-3.5 text-nebula" aria-hidden="true" /> Over Nostr
-                  <span className="font-normal normal-case tracking-normal">
-                    — with{' '}
-                    <a
-                      href="https://gitworkshop.dev/ngit"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline decoration-dotted underline-offset-2 hover:text-foreground"
-                    >
-                      ngit
-                    </a>{' '}
-                    installed
-                  </span>
-                </p>
-                <CopyRow
-                  value={`git clone ${cloneUri}`}
-                  display={`git clone ${cloneUri}`}
-                  label="Copy nostr clone command"
-                  prominent
-                />
-              </div>
-
-              {repo.cloneUrls.length > 0 && (
-                <div className="space-y-1.5">
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Over HTTPS
-                  </p>
-                  <div className="space-y-2">
-                    {repo.cloneUrls.map((url) => {
-                      const hostname = new URL(url).hostname;
-                      const isGrasp = repo.graspServers.includes(hostname);
-                      return (
-                        <div key={url} className="flex items-center gap-2">
-                          <CopyRow value={url} label={`Copy clone URL for ${hostname}`} />
-                          {isGrasp && (
-                            <Badge
-                              variant="outline"
-                              className="hidden h-6 shrink-0 gap-1 border-nebula/40 text-nebula sm:inline-flex"
-                              title="GRASP server: a Nostr relay that also hosts the git objects"
-                            >
-                              <Sparkles className="size-3" aria-hidden="true" /> GRASP
-                            </Badge>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* ——— Files ——— */}
+          {/* ——— Files (clone, branches, and tags live in its header) ——— */}
           <RepoFileBrowser repo={repo} state={state} />
-
-          {/* ——— Branches & tags ——— */}
-          {state && (state.branches.length > 0 || state.tags.length > 0) ? (
-            <div className="grid gap-6 sm:grid-cols-2">
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <GitBranch className="size-4 text-primary" aria-hidden="true" />
-                    Branches
-                    <span className="text-sm font-normal text-muted-foreground">
-                      {state.branches.length}
-                    </span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {state.branches.length > 0 ? (
-                    <ul className="divide-y divide-border/60">
-                      {state.branches.map((branch) => (
-                        <RefRow
-                          key={branch.name}
-                          refItem={branch}
-                          isDefault={branch.name === state.headBranch}
-                        />
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="py-2 text-sm text-muted-foreground">No branches announced.</p>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <Tag className="size-4 text-nebula" aria-hidden="true" />
-                    Tags
-                    <span className="text-sm font-normal text-muted-foreground">
-                      {state.tags.length}
-                    </span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {state.tags.length > 0 ? (
-                    <ul className="divide-y divide-border/60">
-                      {state.tags.map((tag) => (
-                        <RefRow key={tag.name} refItem={tag} />
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="py-2 text-sm text-muted-foreground">No releases yet.</p>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          ) : (
-            <Card className="border-dashed">
-              <CardContent className="px-8 py-10 text-center">
-                <p className="mx-auto max-w-sm text-muted-foreground">
-                  No state announcement found — branches and tags for this repository are not being
-                  tracked on Nostr.
-                </p>
-              </CardContent>
-            </Card>
-          )}
 
           {/* ——— Discussion ——— */}
           <section className="space-y-4">
