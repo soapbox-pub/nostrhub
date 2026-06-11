@@ -4,12 +4,10 @@ import { Link } from 'react-router-dom';
 import { Plus, Zap } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { NipCard } from '@/components/NipCard';
-import { BreakingTicker } from '@/components/BreakingTicker';
-import { ExpertCoverStory } from '@/components/ExpertCoverStory';
-import { ExpertPanelStrip } from '@/components/ExpertPanelStrip';
 import { LeadArticleCard, ArticleCard } from '@/components/ArticleCards';
 import { PulseQuoteCard } from '@/components/PulseQuoteCard';
 import { DemoReelCard } from '@/components/DemoReelCard';
+import { UserAvatar } from '@/components/UserAvatar';
 import { useExpertPress } from '@/hooks/useExpertPress';
 import { useNostrSearch } from '@/hooks/useNostrSearch';
 import { useRankedNips, type RankedNip } from '@/hooks/useRankedNips';
@@ -23,6 +21,7 @@ import { noteExcerpt } from '@/lib/noteText';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
+import { AvatarGroup, AvatarGroupCount } from '@/components/ui/avatar';
 
 /** Adapt a community draft into the shape `NipCard` renders. */
 function draftToRanked(nip: CustomNip): RankedNip {
@@ -109,11 +108,13 @@ const Index = () => {
   });
 
   const hasExperts = experts.length > 0;
-  const [coverStar, ...panel] = experts;
+
+  // Hero avatar stack: up to 5 expert avatars, then a "+N" overflow count.
+  const shownExperts = experts.slice(0, 5);
+  const extraExperts = experts.length - shownExperts.length;
 
   const articles = press.data?.articles ?? [];
   const [leadArticle, ...moreArticles] = articles;
-  const tickerNotes = useMemo(() => (press.data?.notes ?? []).slice(0, 8), [press.data]);
   const pullQuotes = useMemo(
     () =>
       (press.data?.notes ?? [])
@@ -139,30 +140,58 @@ const Index = () => {
 
   return (
     <Layout className="max-w-6xl">
-      {/* ── Masthead ─────────────────────────────────────────────── */}
-      <header className="mb-6 space-y-4">
-        <div className="flex items-center justify-between gap-3 border-y-2 border-foreground/80 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.25em] sm:text-xs">
-          <span>Issue No. {issueNo}</span>
-          <span className="hidden sm:inline text-muted-foreground">{issueDate}</span>
-          <span className="rounded-sm bg-primary px-2 py-0.5 text-primary-foreground">
-            The Future Issue
-          </span>
-        </div>
+      {/* ── Issue strip ──────────────────────────────────────────── */}
+      <div className="mb-8 flex items-center justify-between gap-3 border-y-2 border-foreground/80 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.25em] sm:text-xs">
+        <span>Issue No. {issueNo}</span>
+        <span className="hidden sm:inline text-muted-foreground">{issueDate}</span>
+        <span className="rounded-sm bg-primary px-2 py-0.5 text-primary-foreground">
+          The Future Issue
+        </span>
+      </div>
 
-        <h1 className="text-center font-display text-6xl font-bold uppercase leading-[0.9] tracking-tighter sm:text-8xl">
-          Nostr<span className="text-cosmic">Hub</span>
+      {/* ── Hero ─────────────────────────────────────────────────── */}
+      <section className="relative mb-12 flex flex-col items-center gap-5 overflow-hidden rounded-3xl border border-primary/15 bg-card/40 px-6 py-14 text-center backdrop-blur-sm sm:py-20">
+        {/* Nebula halo behind the headline */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -top-24 left-1/2 size-[28rem] -translate-x-1/2 rounded-full bg-primary/25 blur-[120px]"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -bottom-32 right-0 size-72 rounded-full bg-nebula/20 blur-[110px]"
+        />
+
+        <h1 className="relative font-display text-4xl font-bold leading-[1.05] tracking-tight sm:text-6xl">
+          <span className="text-cosmic">Nostr</span> Powered by You
         </h1>
-        <p className="text-center text-lg text-muted-foreground">
-          The people building the next internet.
-        </p>
-      </header>
 
-      {/* ── Live wire ticker ─────────────────────────────────────── */}
-      {tickerNotes.length > 0 && (
-        <div className="mb-10">
-          <BreakingTicker notes={tickerNotes} />
-        </div>
-      )}
+        <p className="relative max-w-xl text-base text-muted-foreground sm:text-lg">
+          Explore the constellation of NIPs, draft new ideas, and steer the protocol forward — all
+          in the open.
+        </p>
+
+        {hasExperts && (
+          <div className="relative flex flex-col items-center gap-2">
+            <Link
+              to="/experts"
+              aria-label="View all experts"
+              className="rounded-full transition-transform hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
+              <AvatarGroup>
+                {shownExperts.map((pubkey) => (
+                  <UserAvatar key={pubkey} pubkey={pubkey} size="lg" />
+                ))}
+                {extraExperts > 0 && (
+                  <AvatarGroupCount className="text-sm">+{extraExperts}</AvatarGroupCount>
+                )}
+              </AvatarGroup>
+            </Link>
+            <span className="text-xs uppercase tracking-wider text-muted-foreground">
+              Curated by Nostr experts
+            </span>
+          </div>
+        )}
+      </section>
 
       <div className="space-y-14">
         {/* ── Subscription insert (no experts configured) ──────────── */}
@@ -182,14 +211,6 @@ const Index = () => {
               </Button>
             </CardContent>
           </Card>
-        )}
-
-        {/* ── The experts, front and center ────────────────────────── */}
-        {coverStar && (
-          <section className="space-y-4" aria-label="The expert panel">
-            <ExpertCoverStory pubkey={coverStar} />
-            <ExpertPanelStrip pubkeys={panel} />
-          </section>
         )}
 
         {/* ── The features (expert long-form articles) ─────────────── */}

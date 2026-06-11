@@ -303,17 +303,6 @@
   }
 }
 
-/* Endless news-ticker scroll: the track holds two identical copies of its
-   content, so sliding by -50% loops seamlessly. */
-@keyframes marquee {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-50%);
-  }
-}
-
 @keyframes float-slow {
   0%,
   100% {
