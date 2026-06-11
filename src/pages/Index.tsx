@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useSeoMeta } from '@unhead/react';
 import { Link } from 'react-router-dom';
-import { Plus, Zap } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { NipCard } from '@/components/NipCard';
 import { LeadArticleCard, ArticleCard } from '@/components/ArticleCards';
@@ -132,42 +132,22 @@ const Index = () => {
   const topNips = ranked.slice(0, 7);
   const drafts = (draftsQuery.data ?? []).slice(0, 6);
 
-  // Issue numbering counted from Nostr's genesis (fiatjaf's first relay,
-  // November 2020), so every month really is a new issue.
-  const now = new Date();
-  const issueNo = (now.getFullYear() - 2020) * 12 + now.getMonth() - 10 + 1;
-  const issueDate = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-
   return (
     <Layout className="max-w-6xl">
-      {/* ── Issue strip ──────────────────────────────────────────── */}
-      <div className="mb-8 flex items-center justify-between gap-3 border-y-2 border-foreground/80 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.25em] sm:text-xs">
-        <span>Issue No. {issueNo}</span>
-        <span className="hidden sm:inline text-muted-foreground">{issueDate}</span>
-        <span className="rounded-sm bg-primary px-2 py-0.5 text-primary-foreground">
-          The Future Issue
-        </span>
-      </div>
-
-      {/* ── Hero ─────────────────────────────────────────────────── */}
-      <section className="relative mb-12 flex flex-col items-center gap-5 overflow-hidden rounded-3xl border border-primary/15 bg-card/40 px-6 py-14 text-center backdrop-blur-sm sm:py-20">
-        {/* Nebula halo behind the headline */}
+      {/* ── Masthead ─────────────────────────────────────────────── */}
+      <header className="relative mb-14 flex flex-col items-center gap-5 pt-8 text-center sm:pt-12">
+        {/* Nebula halo behind the wordmark */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute -top-24 left-1/2 size-[28rem] -translate-x-1/2 rounded-full bg-primary/25 blur-[120px]"
-        />
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -bottom-32 right-0 size-72 rounded-full bg-nebula/20 blur-[110px]"
+          className="pointer-events-none absolute -top-16 left-1/2 size-[28rem] -translate-x-1/2 rounded-full bg-primary/20 blur-[120px]"
         />
 
-        <h1 className="relative font-display text-4xl font-bold leading-[1.05] tracking-tight sm:text-6xl">
-          <span className="text-cosmic">Nostr</span> Powered by You
+        <h1 className="relative font-display text-6xl font-bold uppercase leading-[0.9] tracking-tighter sm:text-8xl">
+          Nostr<span className="text-cosmic">Hub</span>
         </h1>
 
-        <p className="relative max-w-xl text-base text-muted-foreground sm:text-lg">
-          Explore the constellation of NIPs, draft new ideas, and steer the protocol forward — all
-          in the open.
+        <p className="relative text-lg text-muted-foreground sm:text-xl">
+          The people building the next internet.
         </p>
 
         {hasExperts && (
@@ -191,7 +171,7 @@ const Index = () => {
             </span>
           </div>
         )}
-      </section>
+      </header>
 
       <div className="space-y-14">
         {/* ── Subscription insert (no experts configured) ──────────── */}
@@ -353,24 +333,6 @@ const Index = () => {
             )}
           </div>
         </section>
-
-        {/* ── Barcode strip ─────────────────────────────────────────── */}
-        <footer className="flex flex-wrap items-center justify-between gap-4 border-t-2 border-foreground/80 pt-4">
-          <div className="flex items-center gap-3">
-            <div
-              aria-hidden="true"
-              className="h-10 w-24 text-foreground/80 bg-[repeating-linear-gradient(90deg,currentColor_0,currentColor_2px,transparent_2px,transparent_5px)]"
-            />
-            <div className="font-mono text-[10px] uppercase leading-tight text-muted-foreground">
-              <p>NostrHub Monthly · Vol. {now.getFullYear() - 2019}</p>
-              <p>Display until the heat death of the universe</p>
-            </div>
-          </div>
-          <p className="flex items-center gap-1.5 font-mono text-[10px] uppercase text-muted-foreground">
-            <Zap className="size-3 text-primary" aria-hidden="true" />
-            Price: 0 sats · Free forever
-          </p>
-        </footer>
       </div>
     </Layout>
   );
