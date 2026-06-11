@@ -9,6 +9,7 @@ import { useNostrPublish } from '@/hooks/useNostrPublish';
 import { useToast } from '@/hooks/useToast';
 import { useQueryClient } from '@tanstack/react-query';
 import { CommentForm } from './CommentForm';
+import { NoteContent } from '@/components/NoteContent';
 import { UserAvatar } from '@/components/UserAvatar';
 import { shortNpub } from '@/lib/nostr';
 import { Button } from '@/components/ui/button';
@@ -120,7 +121,9 @@ export function Comment({ root, comment, depth = 0, maxDepth = 3, limit, communi
               </div>
             </div>
 
-            <div className="whitespace-pre-wrap break-words text-sm leading-relaxed">{comment.content}</div>
+            <div className="text-sm leading-relaxed">
+              <NoteContent event={comment} disableNoteEmbeds disableMediaEmbeds />
+            </div>
 
             <div className="flex items-center justify-between pt-2">
               <div className="flex items-center space-x-2">

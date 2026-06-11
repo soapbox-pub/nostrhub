@@ -5,10 +5,9 @@ import { Link } from 'react-router-dom';
 import { nip19 } from 'nostr-tools';
 import type { NostrEvent } from '@nostrify/nostrify';
 import { Layout } from '@/components/Layout';
-import { ChatMessageContent } from '@/components/chat/ChatMessageContent';
+import { NoteContent } from '@/components/NoteContent';
 import { UserAvatar } from '@/components/UserAvatar';
 import { useAuthor } from '@/hooks/useAuthor';
-import { noteImageUrls } from '@/lib/noteText';
 import { shortNpub } from '@/lib/nostr';
 import { SEARCH_RELAYS } from '@/lib/searchRelays';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -81,7 +80,6 @@ export function NotePage({ id }: { id: string }) {
 
   const npub = nip19.npubEncode(event.pubkey);
   const date = new Date(event.created_at * 1000);
-  const images = noteImageUrls(event);
 
   return (
     <Layout className="max-w-2xl">
@@ -107,21 +105,8 @@ export function NotePage({ id }: { id: string }) {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="text-lg leading-relaxed">
-            <ChatMessageContent content={event.content} />
+            <NoteContent event={event} />
           </div>
-          {images.length > 0 && (
-            <div className={images.length > 1 ? 'grid grid-cols-2 gap-2' : ''}>
-              {images.map((url) => (
-                <img
-                  key={url}
-                  src={url}
-                  alt=""
-                  loading="lazy"
-                  className="max-h-[28rem] w-full rounded-xl border border-border/60 object-cover"
-                />
-              ))}
-            </div>
-          )}
         </CardContent>
       </Card>
     </Layout>

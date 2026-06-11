@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/useToast';
 import { useQueryClient } from '@tanstack/react-query';
 import { UserAvatar } from '@/components/UserAvatar';
 import { AiAvatar } from './AiAvatar';
-import { ChatMessageContent } from './ChatMessageContent';
+import { NoteContent } from '@/components/NoteContent';
 import { isAiContent } from '@/lib/ai';
 import { shortNpub } from '@/lib/nostr';
 import { cn } from '@/lib/utils';
@@ -128,7 +128,7 @@ export function ChatMessage({ message, grouped = false }: ChatMessageProps) {
           </div>
         )}
         <div className="text-sm leading-relaxed text-foreground">
-          <ChatMessageContent content={message.content} />
+          <NoteContent event={message} />
         </div>
       </div>
 
