@@ -3,6 +3,8 @@ import { addDays, format, isAfter, startOfDay } from 'date-fns';
 import {
   useContributionActivity,
   activityWindowStart,
+  type ContributionCategory,
+  type DayActivity,
 } from '@/hooks/useContributionActivity';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -21,6 +23,27 @@ function intensity(count: number, max: number): number {
   if (count <= 0) return 0;
   if (max <= 0) return 1;
   return Math.min(4, Math.max(1, Math.ceil((count / max) * 4)));
+}
+
+/** Singular/plural tooltip names per contribution category. */
+const CATEGORY_NAMES: Record<ContributionCategory, [string, string]> = {
+  code: ['patch/PR', 'patches/PRs'],
+  issue: ['issue', 'issues'],
+  nip: ['NIP', 'NIPs'],
+  repo: ['repo update', 'repo updates'],
+};
+
+/** Tooltip suffix like ": 2 patches/PRs, 1 NIP". */
+function breakdown(activity: DayActivity | undefined): string {
+  if (!activity || activity.total === 0) return '';
+  const parts = (Object.keys(CATEGORY_NAMES) as ContributionCategory[])
+    .map((category) => {
+      const count = activity.categories[category];
+      if (!count) return null;
+      return `${count} ${CATEGORY_NAMES[category][count === 1 ? 0 : 1]}`;
+    })
+    .filter((part): part is string => part !== null);
+  return parts.length > 0 ? `: ${parts.join(', ')}` : '';
 }
 
 interface Week {
@@ -52,7 +75,7 @@ export function ContributionHeatmap({ pubkey }: { pubkey: string }) {
   const weeks = useMemo(() => buildWeeks(), []);
 
   const max = useMemo(
-    () => Math.max(0, ...Object.values(data?.days ?? {})),
+    () => Math.max(0, ...Object.values(data?.days ?? {}).map((d) => d.total)),
     [data?.days],
   );
 
@@ -120,8 +143,9 @@ export function ContributionHeatmap({ pubkey }: { pubkey: string }) {
                         return <span key={di} className="size-[10px]" aria-hidden="true" />;
                       }
                       const key = format(day, 'yyyy-MM-dd');
-                      const count = data?.days[key] ?? 0;
-                      const label = `${count} contribution${count === 1 ? '' : 's'} on ${format(day, 'MMM d, yyyy')}`;
+                      const activity = data?.days[key];
+                      const count = activity?.total ?? 0;
+                      const label = `${count} contribution${count === 1 ? '' : 's'} on ${format(day, 'MMM d, yyyy')}${breakdown(activity)}`;
                       return (
                         <span
                           key={di}
