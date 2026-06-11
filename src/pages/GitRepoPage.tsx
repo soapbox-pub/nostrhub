@@ -19,6 +19,7 @@ import {
 import { Layout } from '@/components/Layout';
 import { UserAvatar } from '@/components/UserAvatar';
 import { CopyButton } from '@/components/git/CopyButton';
+import { RepoFileBrowser } from '@/components/git/RepoFileBrowser';
 import { CommentsSection } from '@/components/comments/CommentsSection';
 import { useGitRepo } from '@/hooks/useGitRepo';
 import { useAuthor } from '@/hooks/useAuthor';
@@ -365,6 +366,9 @@ export function GitRepoPage({ pubkey, identifier, relays }: GitRepoPageProps) {
               )}
             </CardContent>
           </Card>
+
+          {/* ——— Files ——— */}
+          <RepoFileBrowser repo={repo} state={state} />
 
           {/* ——— Branches & tags ——— */}
           {state && (state.branches.length > 0 || state.tags.length > 0) ? (
