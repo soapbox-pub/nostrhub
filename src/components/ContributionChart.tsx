@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { addDays, addMonths, format, parseISO, startOfDay, startOfMonth, startOfWeek, subDays } from 'date-fns';
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import {
   useContributionActivity,
   type ContributionCategory,
@@ -90,8 +90,9 @@ function buildBuckets(spec: WindowSpec): { key: string; label: string }[] {
 }
 
 /**
- * Time-series bar chart of a user's contributions (patches/PRs, issues, NIPs,
- * repo updates), stacked by category, over a selectable trailing window.
+ * Time-series chart of a user's contributions (patches/PRs, issues, NIPs,
+ * repo updates) — one gradient-filled line per category, matching the active
+ * users chart, over a selectable trailing window.
  */
 export function ContributionChart({ pubkey }: { pubkey: string }) {
   const [window, setWindow] = useState<WindowKey>('7d');
@@ -151,7 +152,22 @@ export function ContributionChart({ pubkey }: { pubkey: string }) {
           <Skeleton className="h-[200px] w-full" />
         ) : (
           <ChartContainer config={chartConfig} className="h-[200px] w-full">
-            <BarChart data={series} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+            <AreaChart data={series} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+              <defs>
+                {CATEGORIES.map((category) => (
+                  <linearGradient
+                    key={category}
+                    id={`fill-contrib-${category}`}
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="1"
+                  >
+                    <stop offset="0%" stopColor={`var(--color-${category})`} stopOpacity={0.3} />
+                    <stop offset="100%" stopColor={`var(--color-${category})`} stopOpacity={0.02} />
+                  </linearGradient>
+                ))}
+              </defs>
               <CartesianGrid vertical={false} strokeDasharray="3 3" />
               <XAxis
                 dataKey="label"
@@ -171,16 +187,19 @@ export function ContributionChart({ pubkey }: { pubkey: string }) {
               />
               <ChartTooltip content={<ChartTooltipContent />} />
               <ChartLegend content={<ChartLegendContent />} />
-              {CATEGORIES.map((category, i) => (
-                <Bar
+              {CATEGORIES.map((category) => (
+                <Area
                   key={category}
+                  type="monotone"
                   dataKey={category}
-                  stackId="contributions"
-                  fill={`var(--color-${category})`}
-                  radius={i === CATEGORIES.length - 1 ? [2, 2, 0, 0] : 0}
+                  stroke={`var(--color-${category})`}
+                  strokeWidth={2}
+                  fill={`url(#fill-contrib-${category})`}
+                  dot={false}
+                  activeDot={{ r: 4, strokeWidth: 2 }}
                 />
               ))}
-            </BarChart>
+            </AreaChart>
           </ChartContainer>
         )}
       </CardContent>
