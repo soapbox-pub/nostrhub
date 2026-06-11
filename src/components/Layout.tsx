@@ -1,5 +1,4 @@
 import { Link, NavLink } from 'react-router-dom';
-import { Zap } from 'lucide-react';
 import { LoginArea } from '@/components/auth/LoginArea';
 import { SearchBar } from '@/components/SearchBar';
 import { cn } from '@/lib/utils';
@@ -137,42 +136,31 @@ export function Layout({ children, sidebar, className, fullBleed = false }: Layo
 /** Editorial footer rendered once at the bottom of the content column. */
 function SiteFooter() {
   return (
-    <footer className="mt-16 space-y-5 border-t border-border/60 pt-6">
-      {/* Barcode strip */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div
-            aria-hidden="true"
-            className="h-9 w-20 text-foreground/70 bg-[repeating-linear-gradient(90deg,currentColor_0,currentColor_2px,transparent_2px,transparent_5px)]"
-          />
-          <div className="font-mono text-[10px] uppercase leading-tight text-muted-foreground">
-            <p>NostrHub Monthly</p>
-            <p>Display until the heat death of the universe</p>
-          </div>
+    <footer className="mt-16 flex flex-wrap items-center justify-between gap-4 border-t border-border/60 pt-6">
+      <div className="flex items-center gap-3">
+        <div
+          aria-hidden="true"
+          className="h-9 w-20 text-foreground/70 bg-[repeating-linear-gradient(90deg,currentColor_0,currentColor_2px,transparent_2px,transparent_5px)]"
+        />
+        <div className="font-mono text-[10px] uppercase leading-tight text-muted-foreground">
+          <p className="flex items-center gap-1.5">
+            <span className="inline-block size-1 rounded-full bg-nebula shadow-[0_0_8px] shadow-nebula/70" aria-hidden="true" />
+            Build the Nostr protocol together
+          </p>
+          <p>Display until the heat death of the universe</p>
         </div>
-        <p className="flex items-center gap-1.5 font-mono text-[10px] uppercase text-muted-foreground">
-          <Zap className="size-3 text-primary" aria-hidden="true" />
-          Price: 0 sats · Free forever
-        </p>
       </div>
-
-      <div className="flex flex-col items-center justify-between gap-2 text-sm text-muted-foreground sm:flex-row">
-        <p className="flex items-center gap-1.5">
-          <span className="inline-block size-1.5 rounded-full bg-nebula shadow-[0_0_8px] shadow-nebula/70" aria-hidden="true" />
-          Build the Nostr protocol together.
-        </p>
-        <p>
-          Vibed with{' '}
-          <a
-            href="https://soapbox.pub/mkstack"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-medium text-foreground hover:text-primary"
-          >
-            MKStack
-          </a>
-        </p>
-      </div>
+      <p className="font-mono text-[10px] uppercase text-muted-foreground">
+        Vibed with{' '}
+        <a
+          href="https://soapbox.pub/mkstack"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium text-foreground hover:text-primary"
+        >
+          MKStack
+        </a>
+      </p>
     </footer>
   );
 }
