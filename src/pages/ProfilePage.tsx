@@ -5,7 +5,7 @@ import { BadgeCheck, FileText, FolderGit2, Globe, Zap } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { UserAvatar } from '@/components/UserAvatar';
 import { NipCard } from '@/components/NipCard';
-import { ContributionHeatmap } from '@/components/ContributionHeatmap';
+import { ContributionChart } from '@/components/ContributionChart';
 import { RepoList, RepoListItem, RepoListItemSkeleton } from '@/components/git/RepoListItem';
 import { CopyButton } from '@/components/git/CopyButton';
 import { ExpertToggleButton } from '@/components/ExpertToggleButton';
@@ -185,8 +185,8 @@ export function ProfilePage({ pubkey }: ProfilePageProps) {
           )}
         </header>
 
-        {/* Activity heatmap */}
-        <ContributionHeatmap pubkey={pubkey} />
+        {/* Activity over time */}
+        <ContributionChart pubkey={pubkey} />
 
         {/* Contributions */}
         <Tabs defaultValue="nips" className="pt-2">

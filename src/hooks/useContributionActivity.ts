@@ -1,6 +1,7 @@
 import { useNostr } from '@nostrify/react';
 import { useQuery } from '@tanstack/react-query';
-import { format, startOfWeek, subDays } from 'date-fns';
+import { format } from 'date-fns';
+import { ago, DAY } from '@/lib/timeRanges';
 import { CUSTOM_NIP_KIND } from '@/lib/nips';
 import { GIT_REPO_KIND, GIT_STATE_KIND } from '@/lib/git';
 
@@ -57,28 +58,19 @@ export interface ContributionActivity {
 }
 
 /**
- * Start of the heatmap window. Snapped to a week boundary (Sunday, explicit
- * rather than locale-dependent) so every column of the 7-row grid is a full
- * week — without this the first column would be a partial week and all
- * subsequent column boundaries would drift.
+ * Count a user's contributions per day over the trailing `windowDays`. Pages
+ * backwards through relay results with `until` until the window is exhausted,
+ * since relays cap result counts silently.
  */
-export function activityWindowStart(now = new Date()): Date {
-  return startOfWeek(subDays(now, 364), { weekStartsOn: 0 });
-}
-
-/**
- * Count a user's contributions per day over the last year for the profile
- * heatmap. Pages backwards through relay results with `until` until the
- * window is exhausted, since relays cap result counts silently.
- */
-export function useContributionActivity(pubkey: string) {
+export function useContributionActivity(pubkey: string, windowDays: number) {
   const { nostr } = useNostr();
 
-  return useQuery<ContributionActivity>({
-    queryKey: ['contribution-activity', pubkey],
-    queryFn: async ({ signal }) => {
-      const since = Math.floor(activityWindowStart().getTime() / 1000);
+  // `ago` snaps to the hour, keeping the query key stable across renders.
+  const since = ago(windowDays * DAY);
 
+  return useQuery<ContributionActivity>({
+    queryKey: ['contribution-activity', pubkey, since],
+    queryFn: async ({ signal }) => {
       const days: Record<string, DayActivity> = {};
       const seen = new Set<string>();
       let total = 0;
