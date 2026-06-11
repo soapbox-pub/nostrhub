@@ -304,11 +304,7 @@ const Index = () => {
             subtitle="Fresh NIP drafts from the community lab."
             action={
               user && (
-                <Button
-                  asChild
-                  size="sm"
-                  className="rotate-[-2deg] gap-1.5 rounded-full shadow-lg shadow-primary/25 transition-transform motion-safe:hover:rotate-0 motion-safe:hover:scale-105"
-                >
+                <Button asChild size="sm" className="gap-1.5 rounded-full shadow-lg shadow-primary/25">
                   <Link to="/create">
                     <PenLine className="size-4" />
                     Draft a New NIP
