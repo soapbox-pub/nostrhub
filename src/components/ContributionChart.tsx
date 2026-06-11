@@ -17,7 +17,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
-type WindowKey = '30d' | '90d' | '1y';
+type WindowKey = '7d' | '30d' | '90d' | '1y';
 
 interface WindowSpec {
   label: string;
@@ -26,9 +26,10 @@ interface WindowSpec {
 }
 
 const WINDOWS: Record<WindowKey, WindowSpec> = {
+  '7d': { label: '7 days', days: 7, bucket: 'day' },
   '30d': { label: '30 days', days: 30, bucket: 'day' },
   '90d': { label: '90 days', days: 90, bucket: 'week' },
-  '1y': { label: '1 year', days: 365, bucket: 'month' },
+  '1y': { label: 'year', days: 365, bucket: 'month' },
 };
 
 const chartConfig: ChartConfig = {
@@ -93,7 +94,7 @@ function buildBuckets(spec: WindowSpec): { key: string; label: string }[] {
  * repo updates), stacked by category, over a selectable trailing window.
  */
 export function ContributionChart({ pubkey }: { pubkey: string }) {
-  const [window, setWindow] = useState<WindowKey>('90d');
+  const [window, setWindow] = useState<WindowKey>('7d');
   const spec = WINDOWS[window];
   const { data, isLoading } = useContributionActivity(pubkey, spec.days);
 

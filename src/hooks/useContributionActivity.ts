@@ -1,6 +1,7 @@
 import { useNostr } from '@nostrify/react';
-import { useQuery } from '@tanstack/react-query';
+import { useQueries } from '@tanstack/react-query';
 import { format } from 'date-fns';
+import type { NostrEvent, NostrFilter } from '@nostrify/nostrify';
 import { ago, DAY } from '@/lib/timeRanges';
 import { CUSTOM_NIP_KIND } from '@/lib/nips';
 import { GIT_REPO_KIND, GIT_STATE_KIND } from '@/lib/git';
@@ -42,8 +43,15 @@ const CONTRIBUTION_KINDS = Object.keys(KIND_CATEGORIES).map(Number);
 
 /** Relay page size; most public relays silently cap results around 500. */
 const PAGE_SIZE = 500;
-/** Hard ceiling on pagination round-trips. */
+/** Hard ceiling on pagination round-trips per segment. */
 const MAX_PAGES = 10;
+
+/**
+ * Backfill segment boundaries, in days ago. The trailing window is fetched as
+ * contiguous segments (0-7, 7-30, 30-90, 90-365) so widening the window only
+ * fetches the older slice — already-cached segments are reused as-is.
+ */
+const SEGMENT_BOUNDS = [0, 7, 30, 90, 365];
 
 export interface DayActivity {
   total: number;
@@ -58,56 +66,106 @@ export interface ContributionActivity {
 }
 
 /**
- * Count a user's contributions per day over the trailing `windowDays`. Pages
- * backwards through relay results with `until` until the window is exhausted,
- * since relays cap result counts silently.
+ * Fetch and bucket one segment of the window. Pages backwards through relay
+ * results with `until`, since relays cap result counts silently.
+ */
+async function fetchSegment(
+  query: (filters: NostrFilter[], opts: { signal: AbortSignal }) => Promise<NostrEvent[]>,
+  pubkey: string,
+  since: number,
+  segmentUntil: number | undefined,
+  signal: AbortSignal,
+): Promise<ContributionActivity> {
+  const days: Record<string, DayActivity> = {};
+  const seen = new Set<string>();
+  let total = 0;
+  let until = segmentUntil;
+
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const events = await query(
+      [{ authors: [pubkey], kinds: CONTRIBUTION_KINDS, since, until, limit: PAGE_SIZE }],
+      { signal: AbortSignal.any([signal, AbortSignal.timeout(8000)]) },
+    );
+
+    let oldest = Infinity;
+    let added = 0;
+
+    for (const ev of events) {
+      oldest = Math.min(oldest, ev.created_at);
+      if (seen.has(ev.id) || ev.created_at < since) continue;
+      seen.add(ev.id);
+      added++;
+      total++;
+
+      const category = KIND_CATEGORIES[ev.kind];
+      if (!category) continue;
+      const key = format(new Date(ev.created_at * 1000), 'yyyy-MM-dd');
+      const day = (days[key] ??= { total: 0, categories: {} });
+      day.total++;
+      day.categories[category] = (day.categories[category] ?? 0) + 1;
+    }
+
+    // Segment exhausted: empty page, page reached past the segment start,
+    // or nothing new (relay ignored `until` / returned duplicates).
+    if (events.length === 0 || oldest <= since || added === 0) break;
+    until = oldest - 1;
+  }
+
+  return { days, total };
+}
+
+/**
+ * Count a user's contributions per day over the trailing `windowDays`,
+ * fetched as independently-cached backfill segments and merged.
  */
 export function useContributionActivity(pubkey: string, windowDays: number) {
   const { nostr } = useNostr();
 
-  // `ago` snaps to the hour, keeping the query key stable across renders.
-  const since = ago(windowDays * DAY);
+  // Segments (in days ago) needed to cover the requested window.
+  const segments: { newer: number; older: number }[] = [];
+  for (let i = 0; i < SEGMENT_BOUNDS.length - 1; i++) {
+    if (SEGMENT_BOUNDS[i] >= windowDays) break;
+    segments.push({
+      newer: SEGMENT_BOUNDS[i],
+      older: Math.min(SEGMENT_BOUNDS[i + 1], windowDays),
+    });
+  }
 
-  return useQuery<ContributionActivity>({
-    queryKey: ['contribution-activity', pubkey, since],
-    queryFn: async ({ signal }) => {
-      const days: Record<string, DayActivity> = {};
-      const seen = new Set<string>();
-      let total = 0;
-      let until: number | undefined;
-
-      for (let page = 0; page < MAX_PAGES; page++) {
-        const events = await nostr.query(
-          [{ authors: [pubkey], kinds: CONTRIBUTION_KINDS, since, until, limit: PAGE_SIZE }],
-          { signal: AbortSignal.any([signal, AbortSignal.timeout(8000)]) },
-        );
-
-        let oldest = Infinity;
-        let added = 0;
-
-        for (const ev of events) {
-          oldest = Math.min(oldest, ev.created_at);
-          if (seen.has(ev.id) || ev.created_at < since) continue;
-          seen.add(ev.id);
-          added++;
-          total++;
-
-          const category = KIND_CATEGORIES[ev.kind];
-          if (!category) continue;
-          const key = format(new Date(ev.created_at * 1000), 'yyyy-MM-dd');
-          const day = (days[key] ??= { total: 0, categories: {} });
-          day.total++;
-          day.categories[category] = (day.categories[category] ?? 0) + 1;
-        }
-
-        // Window exhausted: empty page, page reached past the window start,
-        // or nothing new (relay ignored `until` / returned duplicates).
-        if (events.length === 0 || oldest <= since || added === 0) break;
-        until = oldest - 1;
+  return useQueries({
+    queries: segments.map(({ newer, older }) => ({
+      // Keyed by day offsets (not timestamps) so cache entries survive
+      // re-renders and hour ticks.
+      queryKey: ['contribution-activity', pubkey, newer, older],
+      queryFn: ({ signal }: { signal: AbortSignal }) => {
+        // `ago` snaps to the hour; adjacent segments share the boundary
+        // expression, making them contiguous and non-overlapping.
+        const since = ago(older * DAY);
+        const until = newer === 0 ? undefined : ago(newer * DAY) - 1;
+        return fetchSegment(nostr.query.bind(nostr), pubkey, since, until, signal);
+      },
+      staleTime: 5 * 60 * 1000,
+    })),
+    combine: (results) => {
+      const isLoading = results.some((r) => r.isLoading);
+      if (isLoading || results.some((r) => !r.data)) {
+        return { data: undefined, isLoading };
       }
 
-      return { days, total };
+      const days: Record<string, DayActivity> = {};
+      let total = 0;
+      for (const r of results) {
+        total += r.data!.total;
+        for (const [key, activity] of Object.entries(r.data!.days)) {
+          const day = (days[key] ??= { total: 0, categories: {} });
+          day.total += activity.total;
+          for (const [category, count] of Object.entries(activity.categories)) {
+            const c = category as ContributionCategory;
+            day.categories[c] = (day.categories[c] ?? 0) + count;
+          }
+        }
+      }
+
+      return { data: { days, total } satisfies ContributionActivity, isLoading };
     },
-    staleTime: 5 * 60 * 1000,
   });
 }
