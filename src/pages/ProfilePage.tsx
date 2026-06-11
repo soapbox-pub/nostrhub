@@ -6,7 +6,7 @@ import { Layout } from '@/components/Layout';
 import { UserAvatar } from '@/components/UserAvatar';
 import { NipCard } from '@/components/NipCard';
 import { ContributionHeatmap } from '@/components/ContributionHeatmap';
-import { RepoListItem, RepoListItemSkeleton } from '@/components/git/RepoListItem';
+import { RepoList, RepoListItem, RepoListItemSkeleton } from '@/components/git/RepoListItem';
 import { CopyButton } from '@/components/git/CopyButton';
 import { ExpertToggleButton } from '@/components/ExpertToggleButton';
 import { useAuthor } from '@/hooks/useAuthor';
@@ -231,15 +231,15 @@ export function ProfilePage({ pubkey }: ProfilePageProps) {
 
           <TabsContent value="repos" className="mt-4">
             {reposQuery.isLoading ? (
-              <div className="divide-y divide-border/60">
+              <RepoList>
                 {Array.from({ length: 3 }).map((_, i) => (
                   <RepoListItemSkeleton key={i} />
                 ))}
-              </div>
+              </RepoList>
             ) : repos.length === 0 ? (
               <EmptyState message={`${displayName} hasn't announced any repositories yet.`} />
             ) : (
-              <div className="divide-y divide-border/60">
+              <RepoList>
                 {repos.map((repo) => (
                   <RepoListItem
                     key={`${repo.pubkey}:${repo.identifier}`}
@@ -247,7 +247,7 @@ export function ProfilePage({ pubkey }: ProfilePageProps) {
                     showAuthor={false}
                   />
                 ))}
-              </div>
+              </RepoList>
             )}
           </TabsContent>
         </Tabs>

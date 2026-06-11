@@ -7,7 +7,17 @@ import { useAuthor } from '@/hooks/useAuthor';
 import { shortNpub } from '@/lib/nostr';
 import { repoNaddr, type GitRepoAnnouncement } from '@/lib/git';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+
+/** Card-backed container for `RepoListItem` rows, with dividers between rows. */
+export function RepoList({ children }: { children: React.ReactNode }) {
+  return (
+    <Card className="border-border/70 bg-card/60 py-2 backdrop-blur-sm">
+      <CardContent className="divide-y divide-border/60 px-5">{children}</CardContent>
+    </Card>
+  );
+}
 
 interface RepoListItemProps {
   repo: GitRepoAnnouncement;
@@ -33,7 +43,7 @@ export function RepoListItem({ repo, showAuthor = true }: RepoListItemProps) {
   })();
 
   return (
-    <div className="flex flex-col gap-2 py-5 first:pt-2 last:pb-2">
+    <div className="flex flex-col gap-2 py-5 first:pt-3 last:pb-3">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <Link
           to={`/${naddr}`}
@@ -91,7 +101,7 @@ export function RepoListItem({ repo, showAuthor = true }: RepoListItemProps) {
 /** Loading placeholder matching the RepoListItem layout. */
 export function RepoListItemSkeleton() {
   return (
-    <div className="space-y-2.5 py-5 first:pt-2 last:pb-2">
+    <div className="space-y-2.5 py-5 first:pt-3 last:pb-3">
       <Skeleton className="h-5 w-48" />
       <Skeleton className="h-4 w-full max-w-prose" />
       <Skeleton className="h-4 w-2/3 max-w-prose" />

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useSeoMeta } from '@unhead/react';
 import { Search, X } from 'lucide-react';
 import { Layout } from '@/components/Layout';
-import { RepoListItem, RepoListItemSkeleton } from '@/components/git/RepoListItem';
+import { RepoList, RepoListItem, RepoListItemSkeleton } from '@/components/git/RepoListItem';
 import { useGitRepos } from '@/hooks/useGitRepos';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -103,11 +103,11 @@ export function GitReposPage() {
         </div>
 
         {isLoading ? (
-          <div className="divide-y divide-border/60">
+          <RepoList>
             {Array.from({ length: 6 }).map((_, i) => (
               <RepoListItemSkeleton key={i} />
             ))}
-          </div>
+          </RepoList>
         ) : filtered.length === 0 ? (
           <Card className="border-dashed">
             <CardContent className="px-8 py-12 text-center">
@@ -119,11 +119,11 @@ export function GitReposPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="divide-y divide-border/60">
+          <RepoList>
             {filtered.map((repo) => (
               <RepoListItem key={`${repo.pubkey}:${repo.identifier}`} repo={repo} />
             ))}
-          </div>
+          </RepoList>
         )}
       </div>
     </Layout>
