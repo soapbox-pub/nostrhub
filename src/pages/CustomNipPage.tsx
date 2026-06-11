@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useSeoMeta } from '@unhead/react';
+import { nip19 } from 'nostr-tools';
 import { ArrowLeft, GitFork, AlertCircle, Pencil } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { MarkdownContent } from '@/components/MarkdownContent';
@@ -69,7 +70,7 @@ export function CustomNipPage({ naddr }: { naddr: string }) {
             <h1 className="text-3xl font-bold tracking-tight">{nip.title}</h1>
 
             <div className="flex flex-wrap items-center gap-3">
-              <Link to={`/${nip.author}`} className="flex items-center gap-2 hover:text-primary">
+              <Link to={`/${nip19.npubEncode(nip.author)}`} className="flex items-center gap-2 hover:text-primary">
                 <UserAvatar pubkey={nip.author} size="sm" />
                 <span className="text-sm font-medium">{authorName}</span>
               </Link>

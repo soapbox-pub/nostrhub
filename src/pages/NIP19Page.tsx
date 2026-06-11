@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import NotFound from './NotFound';
 import { CustomNipPage } from './CustomNipPage';
 import { GitRepoPage } from './GitRepoPage';
+import { ProfilePage } from './ProfilePage';
 import { CUSTOM_NIP_KIND } from '@/lib/nips';
 import { GIT_REPO_KIND, GIT_STATE_KIND } from '@/lib/git';
 
@@ -24,9 +25,10 @@ export function NIP19Page() {
 
   switch (type) {
     case 'npub':
+      return <ProfilePage pubkey={decoded.data} />;
+
     case 'nprofile':
-      // Profile view implemented in a later phase.
-      return <div>Profile placeholder</div>;
+      return <ProfilePage pubkey={decoded.data.pubkey} />;
 
     case 'note':
       return <div>Note placeholder</div>;

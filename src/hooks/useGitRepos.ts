@@ -12,6 +12,8 @@ import {
 export interface UseGitReposOptions {
   /** Restrict to a `t` hashtag (relay-side `#t` filter). */
   hashtag?: string;
+  /** Restrict to these author pubkeys (hex). */
+  authors?: string[];
   limit?: number;
 }
 
@@ -25,10 +27,10 @@ export interface UseGitReposOptions {
 export function useGitRepos(options: UseGitReposOptions = {}) {
   const { nostr } = useNostr();
   const { config } = useAppContext();
-  const { hashtag, limit = 150 } = options;
+  const { hashtag, authors, limit = 150 } = options;
 
   return useQuery<GitRepoAnnouncement[]>({
-    queryKey: ['git-repos', hashtag ?? null, limit],
+    queryKey: ['git-repos', hashtag ?? null, authors ? [...authors].sort() : null, limit],
     queryFn: async ({ signal }) => {
       const readRelays = config.relayMetadata.relays
         .filter((r) => r.read)
@@ -36,11 +38,12 @@ export function useGitRepos(options: UseGitReposOptions = {}) {
 
       const urls = new Set<string>([...GIT_DISCOVERY_RELAYS, ...readRelays]);
 
-      const filter: { kinds: number[]; limit: number; '#t'?: string[] } = {
+      const filter: { kinds: number[]; limit: number; '#t'?: string[]; authors?: string[] } = {
         kinds: [GIT_REPO_KIND],
         limit,
       };
       if (hashtag) filter['#t'] = [hashtag.toLowerCase()];
+      if (authors && authors.length > 0) filter.authors = authors;
 
       const events = await nostr.group([...urls].slice(0, 10)).query([filter], {
         signal: AbortSignal.any([signal, AbortSignal.timeout(8000)]),
