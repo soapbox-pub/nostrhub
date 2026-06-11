@@ -56,8 +56,8 @@ function parseArticle(event: NostrEvent): ExpertArticle | null {
   };
 }
 
-/** Recency windows: this is a magazine, not an archive. */
-const ARTICLE_WINDOW_DAYS = 90;
+/** Articles published within this window lead the feature well. */
+const ARTICLE_FRESH_DAYS = 90;
 const NOTE_WINDOW_DAYS = 30;
 
 /**
@@ -65,8 +65,9 @@ const NOTE_WINDOW_DAYS = 30;
  * (kind 30023) for the feature well and top-level notes (kind 1) for pull
  * quotes. Queries go to the NIP-50 search relays with `sort:hot` so the
  * relay's engagement ranking decides what leads, and the returned order is
- * preserved rather than re-sorted by time. Both queries are windowed so
- * `sort:hot` can't resurface years-old evergreens.
+ * preserved rather than re-sorted by time. Fresh articles (last 90 days)
+ * rank ahead of older ones, but older hot articles backfill the well so the
+ * section never starves when the panel is quiet.
  */
 export function useExpertPress() {
   const { nostr } = useNostr();
@@ -76,13 +77,13 @@ export function useExpertPress() {
     queryKey: ['expert-press', [...experts].sort()],
     queryFn: async ({ signal }) => {
       const nowSec = Math.floor(Date.now() / 1000);
-      const articleSince = nowSec - ARTICLE_WINDOW_DAYS * 86400;
+      const articleFreshSince = nowSec - ARTICLE_FRESH_DAYS * 86400;
       const noteSince = nowSec - NOTE_WINDOW_DAYS * 86400;
 
       const group = nostr.group(SEARCH_RELAYS);
       const events = await group.query(
         [
-          { kinds: [ARTICLE_KIND], authors: experts, search: 'sort:hot', since: articleSince, limit: 24 },
+          { kinds: [ARTICLE_KIND], authors: experts, search: 'sort:hot', limit: 24 },
           { kinds: [1], authors: experts, search: 'sort:hot', since: noteSince, limit: 48 },
         ],
         { signal: AbortSignal.any([signal, AbortSignal.timeout(8000)]) },
@@ -100,13 +101,15 @@ export function useExpertPress() {
         if (!prev) addressOrder.push(key);
         if (!prev || ev.created_at > prev.created_at) latestArticles.set(key, ev);
       }
-      const articles = addressOrder
+      const rankedArticles = addressOrder
         .map((key) => parseArticle(latestArticles.get(key)!))
-        .filter((a): a is ExpertArticle => a !== null)
-        // `since` only constrains `created_at`; a recently-edited old article
-        // still carries its original `published_at`. Enforce the window on
-        // the date readers actually see.
-        .filter((a) => a.publishedAt >= articleSince);
+        .filter((a): a is ExpertArticle => a !== null);
+
+      // Fresh articles lead; older hot articles backfill, each tier in hot order.
+      const articles = [
+        ...rankedArticles.filter((a) => a.publishedAt >= articleFreshSince),
+        ...rankedArticles.filter((a) => a.publishedAt < articleFreshSince),
+      ];
 
       // Notes: top-level posts only (no `e` tags), in hot order.
       const seen = new Set<string>();
