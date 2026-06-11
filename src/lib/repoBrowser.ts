@@ -65,10 +65,10 @@ export async function cloneRepoSnapshot(options: CloneSnapshotOptions): Promise<
   }
 
   // Lazy-load the heavy git machinery so it never lands in the main bundle.
-  const [{ default: git }, { default: http }, { Volume, createFsFromVolume }] = await Promise.all([
+  const [{ default: git }, { default: http }, { createMemFs }] = await Promise.all([
     import('isomorphic-git'),
     import('isomorphic-git/http/web'),
-    import('memfs'),
+    import('@/lib/memFs'),
   ]);
 
   const errors: string[] = [];
@@ -76,10 +76,9 @@ export async function cloneRepoSnapshot(options: CloneSnapshotOptions): Promise<
   for (const url of cloneUrls) {
     signal?.throwIfAborted();
 
-    const vol = new Volume();
-    // memfs is structurally compatible with the fs interface isomorphic-git
-    // expects, but their type declarations differ slightly.
-    const fs = createFsFromVolume(vol) as unknown as Parameters<typeof git.clone>[0]['fs'];
+    // A fresh zero-dependency in-memory fs per attempt; isomorphic-git's
+    // declared fs type differs slightly from our structural implementation.
+    const fs = createMemFs() as unknown as Parameters<typeof git.clone>[0]['fs'];
     const dir = '/repo';
     const hostname = new URL(url).hostname;
 

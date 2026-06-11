@@ -25,7 +25,6 @@
     "input-otp": "^1.4.2",
     "isomorphic-git": "^1.38.4",
     "lucide-react": "^1.11.0",
-    "memfs": "^4.57.7",
     "nostr-tools": "^2.23.3",
     "openai": "^6.42.0",
     "qrcode": "^1.5.4",
