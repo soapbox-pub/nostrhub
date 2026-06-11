@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useSeoMeta } from '@unhead/react';
 import { Search, X } from 'lucide-react';
 import { Layout } from '@/components/Layout';
-import { RepoCard, RepoCardSkeleton } from '@/components/git/RepoCard';
+import { RepoListItem, RepoListItemSkeleton } from '@/components/git/RepoListItem';
 import { useGitRepos } from '@/hooks/useGitRepos';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -47,7 +47,7 @@ export function GitReposPage() {
   }, [repos, search, activeTag]);
 
   return (
-    <Layout className="max-w-6xl">
+    <Layout>
       <div className="space-y-8">
         <header className="space-y-3">
           <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
@@ -103,9 +103,9 @@ export function GitReposPage() {
         </div>
 
         {isLoading ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="divide-y divide-border/60">
             {Array.from({ length: 6 }).map((_, i) => (
-              <RepoCardSkeleton key={i} />
+              <RepoListItemSkeleton key={i} />
             ))}
           </div>
         ) : filtered.length === 0 ? (
@@ -119,9 +119,9 @@ export function GitReposPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="divide-y divide-border/60">
             {filtered.map((repo) => (
-              <RepoCard key={`${repo.pubkey}:${repo.identifier}`} repo={repo} />
+              <RepoListItem key={`${repo.pubkey}:${repo.identifier}`} repo={repo} />
             ))}
           </div>
         )}

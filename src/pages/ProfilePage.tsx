@@ -5,7 +5,8 @@ import { BadgeCheck, FileText, FolderGit2, Globe, Zap } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { UserAvatar } from '@/components/UserAvatar';
 import { NipCard } from '@/components/NipCard';
-import { RepoCard, RepoCardSkeleton } from '@/components/git/RepoCard';
+import { ContributionHeatmap } from '@/components/ContributionHeatmap';
+import { RepoListItem, RepoListItemSkeleton } from '@/components/git/RepoListItem';
 import { CopyButton } from '@/components/git/CopyButton';
 import { ExpertToggleButton } from '@/components/ExpertToggleButton';
 import { useAuthor } from '@/hooks/useAuthor';
@@ -184,6 +185,9 @@ export function ProfilePage({ pubkey }: ProfilePageProps) {
           )}
         </header>
 
+        {/* Activity heatmap */}
+        <ContributionHeatmap pubkey={pubkey} />
+
         {/* Contributions */}
         <Tabs defaultValue="nips" className="pt-2">
           <TabsList>
@@ -227,17 +231,21 @@ export function ProfilePage({ pubkey }: ProfilePageProps) {
 
           <TabsContent value="repos" className="mt-4">
             {reposQuery.isLoading ? (
-              <div className="grid gap-4 sm:grid-cols-2">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <RepoCardSkeleton key={i} />
+              <div className="divide-y divide-border/60">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <RepoListItemSkeleton key={i} />
                 ))}
               </div>
             ) : repos.length === 0 ? (
               <EmptyState message={`${displayName} hasn't announced any repositories yet.`} />
             ) : (
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="divide-y divide-border/60">
                 {repos.map((repo) => (
-                  <RepoCard key={`${repo.pubkey}:${repo.identifier}`} repo={repo} />
+                  <RepoListItem
+                    key={`${repo.pubkey}:${repo.identifier}`}
+                    repo={repo}
+                    showAuthor={false}
+                  />
                 ))}
               </div>
             )}
