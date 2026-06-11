@@ -35,10 +35,17 @@ export interface ExpertPress {
 const tag = (event: NostrEvent, name: string): string | undefined =>
   event.tags.find(([n]) => n === name)?.[1];
 
+/**
+ * Minimum markdown body length for the feature well — just enough to drop
+ * "test"/placeholder kind 30023 events without excluding legit short pieces.
+ */
+const MIN_ARTICLE_CHARS = 200;
+
 function parseArticle(event: NostrEvent): ExpertArticle | null {
   const identifier = tag(event, 'd');
   const title = tag(event, 'title')?.trim();
-  if (identifier === undefined || !title || !event.content.trim()) return null;
+  const content = event.content.trim();
+  if (identifier === undefined || !title || content.length < MIN_ARTICLE_CHARS) return null;
 
   const publishedAtRaw = Number(tag(event, 'published_at'));
   const publishedAt =
@@ -57,7 +64,7 @@ function parseArticle(event: NostrEvent): ExpertArticle | null {
 }
 
 /** Articles published within this window lead the feature well. */
-const ARTICLE_FRESH_DAYS = 90;
+const ARTICLE_FRESH_DAYS = 365;
 const NOTE_WINDOW_DAYS = 30;
 
 /**
@@ -65,9 +72,13 @@ const NOTE_WINDOW_DAYS = 30;
  * (kind 30023) for the feature well and top-level notes (kind 1) for pull
  * quotes. Queries go to the NIP-50 search relays with `sort:hot` so the
  * relay's engagement ranking decides what leads, and the returned order is
- * preserved rather than re-sorted by time. Fresh articles (last 90 days)
- * rank ahead of older ones, but older hot articles backfill the well so the
- * section never starves when the panel is quiet.
+ * preserved rather than re-sorted by time.
+ *
+ * Articles are fetched twice — once windowed to the past year and once
+ * all-time — because an all-time hot ranking alone lets old viral pieces
+ * crowd recent work out of the result limit entirely. Articles published
+ * within the window always rank ahead of older ones; older hot articles only
+ * backfill so the section never starves when the panel is quiet.
  */
 export function useExpertPress() {
   const { nostr } = useNostr();
@@ -83,7 +94,10 @@ export function useExpertPress() {
       const group = nostr.group(SEARCH_RELAYS);
       const events = await group.query(
         [
-          { kinds: [ARTICLE_KIND], authors: experts, search: 'sort:hot', limit: 24 },
+          // Recent articles first — guaranteed a seat regardless of all-time heat.
+          { kinds: [ARTICLE_KIND], authors: experts, search: 'sort:hot', since: articleFreshSince, limit: 50 },
+          // All-time hot articles as backfill candidates.
+          { kinds: [ARTICLE_KIND], authors: experts, search: 'sort:hot', limit: 50 },
           { kinds: [1], authors: experts, search: 'sort:hot', since: noteSince, limit: 48 },
         ],
         { signal: AbortSignal.any([signal, AbortSignal.timeout(8000)]) },
