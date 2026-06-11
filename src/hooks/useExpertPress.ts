@@ -56,12 +56,17 @@ function parseArticle(event: NostrEvent): ExpertArticle | null {
   };
 }
 
+/** Recency windows: this is a magazine, not an archive. */
+const ARTICLE_WINDOW_DAYS = 90;
+const NOTE_WINDOW_DAYS = 30;
+
 /**
  * The experts' own publishing output, hot-ranked: long-form articles
  * (kind 30023) for the feature well and top-level notes (kind 1) for pull
  * quotes. Queries go to the NIP-50 search relays with `sort:hot` so the
  * relay's engagement ranking decides what leads, and the returned order is
- * preserved rather than re-sorted by time.
+ * preserved rather than re-sorted by time. Both queries are windowed so
+ * `sort:hot` can't resurface years-old evergreens.
  */
 export function useExpertPress() {
   const { nostr } = useNostr();
@@ -70,11 +75,15 @@ export function useExpertPress() {
   return useQuery<ExpertPress>({
     queryKey: ['expert-press', [...experts].sort()],
     queryFn: async ({ signal }) => {
+      const nowSec = Math.floor(Date.now() / 1000);
+      const articleSince = nowSec - ARTICLE_WINDOW_DAYS * 86400;
+      const noteSince = nowSec - NOTE_WINDOW_DAYS * 86400;
+
       const group = nostr.group(SEARCH_RELAYS);
       const events = await group.query(
         [
-          { kinds: [ARTICLE_KIND], authors: experts, search: 'sort:hot', limit: 24 },
-          { kinds: [1], authors: experts, search: 'sort:hot', limit: 48 },
+          { kinds: [ARTICLE_KIND], authors: experts, search: 'sort:hot', since: articleSince, limit: 24 },
+          { kinds: [1], authors: experts, search: 'sort:hot', since: noteSince, limit: 48 },
         ],
         { signal: AbortSignal.any([signal, AbortSignal.timeout(8000)]) },
       );
@@ -93,7 +102,11 @@ export function useExpertPress() {
       }
       const articles = addressOrder
         .map((key) => parseArticle(latestArticles.get(key)!))
-        .filter((a): a is ExpertArticle => a !== null);
+        .filter((a): a is ExpertArticle => a !== null)
+        // `since` only constrains `created_at`; a recently-edited old article
+        // still carries its original `published_at`. Enforce the window on
+        // the date readers actually see.
+        .filter((a) => a.publishedAt >= articleSince);
 
       // Notes: top-level posts only (no `e` tags), in hot order.
       const seen = new Set<string>();
@@ -101,6 +114,7 @@ export function useExpertPress() {
       for (const ev of events) {
         if (ev.kind !== 1 || seen.has(ev.id)) continue;
         seen.add(ev.id);
+        if (ev.created_at < noteSince) continue;
         if (ev.tags.some(([n]) => n === 'e')) continue;
         if (!ev.content.trim()) continue;
         notes.push({ event: ev, nevent: nip19.neventEncode({ id: ev.id, author: ev.pubkey }) });
