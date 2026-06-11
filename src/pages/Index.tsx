@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useSeoMeta } from '@unhead/react';
 import { Link } from 'react-router-dom';
-import { Plus } from 'lucide-react';
+import { PenLine } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { NipCard } from '@/components/NipCard';
 import { LeadArticleCard, ArticleCard } from '@/components/ArticleCards';
@@ -304,10 +304,14 @@ const Index = () => {
             subtitle="Fresh NIP drafts from the community lab."
             action={
               user && (
-                <Button asChild size="sm" className="gap-1.5 rounded-full shadow-lg shadow-primary/25">
+                <Button
+                  asChild
+                  size="sm"
+                  className="rotate-[-2deg] gap-1.5 rounded-full shadow-lg shadow-primary/25 transition-transform motion-safe:hover:rotate-0 motion-safe:hover:scale-105"
+                >
                   <Link to="/create">
-                    <Plus className="size-4" />
-                    New NIP
+                    <PenLine className="size-4" />
+                    Draft a New NIP
                   </Link>
                 </Button>
               )
