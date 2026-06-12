@@ -220,34 +220,6 @@ const Index = () => {
           </section>
         )}
 
-        {/* ── Latest NIPs (newest community-authored NIPs) ─────────── */}
-        {(latestNipsQuery.isLoading || latestNips.length > 0) && (
-          <section className="space-y-5" aria-label="Latest NIPs from the community">
-            <Department
-              title="Latest NIPs"
-              subtitle="The freshest NIP drafts published across the community."
-              action={
-                <Button asChild variant="outline" size="sm" className="rounded-full">
-                  <Link to="/nips">Browse all NIPs</Link>
-                </Button>
-              }
-            />
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {latestNipsQuery.isLoading ? (
-                <>
-                  <CardSkeleton />
-                  <CardSkeleton />
-                  <CardSkeleton />
-                </>
-              ) : (
-                latestNips.map((nip) => (
-                  <NipCard key={nip.address} nip={customToRanked(nip)} />
-                ))
-              )}
-            </div>
-          </section>
-        )}
-
         {/* ── Overheard on the wire (pull quotes) ──────────────────── */}
         {hasExperts && (press.isLoading || pullQuotes.length > 0) && (
           <section className="space-y-5" aria-label="Recent posts from the experts">
@@ -313,6 +285,34 @@ const Index = () => {
                 </>
               ) : (
                 showroomApps.map((app) => <AppCard key={app.address} app={app} />)
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* ── Latest NIPs (newest community-authored NIPs) ─────────── */}
+        {(latestNipsQuery.isLoading || latestNips.length > 0) && (
+          <section className="space-y-5" aria-label="Latest NIPs from the community">
+            <Department
+              title="Latest NIPs"
+              subtitle="The freshest NIP drafts published across the community."
+              action={
+                <Button asChild variant="outline" size="sm" className="rounded-full">
+                  <Link to="/nips">Browse all NIPs</Link>
+                </Button>
+              }
+            />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {latestNipsQuery.isLoading ? (
+                <>
+                  <CardSkeleton />
+                  <CardSkeleton />
+                  <CardSkeleton />
+                </>
+              ) : (
+                latestNips.map((nip) => (
+                  <NipCard key={nip.address} nip={customToRanked(nip)} />
+                ))
               )}
             </div>
           </section>
