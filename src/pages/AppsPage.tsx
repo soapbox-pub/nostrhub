@@ -61,7 +61,7 @@ export function AppsPage() {
   const [search, setSearch] = useState('');
   const [platform, setPlatform] = useState<AppPlatform>();
   const [tierFilter, setTierFilter] = useState<TierFilter>('all');
-  const [sortBy, setSortBy] = useState<SortBy>('hot');
+  const [sortBy, setSortBy] = useState<SortBy>('newest');
 
   const query = useDebounced(search).trim();
   const searching = query.length > 0;
@@ -148,7 +148,7 @@ export function AppsPage() {
             </Button>
           </div>
           <p className="max-w-prose text-lg text-muted-foreground">
-            Applications announced on Nostr itself — every listing is a NIP-89 handler event, and
+            Applications announced on Nostr itself. Every listing is a NIP-89 handler event, and
             the community rates how well each one implements the NIPs, ProtonDB-style.
           </p>
         </header>
