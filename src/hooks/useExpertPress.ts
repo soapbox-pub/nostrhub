@@ -82,10 +82,11 @@ function collectArticles(events: NostrEvent[]): ExpertArticle[] {
 }
 
 /**
- * Every long-form article (kind 30023) published by the panel of experts,
- * deduped to the latest revision per address and ordered newest-first by
- * publish date. Scoped to expert authors, consistent with the app's trust
- * model. Powers the `/articles` directory.
+ * Recent long-form articles (kind 30023) from the panel of experts, deduped to
+ * the latest revision per address and ordered newest-first by publish date.
+ * Scoped to expert authors. The `/articles` directory uses this only to pick a
+ * handful of lead features, so the fetch is kept small — the broader feed comes
+ * from {@link useCommunityArticles}.
  */
 export function useExpertArticles() {
   const { nostr } = useNostr();
@@ -95,8 +96,9 @@ export function useExpertArticles() {
     queryKey: ['expert-articles', [...experts].sort()],
     queryFn: async ({ signal }) => {
       const opts = { signal: AbortSignal.any([signal, AbortSignal.timeout(8000)]) };
+      // Only a few leads are shown; a small buffer survives dedupe-to-latest.
       const events = await nostr.query(
-        [{ kinds: [ARTICLE_KIND], authors: experts, limit: 200 }],
+        [{ kinds: [ARTICLE_KIND], authors: experts, limit: 12 }],
         opts,
       );
       return collectArticles(events);
@@ -121,7 +123,7 @@ export function useCommunityArticles(authors: string[] | undefined) {
     queryFn: async ({ signal }) => {
       const opts = { signal: AbortSignal.any([signal, AbortSignal.timeout(8000)]) };
       const events = await nostr.query(
-        [{ kinds: [ARTICLE_KIND], authors: list, limit: 200 }],
+        [{ kinds: [ARTICLE_KIND], authors: list, limit: 100 }],
         opts,
       );
       return collectArticles(events);
