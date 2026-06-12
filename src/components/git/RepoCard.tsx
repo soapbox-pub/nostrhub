@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { GitFork, Sparkles } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { nip19 } from 'nostr-tools';
 import { useAuthor } from '@/hooks/useAuthor';
@@ -41,11 +41,8 @@ export function RepoCard({ repo }: { repo: GitRepoAnnouncement }) {
         className="relative block h-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <CardContent className="flex h-full flex-col gap-3 px-4">
-          {/* Header: icon + name */}
+          {/* Header: name */}
           <div className="flex items-start gap-3">
-            <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-lg border border-border/60 bg-muted/40">
-              <GitFork className="size-4 text-muted-foreground" aria-hidden="true" />
-            </span>
             <div className="min-w-0 flex-1 space-y-0.5">
               <h3 className="truncate font-semibold leading-snug tracking-tight group-hover:text-primary">
                 {repo.name}
@@ -105,7 +102,6 @@ export function RepoCardSkeleton() {
     <Card>
       <CardContent className="space-y-3 px-4">
         <div className="flex items-start gap-3">
-          <Skeleton className="size-10 rounded-lg" />
           <div className="flex-1 space-y-2">
             <Skeleton className="h-5 w-2/3" />
             <Skeleton className="h-3 w-1/3" />
