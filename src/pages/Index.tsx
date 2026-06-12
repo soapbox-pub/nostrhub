@@ -6,12 +6,10 @@ import { NipCard } from '@/components/NipCard';
 import { LeadArticleCard, ArticleCard } from '@/components/ArticleCards';
 import { PulseQuoteCard } from '@/components/PulseQuoteCard';
 import { DemoReelCard } from '@/components/DemoReelCard';
-import { AppCard, AppCardSkeleton } from '@/components/AppCard';
 import { ReleaseCard, ReleaseCardSkeleton } from '@/components/ReleaseCard';
 import { UserAvatar } from '@/components/UserAvatar';
 import { useExpertPress } from '@/hooks/useExpertPress';
 import { useNostrSearch } from '@/hooks/useNostrSearch';
-import { useApps } from '@/hooks/useApps';
 import { useReleases } from '@/hooks/useReleases';
 import { customToRanked } from '@/hooks/useRankedNips';
 import { useCommunityAuthors } from '@/hooks/useCommunityAuthors';
@@ -109,13 +107,6 @@ const Index = () => {
   // "community still loading" as part of the demo loading state.
   const demoLoading = community.isLoading || (hasCommunity && demoSearch.isLoading);
 
-  // Recent NIP-89 app listings published across the community web of trust.
-  const communityApps = useApps({
-    authors: community.data?.authors,
-    limit: 50,
-    enabled: !community.isLoading && hasCommunity,
-  });
-
   // Latest Zapstore software releases (kind 30063) from the community, fetched
   // from the Zapstore relay alongside the user's read relays.
   const releasesQuery = useReleases({
@@ -145,8 +136,6 @@ const Index = () => {
     [demoSearch.data],
   );
   const latestNips = (latestNipsQuery.data ?? []).slice(0, 9);
-  const showroomApps = (communityApps.data ?? []).slice(0, 3);
-  const showroomLoading = community.isLoading || (hasCommunity && communityApps.isLoading);
   const latestReleases = (releasesQuery.data ?? []).slice(0, 6);
   const releasesLoading = community.isLoading || (hasCommunity && releasesQuery.isLoading);
 
@@ -271,32 +260,6 @@ const Index = () => {
                 </>
               ) : (
                 demos.map((event) => <DemoReelCard key={event.id} event={event} />)
-              )}
-            </div>
-          </section>
-        )}
-
-        {/* ── The showroom (recent community apps) ─────────────────── */}
-        {hasCommunity && (showroomLoading || showroomApps.length > 0) && (
-          <section className="space-y-5" aria-label="Recent apps published by the community">
-            <Department
-              title="The Showroom"
-              subtitle="Fresh apps straight from the community's workbenches."
-              action={
-                <Button asChild variant="outline" size="sm" className="rounded-full">
-                  <Link to="/apps">Browse all apps</Link>
-                </Button>
-              }
-            />
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {showroomLoading ? (
-                <>
-                  <AppCardSkeleton />
-                  <AppCardSkeleton />
-                  <AppCardSkeleton />
-                </>
-              ) : (
-                showroomApps.map((app) => <AppCard key={app.address} app={app} />)
               )}
             </div>
           </section>
