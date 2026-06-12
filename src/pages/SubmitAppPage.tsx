@@ -311,6 +311,7 @@ function NipPicker({
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
           placeholder="Search NIPs by number or title…"
           aria-label="Search NIPs"
           className="pl-9"
@@ -438,6 +439,7 @@ function RepoPicker({
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
           placeholder="Search repos…"
           aria-label="Search git repositories"
           className="pl-9"
@@ -525,6 +527,7 @@ function ZapstorePicker({
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
           placeholder="Search Zapstore…"
           aria-label="Search Zapstore app listings"
           className="pl-9"
@@ -738,6 +741,7 @@ function LogoUploader({
             if (file) handleFile(file);
           }}
           aria-label={picture ? 'Change app logo' : 'Upload app logo'}
+          aria-invalid={!!error}
           className={cn(
             'group relative grid size-24 shrink-0 place-items-center overflow-hidden rounded-2xl border-2 border-dashed transition-all',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
@@ -1072,8 +1076,30 @@ export function SubmitAppPage() {
     stepTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
+  // The step container remounts on navigation, dropping keyboard focus on the
+  // body. Move focus to the new step's heading so keyboard and screen-reader
+  // users land somewhere sensible (and hear the step announced).
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const prevStepRef = useRef(step);
+  useEffect(() => {
+    if (prevStepRef.current !== step) {
+      prevStepRef.current = step;
+      headingRef.current?.focus({ preventScroll: true });
+    }
+  }, [step]);
+
+  /** After a failed validation, send focus to the first offending field. */
+  const focusFirstInvalid = () => {
+    requestAnimationFrame(() => {
+      document.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+    });
+  };
+
   const handleNext = () => {
-    if (!validateStep(step)) return;
+    if (!validateStep(step)) {
+      focusFirstInvalid();
+      return;
+    }
     goToStep(Math.min(step + 1, STEPS.length - 1));
   };
   const handleBack = () => goToStep(Math.max(step - 1, 0));
@@ -1161,13 +1187,26 @@ export function SubmitAppPage() {
           <div className="space-y-6">
             <WizardProgress step={step} maxVisited={maxVisited} onJump={goToStep} />
 
-            {/* Step heading + body — keyed so each step animates in fresh */}
-            <div
+            {/* Step heading + body. Keyed so each step animates in fresh; a form
+                so Enter advances (or publishes on the last step). */}
+            <form
               key={current.id}
+              noValidate
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (current.id === 'launch') handlePublish();
+                else handleNext();
+              }}
               className="space-y-6 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-300"
             >
               <div className="space-y-1">
-                <h2 className="font-display text-xl font-bold tracking-tight sm:text-2xl">{current.title}</h2>
+                <h2
+                  ref={headingRef}
+                  tabIndex={-1}
+                  className="font-display text-xl font-bold tracking-tight outline-none sm:text-2xl"
+                >
+                  {current.title}
+                </h2>
                 <p className="text-sm text-muted-foreground">{current.blurb}</p>
               </div>
 
@@ -1605,8 +1644,7 @@ export function SubmitAppPage() {
 
                 {current.id === 'launch' ? (
                   <Button
-                    type="button"
-                    onClick={handlePublish}
+                    type="submit"
                     disabled={isPending}
                     size="lg"
                     className="min-w-44 gap-2 bg-gradient-to-r from-primary to-nebula text-white shadow-md transition-all hover:opacity-90 hover:shadow-lg motion-safe:active:scale-95"
@@ -1616,12 +1654,12 @@ export function SubmitAppPage() {
                       : <><Rocket className="size-4" aria-hidden="true" /> Publish app</>}
                   </Button>
                 ) : (
-                  <Button type="button" onClick={handleNext} className="min-w-32 gap-1.5">
+                  <Button type="submit" className="min-w-32 gap-1.5">
                     Continue <ArrowRight className="size-4" aria-hidden="true" />
                   </Button>
                 )}
               </div>
-            </div>
+            </form>
           </div>
         )}
       </div>
