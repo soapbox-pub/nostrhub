@@ -410,7 +410,7 @@ export function AppPage({ pubkey, identifier }: AppPageProps) {
             icon={<Blocks className="size-7 text-primary" aria-hidden="true" />}
             image={icon}
             title={app.name}
-            titleAside={<TierBadge tier={overall?.tier ?? null} size="lg" />}
+            titleAside={overall?.tier ? <TierBadge tier={overall.tier} size="lg" /> : undefined}
             subtitle={
               overall ? (
                 <>
