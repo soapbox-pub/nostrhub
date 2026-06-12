@@ -1,18 +1,38 @@
 import { useMemo, useState } from 'react';
 import { useSeoMeta } from '@unhead/react';
-import { Search, X } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { Search, User, X } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { RepoCard, RepoCardSkeleton } from '@/components/git/RepoCard';
 import { useGitRepos } from '@/hooks/useGitRepos';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
 /** Discovery page for NIP-34 git repositories announced on Nostr. */
 export function GitReposPage() {
-  const { data: repos, isLoading } = useGitRepos();
+  const { user } = useCurrentUser();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState('');
   const [activeTag, setActiveTag] = useState<string>();
+
+  // `/repos?mine=1` filters to the logged-in user's announcements.
+  const mineParam = searchParams.has('mine');
+  const mine = mineParam && Boolean(user);
+
+  const { data: repos, isLoading } = useGitRepos(
+    mine ? { authors: [user!.pubkey], limit: 200 } : {},
+  );
+
+  const setMine = (on: boolean) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (on) next.set('mine', '1');
+      else next.delete('mine');
+      return next;
+    }, { replace: true });
+  };
 
   useSeoMeta({
     title: 'Repositories | NostrHub',
@@ -75,8 +95,26 @@ export function GitReposPage() {
             />
           </div>
 
-          {topTags.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filter by tag">
+          {(topTags.length > 0 || user) && (
+            <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filter repositories">
+              {user && (
+                <button
+                  type="button"
+                  onClick={() => setMine(!mine)}
+                  aria-pressed={mine}
+                  className={cn(
+                    'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                    mine
+                      ? 'border-primary/40 bg-gradient-to-r from-primary/15 to-nebula/15 text-foreground'
+                      : 'border-border/60 text-muted-foreground hover:border-primary/30 hover:text-foreground',
+                  )}
+                >
+                  <User className="size-3" aria-hidden="true" />
+                  Your repos
+                  {mine && <X className="size-3" aria-hidden="true" />}
+                </button>
+              )}
               {topTags.map((tag) => {
                 const active = tag === activeTag;
                 return (
@@ -112,9 +150,11 @@ export function GitReposPage() {
           <Card className="border-dashed">
             <CardContent className="px-8 py-12 text-center">
               <p className="mx-auto max-w-sm text-muted-foreground">
-                {repos && repos.length > 0
-                  ? 'No repositories match your search.'
-                  : 'No repositories found. Try checking your relay connections or wait a moment for content to load.'}
+                {mine && (!repos || repos.length === 0)
+                  ? "You haven't announced any git repos on Nostr yet."
+                  : repos && repos.length > 0
+                    ? 'No repositories match your search.'
+                    : 'No repositories found. Try checking your relay connections or wait a moment for content to load.'}
               </p>
             </CardContent>
           </Card>
