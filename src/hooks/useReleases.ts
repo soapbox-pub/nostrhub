@@ -9,6 +9,7 @@ import {
   isValidRelease,
   parseRelease,
   parseZapstoreApp,
+  releaseDisplayName,
   type ZapstoreApp,
   type ZapstoreRelease,
 } from '@/lib/zapstore';
@@ -34,8 +35,13 @@ export interface ReleaseWithApp {
  * query fans out to it alongside the user's read relays. Results are scoped to
  * the community author set when one is provided — releases are addressable
  * events, so the `d` tag alone is not a trust boundary and we must constrain on
- * authors. Keeps only the latest release per (author, identifier) address, then
- * fetches the linked app listings (kind 32267) for display.
+ * authors.
+ *
+ * A single app publishes a separate kind 30063 per version (the `d` tag is
+ * usually `app-id@version`), so the relay-side address dedupe still leaves
+ * multiple releases per piece of software. We over-fetch (4× the requested
+ * limit, capped) and then collapse to the single latest release per software
+ * before truncating to `limit`.
  */
 export function useReleases(options: UseReleasesOptions = {}) {
   const { nostr } = useNostr();
@@ -52,7 +58,10 @@ export function useReleases(options: UseReleasesOptions = {}) {
         .map((r) => r.url);
       const urls = new Set<string>([ZAPSTORE_RELAY, ...readRelays]);
 
-      const filter: NostrFilter = { kinds: [ZAPSTORE_RELEASE_KIND], limit };
+      // Over-fetch so collapsing to one release per app still yields enough
+      // distinct software to fill the requested limit.
+      const fetchLimit = Math.min(limit * 4, 500);
+      const filter: NostrFilter = { kinds: [ZAPSTORE_RELEASE_KIND], limit: fetchLimit };
       if (authors && authors.length > 0) filter.authors = authors;
 
       const events = await nostr
@@ -70,9 +79,23 @@ export function useReleases(options: UseReleasesOptions = {}) {
         if (!prev || ev.created_at > prev.created_at) latest.set(key, ev);
       }
 
-      const releases = Array.from(latest.values())
+      const allReleases = Array.from(latest.values())
         .map(parseRelease)
         .sort((a, b) => b.createdAt - a.createdAt);
+
+      // Collapse to the latest release per software. Key by (author, app) so
+      // every version of the same app folds into one entry; releases without an
+      // `i` tag fall back to the display name derived from the `d` tag.
+      const latestPerApp = new Map<string, ZapstoreRelease>();
+      for (const release of allReleases) {
+        const softwareKey = `${release.pubkey}:${release.appIdentifier ?? releaseDisplayName(release)}`;
+        const prev = latestPerApp.get(softwareKey);
+        if (!prev || release.createdAt > prev.createdAt) latestPerApp.set(softwareKey, release);
+      }
+
+      const releases = Array.from(latestPerApp.values())
+        .sort((a, b) => b.createdAt - a.createdAt)
+        .slice(0, limit);
 
       if (releases.length === 0) return [];
 
