@@ -6,6 +6,7 @@ import { NipCard } from '@/components/NipCard';
 import { LeadArticleCard, ArticleCard } from '@/components/ArticleCards';
 import { PulseQuoteCard } from '@/components/PulseQuoteCard';
 import { DemoReelCard } from '@/components/DemoReelCard';
+import { NetworkUsersChart } from '@/components/NetworkUsersChart';
 import { ReleaseCard, ReleaseCardSkeleton } from '@/components/ReleaseCard';
 import { UserAvatar } from '@/components/UserAvatar';
 import { useExpertPress } from '@/hooks/useExpertPress';
@@ -263,6 +264,20 @@ const Index = () => {
             )}
           </section>
         )}
+
+        {/* ── Network pulse (active users graph) ───────────────────── */}
+        <section className="space-y-5" aria-label="Active users on the Nostr network">
+          <Department
+            title="The Pulse"
+            subtitle="Monthly active users across the Nostr network."
+            action={
+              <Button asChild variant="outline" size="sm" className="rounded-full">
+                <Link to="/stats">View network stats</Link>
+              </Button>
+            }
+          />
+          <NetworkUsersChart />
+        </section>
 
         {/* ── Overheard on the wire (pull quotes) ──────────────────── */}
         {hasExperts && (press.isLoading || pullQuotes.length > 0) && (
