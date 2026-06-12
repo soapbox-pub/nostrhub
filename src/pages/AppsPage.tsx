@@ -1,22 +1,28 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSeoMeta } from '@unhead/react';
-import { Eye, HelpCircle, PlusCircle, Search, X } from 'lucide-react';
-import { Layout } from '@/components/Layout';
-import { AppListRow, AppListRowSkeleton, type AppRow } from '@/components/AppListRow';
+import { Eye, HelpCircle, PlusCircle, User, X } from 'lucide-react';
+import { AppCard, AppCardSkeleton } from '@/components/AppCard';
+import {
+  DiscoveryGrid,
+  DiscoveryPage,
+  DiscoverySearch,
+  FilterPill,
+} from '@/components/DiscoveryGrid';
 import { TIER_ICONS } from '@/lib/tierIcons';
 import { useAppSearch } from '@/hooks/useAppSearch';
+import { useApps } from '@/hooks/useApps';
 import { useAllAppReviews } from '@/hooks/useAppReviews';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { APP_PLATFORMS, hasFullAppMetadata, type AppPlatform } from '@/lib/apps';
 import {
   TIERS,
   TIER_ORDER,
   aggregateReviews,
+  type AppRow,
   type CompatTier,
   type ReviewReport,
 } from '@/lib/appReviews';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -58,17 +64,27 @@ function useDebounced(value: string, delay = 400): string {
  * search against the dedicated search relays.
  */
 export function AppsPage() {
+  const { user } = useCurrentUser();
   const [search, setSearch] = useState('');
   const [platform, setPlatform] = useState<AppPlatform>();
   const [tierFilter, setTierFilter] = useState<TierFilter>('all');
   const [sortBy, setSortBy] = useState<SortBy>('hot');
   const [showHidden, setShowHidden] = useState(false);
+  const [mineOnly, setMineOnly] = useState(false);
 
   const query = useDebounced(search).trim();
   const searching = query.length > 0;
+  const mine = mineOnly && Boolean(user);
 
   const browse = useAppSearch('sort:hot');
   const results = useAppSearch(searching ? `${query} sort:hot` : '');
+  // "Your apps": author-scoped pool query (the hot/search lists may not
+  // include the user's own listings), incomplete metadata included.
+  const myApps = useApps({
+    authors: user ? [user.pubkey] : [],
+    requireFullMetadata: false,
+    enabled: mine,
+  });
   const reviews = useAllAppReviews();
 
   useSeoMeta({
@@ -77,7 +93,7 @@ export function AppsPage() {
       'Discover Nostr applications announced on the network via NIP-89 — search the directory and see how well each app implements the NIPs, ProtonDB-style.',
   });
 
-  const active = searching ? results : browse;
+  const active = mine ? myApps : searching ? results : browse;
 
   // Group every compatibility report by the app address it targets.
   const reviewsByApp = useMemo(() => {
@@ -98,6 +114,8 @@ export function AppsPage() {
   }, [active.data, reviewsByApp]);
 
   const { visibleRows, hiddenRows } = useMemo(() => {
+    // "Your apps" shows everything the user has published, complete or not.
+    if (mine) return { visibleRows: rows, hiddenRows: [] };
     const visible: AppRow[] = [];
     const hidden: AppRow[] = [];
     for (const row of rows) {
@@ -105,7 +123,7 @@ export function AppsPage() {
       else hidden.push(row);
     }
     return { visibleRows: visible, hiddenRows: hidden };
-  }, [rows]);
+  }, [rows, mine]);
 
   const filtered = useMemo(() => {
     let result = showHidden ? [...visibleRows, ...hiddenRows] : visibleRows;
@@ -116,6 +134,16 @@ export function AppsPage() {
       result = result.filter((r) => !r.overall);
     } else if (tierFilter !== 'all') {
       result = result.filter((r) => r.overall?.tier === tierFilter);
+    }
+    // "Your apps" comes from the pool, not the search relays, so the search
+    // box filters it client-side.
+    if (mine && query) {
+      const q = query.toLowerCase();
+      result = result.filter(
+        (r) =>
+          r.app.name.toLowerCase().includes(q) ||
+          (r.app.about?.toLowerCase().includes(q) ?? false),
+      );
     }
 
     // NIP-50 search results keep the relay's relevance ranking unless the
@@ -142,48 +170,33 @@ export function AppsPage() {
       sorted.sort((a, b) => b.app.createdAt - a.app.createdAt);
     }
     return sorted;
-  }, [visibleRows, hiddenRows, platform, tierFilter, sortBy, searching, showHidden]);
+  }, [visibleRows, hiddenRows, platform, tierFilter, sortBy, showHidden, mine, query]);
 
   const isLoading = active.isLoading || reviews.isLoading || (searching && search.trim() !== query);
 
   return (
-    <Layout>
-      <div className="space-y-8">
-        <header className="space-y-3">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
-              <span className="text-cosmic">Apps</span>
-            </h1>
-            <Button asChild variant="outline" className="gap-1.5">
-              <Link to="/apps/submit">
-                <PlusCircle className="size-4" aria-hidden="true" />
-                Add an app
-              </Link>
-            </Button>
-          </div>
-          <p className="max-w-prose text-lg text-muted-foreground">
-            Applications announced on Nostr itself. Every listing is a NIP-89 handler event, and
-            the community rates how well each one implements the NIPs, ProtonDB-style.
-          </p>
-        </header>
-
-        <div className="space-y-3">
+    <DiscoveryPage
+      title="Apps"
+      description="Applications announced on Nostr itself. Every listing is a NIP-89 handler event, and the community rates how well each one implements the NIPs, ProtonDB-style."
+      action={
+        <Button asChild variant="outline" className="gap-1.5">
+          <Link to="/apps/submit">
+            <PlusCircle className="size-4" aria-hidden="true" />
+            Add an app
+          </Link>
+        </Button>
+      }
+      filters={
+        <>
           {/* Search + sort */}
           <div className="flex flex-col gap-2 sm:flex-row">
-            <div className="relative flex-1 sm:max-w-md">
-              <Search
-                className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-                aria-hidden="true"
-              />
-              <Input
-                type="search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search apps…"
-                aria-label="Search apps"
-                className="pl-9"
-              />
-            </div>
+            <DiscoverySearch
+              label="Search apps"
+              placeholder="Search apps…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              containerClassName="flex-1 sm:max-w-md"
+            />
             <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>
               <SelectTrigger className="w-full sm:w-44" aria-label="Sort apps">
                 <SelectValue placeholder="Sort" />
@@ -198,7 +211,7 @@ export function AppsPage() {
             </Select>
           </div>
 
-          {/* Tier filter pills */}
+          {/* Tier filter pills (bespoke tier-colored styling) */}
           <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filter by compatibility tier">
             <button
               type="button"
@@ -252,27 +265,26 @@ export function AppsPage() {
             </button>
           </div>
 
-          {/* Platform filter pills */}
-          <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filter by platform">
+          {/* Author + platform filter pills */}
+          <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filter apps">
+            {user && (
+              <FilterPill active={mine} onClick={() => setMineOnly((v) => !v)}>
+                <User className="size-3" aria-hidden="true" />
+                Your apps
+                {mine && <X className="size-3" aria-hidden="true" />}
+              </FilterPill>
+            )}
             {APP_PLATFORMS.map((p) => {
               const isActive = p === platform;
               return (
-                <button
+                <FilterPill
                   key={p}
-                  type="button"
+                  active={isActive}
                   onClick={() => setPlatform(isActive ? undefined : p)}
-                  aria-pressed={isActive}
-                  className={cn(
-                    'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                    isActive
-                      ? 'border-primary/40 bg-gradient-to-r from-primary/15 to-nebula/15 text-foreground'
-                      : 'border-border/60 text-muted-foreground hover:border-primary/30 hover:text-foreground',
-                  )}
                 >
                   {PLATFORM_LABELS[p]}
                   {isActive && <X className="size-3" aria-hidden="true" />}
-                </button>
+                </FilterPill>
               );
             })}
           </div>
@@ -281,7 +293,7 @@ export function AppsPage() {
             <div className="flex flex-wrap items-center gap-3">
               <p className="text-sm text-muted-foreground" role="status">
                 {filtered.length} {filtered.length === 1 ? 'app' : 'apps'}
-                {searching && <> matching "{query}" via the search relays</>}
+                {searching && !mine && <> matching "{query}" via the search relays</>}
               </p>
               {hiddenRows.length > 0 && (
                 <button
@@ -301,35 +313,26 @@ export function AppsPage() {
               )}
             </div>
           )}
-        </div>
-
-        {isLoading ? (
-          <div className="space-y-2">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <AppListRowSkeleton key={i} />
-            ))}
-          </div>
-        ) : filtered.length === 0 ? (
-          <Card className="border-dashed">
-            <CardContent className="px-8 py-12 text-center">
-              <p className="mx-auto max-w-sm text-muted-foreground">
-                {searching
-                  ? `No apps match “${query}”. Try a different search term or clear the filters.`
-                  : tierFilter !== 'all' || platform
-                    ? 'No apps match the current filters. Try clearing them.'
-                    : 'No apps found. Try checking your relay connections or wait a moment for content to load.'}
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-2">
-            {filtered.map((row) => (
-              <AppListRow key={row.app.address} row={row} />
-            ))}
-          </div>
-        )}
-      </div>
-    </Layout>
+        </>
+      }
+    >
+      <DiscoveryGrid
+        items={filtered}
+        isLoading={isLoading}
+        getKey={(row) => row.app.address}
+        renderItem={(row) => <AppCard app={row.app} tier={row.overall?.tier ?? null} />}
+        renderSkeleton={() => <AppCardSkeleton />}
+        empty={
+          mine && rows.length === 0
+            ? "You haven't published any app listings on Nostr yet."
+            : searching
+              ? `No apps match “${query}”. Try a different search term or clear the filters.`
+              : tierFilter !== 'all' || platform
+                ? 'No apps match the current filters. Try clearing them.'
+                : 'No apps found. Try checking your relay connections or wait a moment for content to load.'
+        }
+      />
+    </DiscoveryPage>
   );
 }
 

@@ -1,10 +1,14 @@
 import { useMemo, useState } from 'react';
 import { useSeoMeta } from '@unhead/react';
 import { Link } from 'react-router-dom';
-import { PenLine, X } from 'lucide-react';
-import { Layout } from '@/components/Layout';
+import { PenLine, User, X } from 'lucide-react';
 import { NipCard, NipCardSkeleton } from '@/components/NipCard';
-import { DiscoveryGrid, DiscoverySearch, FilterPill } from '@/components/DiscoveryGrid';
+import {
+  DiscoveryGrid,
+  DiscoveryPage,
+  DiscoverySearch,
+  FilterPill,
+} from '@/components/DiscoveryGrid';
 import { useOfficialNips } from '@/hooks/useOfficialNips';
 import { useCustomNips } from '@/hooks/useCustomNips';
 import { useCommunityAuthors } from '@/hooks/useCommunityAuthors';
@@ -15,7 +19,7 @@ import type { OfficialNip } from '@/hooks/useOfficialNips';
 import type { CustomNip } from '@/lib/nips';
 import { Button } from '@/components/ui/button';
 
-type Source = 'official' | 'community';
+type Source = 'official' | 'community' | 'mine';
 
 /** Adapt an official NIP into the shape `NipCard` renders. */
 function officialToRanked(nip: OfficialNip): RankedNip {
@@ -81,6 +85,7 @@ export function NipsPage() {
     return all.filter((nip) => {
       if (source === 'official' && nip.custom) return false;
       if (source === 'community' && !nip.custom) return false;
+      if (source === 'mine' && nip.custom?.author !== user?.pubkey) return false;
       if (!q) return true;
       return (
         nip.title.toLowerCase().includes(q) ||
@@ -90,41 +95,33 @@ export function NipsPage() {
         (nip.custom?.identifier.toLowerCase().includes(q) ?? false)
       );
     });
-  }, [all, search, source]);
+  }, [all, search, source, user?.pubkey]);
 
   const isLoading =
     source === 'official'
       ? officialQuery.isLoading
-      : source === 'community'
+      : source === 'community' || source === 'mine'
         ? community.isLoading || customQuery.isLoading
         : officialQuery.isLoading && (community.isLoading || customQuery.isLoading);
 
   const hasAnything = all.length > 0;
 
   return (
-    <Layout>
-      <div className="space-y-8">
-        <header className="space-y-3">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
-              <span className="text-cosmic">NIPs</span>
-            </h1>
-            {user && (
-              <Button asChild size="sm" className="gap-1.5 rounded-full shadow-lg shadow-primary/25">
-                <Link to="/create">
-                  <PenLine className="size-4" />
-                  Draft a New NIP
-                </Link>
-              </Button>
-            )}
-          </div>
-          <p className="max-w-prose text-lg text-muted-foreground">
-            Nostr Implementation Possibilities — the official protocol index alongside fresh
-            drafts from the community lab.
-          </p>
-        </header>
-
-        <div className="space-y-3">
+    <DiscoveryPage
+      title="NIPs"
+      description="Nostr Implementation Possibilities — the official protocol index alongside fresh drafts from the community lab."
+      action={
+        user && (
+          <Button asChild size="sm" className="gap-1.5 rounded-full shadow-lg shadow-primary/25">
+            <Link to="/create">
+              <PenLine className="size-4" />
+              Draft a New NIP
+            </Link>
+          </Button>
+        )
+      }
+      filters={
+        <>
           <DiscoverySearch
             label="Search NIPs"
             placeholder="Search by number, title, or kind…"
@@ -133,6 +130,16 @@ export function NipsPage() {
           />
 
           <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filter NIPs">
+            {user && (
+              <FilterPill
+                active={source === 'mine'}
+                onClick={() => setSource(source === 'mine' ? undefined : 'mine')}
+              >
+                <User className="size-3" aria-hidden="true" />
+                Your NIPs
+                {source === 'mine' && <X className="size-3" aria-hidden="true" />}
+              </FilterPill>
+            )}
             {(['official', 'community'] as const).map((value) => {
               const active = source === value;
               return (
@@ -147,22 +154,24 @@ export function NipsPage() {
               );
             })}
           </div>
-        </div>
-
-        <DiscoveryGrid
-          items={filtered}
-          isLoading={isLoading}
-          getKey={(nip) => nip.key}
-          renderItem={(nip) => <NipCard nip={nip} />}
-          renderSkeleton={() => <NipCardSkeleton />}
-          empty={
-            hasAnything
+        </>
+      }
+    >
+      <DiscoveryGrid
+        items={filtered}
+        isLoading={isLoading}
+        getKey={(nip) => nip.key}
+        renderItem={(nip) => <NipCard nip={nip} />}
+        renderSkeleton={() => <NipCardSkeleton />}
+        empty={
+          source === 'mine'
+            ? "You haven't drafted any NIPs yet."
+            : hasAnything
               ? 'No NIPs match your search.'
               : 'No NIPs found. Try checking your relay connections or wait a moment for content to load.'
-          }
-        />
-      </div>
-    </Layout>
+        }
+      />
+    </DiscoveryPage>
   );
 }
 

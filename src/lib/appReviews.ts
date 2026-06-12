@@ -1,5 +1,5 @@
 import type { NostrEvent } from '@nostrify/nostrify';
-import { APP_HANDLER_KIND } from '@/lib/apps';
+import { APP_HANDLER_KIND, type AppInfo } from '@/lib/apps';
 
 /**
  * ProtonDB-style NIP compatibility reports for Nostr apps, interoperable with
@@ -166,6 +166,13 @@ export interface TierAggregate {
   tier: CompatTier;
   rating: number;
   count: number;
+}
+
+/** An app listing joined with its aggregated compatibility reviews. */
+export interface AppRow {
+  app: AppInfo;
+  overall: TierAggregate | null;
+  perNip: Map<string, TierAggregate>;
 }
 
 /**

@@ -3,9 +3,13 @@ import { useSeoMeta } from '@unhead/react';
 import { useSearchParams } from 'react-router-dom';
 import { nip19 } from 'nostr-tools';
 import { User, X } from 'lucide-react';
-import { Layout } from '@/components/Layout';
 import { RepoCard, RepoCardSkeleton } from '@/components/git/RepoCard';
-import { DiscoveryGrid, DiscoverySearch, FilterPill } from '@/components/DiscoveryGrid';
+import {
+  DiscoveryGrid,
+  DiscoveryPage,
+  DiscoverySearch,
+  FilterPill,
+} from '@/components/DiscoveryGrid';
 import { useGitRepos } from '@/hooks/useGitRepos';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useAuthor } from '@/hooks/useAuthor';
@@ -90,19 +94,11 @@ export function GitReposPage() {
   }, [repos, search, activeTag]);
 
   return (
-    <Layout>
-      <div className="space-y-8">
-        <header className="space-y-3">
-          <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
-            <span className="text-cosmic">Repositories</span>
-          </h1>
-          <p className="max-w-prose text-lg text-muted-foreground">
-            Code that lives on Nostr — announced over relays, cloneable from anywhere, owned by no
-            forge.
-          </p>
-        </header>
-
-        <div className="space-y-3">
+    <DiscoveryPage
+      title="Repositories"
+      description="Code that lives on Nostr — announced over relays, cloneable from anywhere, owned by no forge."
+      filters={
+        <>
           <DiscoverySearch
             label="Search repositories"
             placeholder="Search repositories…"
@@ -145,26 +141,26 @@ export function GitReposPage() {
               })}
             </div>
           )}
-        </div>
-
-        <DiscoveryGrid
-          items={filtered}
-          isLoading={isLoading}
-          getKey={(repo) => `${repo.pubkey}:${repo.identifier}`}
-          renderItem={(repo) => <RepoCard repo={repo} />}
-          renderSkeleton={() => <RepoCardSkeleton />}
-          empty={
-            authorHex && (!repos || repos.length === 0)
-              ? mine
-                ? "You haven't announced any git repos on Nostr yet."
-                : "This author hasn't announced any git repos on Nostr yet."
-              : repos && repos.length > 0
-                ? 'No repositories match your search.'
-                : 'No repositories found. Try checking your relay connections or wait a moment for content to load.'
-          }
-        />
-      </div>
-    </Layout>
+        </>
+      }
+    >
+      <DiscoveryGrid
+        items={filtered}
+        isLoading={isLoading}
+        getKey={(repo) => `${repo.pubkey}:${repo.identifier}`}
+        renderItem={(repo) => <RepoCard repo={repo} />}
+        renderSkeleton={() => <RepoCardSkeleton />}
+        empty={
+          authorHex && (!repos || repos.length === 0)
+            ? mine
+              ? "You haven't announced any git repos on Nostr yet."
+              : "This author hasn't announced any git repos on Nostr yet."
+            : repos && repos.length > 0
+              ? 'No repositories match your search.'
+              : 'No repositories found. Try checking your relay connections or wait a moment for content to load.'
+        }
+      />
+    </DiscoveryPage>
   );
 }
 

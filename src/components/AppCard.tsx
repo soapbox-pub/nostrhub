@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom';
 import { Blocks } from 'lucide-react';
 import type { AppInfo } from '@/lib/apps';
+import type { CompatTier } from '@/lib/appReviews';
+import { TierBadge } from '@/components/TierBadge';
 import { useAuthor } from '@/hooks/useAuthor';
 import { UserAvatar } from '@/components/UserAvatar';
 import { shortNpub } from '@/lib/nostr';
@@ -11,8 +13,17 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 const MAX_KINDS = 4;
 
+interface AppCardProps {
+  app: AppInfo;
+  /**
+   * Overall compatibility tier from aggregated kind 31986 reports.
+   * Omit to hide the badge; `null` renders the "No Data" state.
+   */
+  tier?: CompatTier | null;
+}
+
 /** Directory card for a NIP-89 app listing (kind 31990). */
-export function AppCard({ app }: { app: AppInfo }) {
+export function AppCard({ app, tier }: AppCardProps) {
   const author = useAuthor(app.pubkey);
   const authorMeta = author.data?.metadata;
   const authorName = authorMeta?.name || authorMeta?.display_name || shortNpub(app.pubkey);
@@ -51,6 +62,9 @@ export function AppCard({ app }: { app: AppInfo }) {
                 </p>
               )}
             </div>
+            {tier !== undefined && (
+              <TierBadge tier={tier} size="sm" className="shrink-0" />
+            )}
           </div>
 
           {app.about && (

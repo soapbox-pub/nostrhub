@@ -62,25 +62,30 @@ export function NipCard({ nip }: { nip: RankedNip }) {
             )}
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            {authorName && (
-              <span className="truncate text-xs text-muted-foreground">by {authorName}</span>
-            )}
-            {approvers.length > 0 && (
-              <AvatarGroup className="ml-auto">
-                {shown.map((pubkey) => (
-                  <UserAvatar key={pubkey} pubkey={pubkey} size="sm" />
-                ))}
-                {extra > 0 ? (
-                  <AvatarGroupCount className="size-6 text-xs">+{extra}</AvatarGroupCount>
-                ) : (
-                  <AvatarGroupCount className="size-6 bg-primary text-primary-foreground">
-                    <Check className="size-3" strokeWidth={3} />
-                  </AvatarGroupCount>
-                )}
-              </AvatarGroup>
-            )}
-          </div>
+          {(nip.custom || approvers.length > 0) && (
+            <div className="flex items-center gap-2 border-t border-border/50 pt-3">
+              {nip.custom && (
+                <>
+                  <UserAvatar pubkey={nip.custom.author} size="sm" />
+                  <span className="truncate text-xs text-muted-foreground">by {authorName}</span>
+                </>
+              )}
+              {approvers.length > 0 && (
+                <AvatarGroup className="ml-auto">
+                  {shown.map((pubkey) => (
+                    <UserAvatar key={pubkey} pubkey={pubkey} size="sm" />
+                  ))}
+                  {extra > 0 ? (
+                    <AvatarGroupCount className="size-6 text-xs">+{extra}</AvatarGroupCount>
+                  ) : (
+                    <AvatarGroupCount className="size-6 bg-primary text-primary-foreground">
+                      <Check className="size-3" strokeWidth={3} />
+                    </AvatarGroupCount>
+                  )}
+                </AvatarGroup>
+              )}
+            </div>
+          )}
         </CardContent>
       </Link>
     </Card>

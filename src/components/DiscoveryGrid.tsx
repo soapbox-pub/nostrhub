@@ -1,14 +1,54 @@
 import { Fragment } from 'react';
 import { Search } from 'lucide-react';
+import { Layout } from '@/components/Layout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
 /**
- * Shared building blocks for discovery/listing pages (NIPs, repos, …):
- * a search field, filter pills, and a responsive card grid that branches
- * between skeletons, a dashed empty state, and the rendered items.
+ * Shared building blocks for discovery/listing pages (NIPs, repos, apps, …):
+ * a page scaffold, a search field, filter pills, and a responsive grid (or
+ * row list) that branches between skeletons, a dashed empty state, and the
+ * rendered items.
  */
+
+interface DiscoveryPageProps {
+  /** Page H1, rendered with the cosmic accent. */
+  title: React.ReactNode;
+  /** Dek paragraph under the title. */
+  description: React.ReactNode;
+  /** Optional action (e.g. a CTA button) aligned to the end of the title row. */
+  action?: React.ReactNode;
+  /** Search field + filter pill rows, stacked with consistent spacing. */
+  filters?: React.ReactNode;
+  children: React.ReactNode;
+}
+
+/**
+ * Full-width (`max-w-6xl`) page scaffold shared by the discovery pages:
+ * header (title, optional action, dek), filter block, then content.
+ */
+export function DiscoveryPage({ title, description, action, filters, children }: DiscoveryPageProps) {
+  return (
+    <Layout className="max-w-6xl">
+      <div className="space-y-8">
+        <header className="space-y-3">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
+              <span className="text-cosmic">{title}</span>
+            </h1>
+            {action}
+          </div>
+          <p className="max-w-prose text-lg text-muted-foreground">{description}</p>
+        </header>
+
+        {filters && <div className="space-y-3">{filters}</div>}
+
+        {children}
+      </div>
+    </Layout>
+  );
+}
 
 interface DiscoveryGridProps<T> {
   /** Items to render (already filtered). `undefined` while nothing has loaded. */
@@ -22,6 +62,8 @@ interface DiscoveryGridProps<T> {
   skeletonCount?: number;
   /** Message (or richer node) for the dashed empty state. */
   empty: React.ReactNode;
+  /** `grid` (default): responsive card grid. `list`: stacked full-width rows. */
+  layout?: 'grid' | 'list';
   className?: string;
 }
 
@@ -33,11 +75,15 @@ export function DiscoveryGrid<T>({
   renderSkeleton,
   skeletonCount = 6,
   empty,
+  layout = 'grid',
   className,
 }: DiscoveryGridProps<T>) {
+  const layoutClass =
+    layout === 'list' ? 'space-y-2' : 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3';
+
   if (isLoading) {
     return (
-      <div className={cn('grid gap-4 sm:grid-cols-2 lg:grid-cols-3', className)}>
+      <div className={cn(layoutClass, className)}>
         {Array.from({ length: skeletonCount }).map((_, i) => (
           <Fragment key={i}>{renderSkeleton(i)}</Fragment>
         ))}
@@ -56,7 +102,7 @@ export function DiscoveryGrid<T>({
   }
 
   return (
-    <div className={cn('grid gap-4 sm:grid-cols-2 lg:grid-cols-3', className)}>
+    <div className={cn(layoutClass, className)}>
       {items.map((item) => (
         <Fragment key={getKey(item)}>{renderItem(item)}</Fragment>
       ))}
@@ -67,12 +113,20 @@ export function DiscoveryGrid<T>({
 interface DiscoverySearchProps extends Omit<React.ComponentProps<typeof Input>, 'type'> {
   /** Accessible label; also used as the placeholder unless one is given. */
   label: string;
+  /** Classes for the wrapper div (defaults to `max-w-md`). */
+  containerClassName?: string;
 }
 
 /** Search input with a leading magnifier icon, used above discovery grids. */
-export function DiscoverySearch({ label, className, placeholder, ...props }: DiscoverySearchProps) {
+export function DiscoverySearch({
+  label,
+  className,
+  containerClassName,
+  placeholder,
+  ...props
+}: DiscoverySearchProps) {
   return (
-    <div className="relative max-w-md">
+    <div className={cn('relative max-w-md', containerClassName)}>
       <Search
         className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
         aria-hidden="true"
