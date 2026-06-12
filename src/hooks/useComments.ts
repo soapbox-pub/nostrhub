@@ -5,9 +5,10 @@ import { useQuery } from '@tanstack/react-query';
 interface UseCommentsOptions {
   limit?: number;
   /**
-   * Restrict displayed comments to this set of author pubkeys (the community
-   * author set). When provided, comments from authors outside the set are
-   * dropped client-side for spam resistance. `undefined` shows all authors.
+   * The community author set used as a spam-resistant `authors` filter. Comments
+   * from authors outside this set are dropped client-side. This is required:
+   * the query stays disabled until the set is provided, so a comments query is
+   * never issued without the community filter.
    */
   communityAuthors?: string[];
 }
@@ -46,10 +47,13 @@ export function useComments(
 
       if (typeof limit === 'number') filter.limit = limit;
 
+      // Spam resistance: constrain to the community author set at the relay.
+      if (allow) filter.authors = Array.from(allow);
+
       const signal = AbortSignal.timeout(5000);
       const raw = await nostr.query([filter], { signal });
 
-      // Spam resistance: keep only comments authored by the community set.
+      // Defensive re-filter in case a relay ignores the authors constraint.
       const events = allow ? raw.filter((e) => allow.has(e.pubkey)) : raw;
 
       const getTagValue = (event: NostrEvent, tagName: string): string | undefined =>
@@ -91,6 +95,6 @@ export function useComments(
             .sort((a, b) => a.created_at - b.created_at),
       };
     },
-    enabled: !!root,
+    enabled: !!root && !!communityAuthors,
   });
 }

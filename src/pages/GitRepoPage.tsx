@@ -242,7 +242,6 @@ export function GitRepoPage({ pubkey, identifier, relays }: GitRepoPageProps) {
                 <h2 className="font-display text-xl font-semibold tracking-tight">Discussion</h2>
                 <CommentsSection
                   root={repo.event}
-                  communityFilter={false}
                   emptyStateMessage="No discussion yet"
                   emptyStateSubtitle="Questions, praise, bug reports. Start the conversation."
                 />

@@ -15,6 +15,8 @@ export interface UseGitReposOptions {
   /** Restrict to these author pubkeys (hex). */
   authors?: string[];
   limit?: number;
+  /** Skip the query (e.g. while the author set is still resolving). */
+  enabled?: boolean;
 }
 
 /**
@@ -27,7 +29,7 @@ export interface UseGitReposOptions {
 export function useGitRepos(options: UseGitReposOptions = {}) {
   const { nostr } = useNostr();
   const { config } = useAppContext();
-  const { hashtag, authors, limit = 150 } = options;
+  const { hashtag, authors, limit = 150, enabled = true } = options;
 
   return useQuery<GitRepoAnnouncement[]>({
     queryKey: ['git-repos', hashtag ?? null, authors ? [...authors].sort() : null, limit],
@@ -64,5 +66,6 @@ export function useGitRepos(options: UseGitReposOptions = {}) {
         .sort((a, b) => b.createdAt - a.createdAt);
     },
     staleTime: 60 * 1000,
+    enabled,
   });
 }

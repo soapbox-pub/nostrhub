@@ -13,11 +13,6 @@ interface CommentsSectionProps {
   emptyStateSubtitle?: string;
   className?: string;
   limit?: number;
-  /**
-   * Restrict displayed comments to the community author set for spam resistance.
-   * Defaults to true. Set false to show all authors.
-   */
-  communityFilter?: boolean;
 }
 
 export function CommentsSection({
@@ -26,14 +21,15 @@ export function CommentsSection({
   emptyStateSubtitle = 'Be the first to share your thoughts!',
   className,
   limit = 500,
-  communityFilter = true,
 }: CommentsSectionProps) {
+  // Comments are always restricted to the community author set (the ~1000
+  // web-of-trust pubkeys) for spam resistance. This is not optional.
   const community = useCommunityAuthors();
-  const communityAuthors = communityFilter ? community.data?.authors : undefined;
+  const communityAuthors = community.data?.authors;
 
   const { data: commentsData, isLoading, error } = useComments(root, { limit, communityAuthors });
   const comments = commentsData?.topLevelComments || [];
-  const loading = isLoading || (communityFilter && community.isLoading);
+  const loading = isLoading || community.isLoading;
 
   if (error) {
     return (

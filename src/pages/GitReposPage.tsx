@@ -11,6 +11,7 @@ import {
   FilterPill,
 } from '@/components/DiscoveryGrid';
 import { useGitRepos } from '@/hooks/useGitRepos';
+import { useCommunityAuthors } from '@/hooks/useCommunityAuthors';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useAuthor } from '@/hooks/useAuthor';
 
@@ -43,9 +44,21 @@ export function GitReposPage() {
   const mine = Boolean(user) && authorHex === user!.pubkey;
   const filteredAuthor = useAuthor(mine ? undefined : authorHex);
 
+  // The web-of-trust author set (the ~1000 community pubkeys derived from the
+  // experts' follows). All discovery queries are constrained to this set for
+  // spam resistance; a specific `?author=` filter takes precedence over it.
+  const community = useCommunityAuthors();
+  const communityAuthors = community.data?.authors;
+
   const { data: repos, isLoading } = useGitRepos(
-    authorHex ? { authors: [authorHex], limit: 200 } : {},
+    authorHex
+      ? { authors: [authorHex], limit: 200 }
+      : { authors: communityAuthors, limit: 200, enabled: communityAuthors !== undefined },
   );
+
+  // While the community author set is still resolving (and no explicit author
+  // is requested), the repo query is disabled — surface the loading skeleton.
+  const loading = isLoading || (!authorHex && communityAuthors === undefined);
 
   const setAuthor = (pubkey?: string) => {
     setSearchParams((prev) => {
@@ -146,7 +159,7 @@ export function GitReposPage() {
     >
       <DiscoveryGrid
         items={filtered}
-        isLoading={isLoading}
+        isLoading={loading}
         getKey={(repo) => `${repo.pubkey}:${repo.identifier}`}
         renderItem={(repo) => <RepoCard repo={repo} />}
         renderSkeleton={() => <RepoCardSkeleton />}
