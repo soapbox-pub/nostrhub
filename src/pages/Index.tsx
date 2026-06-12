@@ -11,8 +11,9 @@ import { UserAvatar } from '@/components/UserAvatar';
 import { useExpertPress } from '@/hooks/useExpertPress';
 import { useNostrSearch } from '@/hooks/useNostrSearch';
 import { useApps } from '@/hooks/useApps';
-import { useRankedNips } from '@/hooks/useRankedNips';
+import { customToRanked } from '@/hooks/useRankedNips';
 import { useCommunityAuthors } from '@/hooks/useCommunityAuthors';
+import { useCustomNips } from '@/hooks/useCustomNips';
 import { useExperts } from '@/hooks/useExperts';
 import { noteExcerpt } from '@/lib/noteText';
 import { Card, CardContent } from '@/components/ui/card';
@@ -71,9 +72,16 @@ const Index = () => {
   });
 
   const { experts } = useExperts();
-  const { ranked, isLoading: rankedLoading } = useRankedNips();
   const community = useCommunityAuthors();
   const press = useExpertPress();
+
+  // Latest community-authored NIPs (kind 30817), newest-first, scoped to the
+  // community web-of-trust author set so the firehose can't leak in.
+  const latestNipsQuery = useCustomNips({
+    authors: community.data?.authors,
+    limit: 30,
+    enabled: !community.isLoading,
+  });
 
   // NIP-50: hot-ranked sweep of the search relays for fresh launches, scoped to
   // the community author set so the firehose can't leak in. Ditto's NIP-50 runs
@@ -126,7 +134,7 @@ const Index = () => {
         .slice(0, 6),
     [demoSearch.data],
   );
-  const topNips = ranked.slice(0, 7);
+  const latestNips = (latestNipsQuery.data ?? []).slice(0, 6);
   const showroomApps = (communityApps.data ?? []).slice(0, 3);
   const showroomLoading = community.isLoading || (hasCommunity && communityApps.isLoading);
 
@@ -212,6 +220,34 @@ const Index = () => {
           </section>
         )}
 
+        {/* ── Latest NIPs (newest community-authored NIPs) ─────────── */}
+        {(latestNipsQuery.isLoading || latestNips.length > 0) && (
+          <section className="space-y-5" aria-label="Latest NIPs from the community">
+            <Department
+              title="Latest NIPs"
+              subtitle="The freshest NIP drafts published across the community."
+              action={
+                <Button asChild variant="outline" size="sm" className="rounded-full">
+                  <Link to="/nips">Browse all NIPs</Link>
+                </Button>
+              }
+            />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {latestNipsQuery.isLoading ? (
+                <>
+                  <CardSkeleton />
+                  <CardSkeleton />
+                  <CardSkeleton />
+                </>
+              ) : (
+                latestNips.map((nip) => (
+                  <NipCard key={nip.address} nip={customToRanked(nip)} />
+                ))
+              )}
+            </div>
+          </section>
+        )}
+
         {/* ── Overheard on the wire (pull quotes) ──────────────────── */}
         {hasExperts && (press.isLoading || pullQuotes.length > 0) && (
           <section className="space-y-5" aria-label="Recent posts from the experts">
@@ -233,50 +269,6 @@ const Index = () => {
             </div>
           </section>
         )}
-
-        {/* ── The review section (expert-approved NIPs) ────────────── */}
-        <section className="space-y-5" aria-label="Expert-approved NIPs">
-          <Department
-            title="The Review Section"
-            subtitle="NIPs that earned the panel's seal."
-            action={
-              <Button asChild variant="outline" size="sm" className="rounded-full">
-                <Link to="/nips">Browse all NIPs</Link>
-              </Button>
-            }
-          />
-          <div className="grid grid-cols-1 gap-4 pt-2 sm:grid-cols-2 lg:grid-cols-3">
-            {rankedLoading ? (
-              <>
-                <CardSkeleton />
-                <CardSkeleton />
-                <CardSkeleton />
-              </>
-            ) : topNips.length > 0 ? (
-              topNips.map((nip, i) =>
-                i === 0 ? (
-                  <div key={nip.key} className="relative sm:col-span-2">
-                    <span className="absolute -top-3 left-4 z-10 rotate-[-3deg] rounded-sm border-2 border-primary bg-background px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.25em] text-primary shadow-sm">
-                      Editors' Choice
-                    </span>
-                    <NipCard nip={nip} />
-                  </div>
-                ) : (
-                  <NipCard key={nip.key} nip={nip} />
-                ),
-              )
-            ) : (
-              <Card className="border-dashed sm:col-span-2 lg:col-span-3">
-                <CardContent className="px-8 py-12 text-center">
-                  <p className="mx-auto max-w-sm text-muted-foreground">
-                    No expert-approved NIPs yet. When your experts approve NIPs, they'll appear
-                    here ranked by approval count.
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </section>
 
         {/* ── The demo reel (NIP-50 search, community-scoped) ──────── */}
         {hasCommunity && (demoLoading || demos.length > 0) && (
