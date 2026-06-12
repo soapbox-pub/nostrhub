@@ -56,40 +56,40 @@ export function ArticlesPage() {
       'Long-form dispatches from the panel: in-depth articles and essays on building the Nostr protocol.',
   });
 
-  // The freshest expert pieces lead the page; the rest of the feed is filled
-  // from the broader community, deduped against the expert articles by address.
-  // Community backfill is ranked by web-of-trust — how many experts follow the
-  // author — then by recency, so vouched-for voices surface above the noise.
+  // The freshest expert pieces lead the page. Everything after the leads —
+  // remaining expert articles plus the broader community — is merged into a
+  // single pool ranked by web-of-trust (how many experts follow the author)
+  // then recency, so a well-followed or fresh post isn't buried beneath every
+  // old expert article. Community authors with no expert follows are dropped.
   const combined = useMemo(() => {
     const lead = (expertArticles ?? []).slice(0, EXPERT_LEAD_COUNT);
     const seen = new Set(lead.map((a) => a.naddr));
     const followCounts = community.data?.followCounts;
+    const expertSet = new Set(experts);
 
-    // Remaining expert articles keep their newest-first order and stay ahead of
-    // the community backfill.
-    const expertRest = (expertArticles ?? []).slice(EXPERT_LEAD_COUNT).filter((a) => {
-      if (seen.has(a.naddr)) return false;
-      seen.add(a.naddr);
-      return true;
-    });
+    // Trust score = how many experts follow the author. Experts get a small
+    // floor (the panel implicitly vouches for itself) so a typical expert
+    // outranks an unfollowed author, but a widely-followed community voice can
+    // still rise above a stale expert post rather than every expert article
+    // sitting on top.
+    const EXPERT_FLOOR = Math.max(1, Math.ceil(experts.length / 2));
+    const trust = (a: ExpertArticle) => {
+      const follows = followCounts?.get(a.author) ?? 0;
+      return expertSet.has(a.author) ? Math.max(follows, EXPERT_FLOOR) : follows;
+    };
 
-    // Community backfill: only authors the panel actually follows, ranked by
-    // follow count (desc) then recency.
-    const communityRest = (communityArticles ?? [])
+    const pool = [...(expertArticles ?? []).slice(EXPERT_LEAD_COUNT), ...(communityArticles ?? [])]
       .filter((a) => {
         if (seen.has(a.naddr)) return false;
-        if ((followCounts?.get(a.author) ?? 0) === 0) return false;
+        // Drop community authors with no web-of-trust signal.
+        if (!expertSet.has(a.author) && (followCounts?.get(a.author) ?? 0) === 0) return false;
         seen.add(a.naddr);
         return true;
       })
-      .sort((a, b) => {
-        const fa = followCounts?.get(a.author) ?? 0;
-        const fb = followCounts?.get(b.author) ?? 0;
-        return fb - fa || b.publishedAt - a.publishedAt;
-      });
+      .sort((a, b) => trust(b) - trust(a) || b.publishedAt - a.publishedAt);
 
-    return [...lead, ...expertRest, ...communityRest];
-  }, [expertArticles, communityArticles, community.data?.followCounts]);
+    return [...lead, ...pool];
+  }, [expertArticles, communityArticles, community.data?.followCounts, experts]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
