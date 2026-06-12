@@ -18,7 +18,8 @@ interface LayoutProps {
 }
 
 const NAV_ITEMS = [
-  { to: '/', label: 'NIPs', end: true },
+  { to: '/', label: 'Home', end: true },
+  { to: '/nips', label: 'NIPs' },
   { to: '/repos', label: 'Repos' },
   { to: '/apps', label: 'Apps' },
   { to: '/stats', label: 'Stats' },

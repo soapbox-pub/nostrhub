@@ -12,6 +12,7 @@ import StatsPage from "./pages/StatsPage";
 import ExpertsPage from "./pages/ExpertsPage";
 import CommunityPage from "./pages/CommunityPage";
 import GitReposPage from "./pages/GitReposPage";
+import NipsPage from "./pages/NipsPage";
 import AppsPage from "./pages/AppsPage";
 import SubmitAppPage from "./pages/SubmitAppPage";
 import { DEFAULT_TOPIC } from "./lib/chat";
@@ -22,6 +23,7 @@ export function AppRouter() {
       <ScrollToTop />
       <Routes>
         <Route path="/" element={<Index />} />
+        <Route path="/nips" element={<NipsPage />} />
         <Route path="/repos" element={<GitReposPage />} />
         <Route path="/apps" element={<AppsPage />} />
         <Route path="/apps/submit" element={<SubmitAppPage />} />

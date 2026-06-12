@@ -2,15 +2,13 @@ import { useMemo, useState } from 'react';
 import { useSeoMeta } from '@unhead/react';
 import { useSearchParams } from 'react-router-dom';
 import { nip19 } from 'nostr-tools';
-import { Search, User, X } from 'lucide-react';
+import { User, X } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { RepoCard, RepoCardSkeleton } from '@/components/git/RepoCard';
+import { DiscoveryGrid, DiscoverySearch, FilterPill } from '@/components/DiscoveryGrid';
 import { useGitRepos } from '@/hooks/useGitRepos';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useAuthor } from '@/hooks/useAuthor';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
 
 /** Resolve an `author` query param (npub, nprofile, or hex) to a hex pubkey. */
 function authorParamToHex(value: string | null): string | undefined {
@@ -105,109 +103,66 @@ export function GitReposPage() {
         </header>
 
         <div className="space-y-3">
-          <div className="relative max-w-md">
-            <Search
-              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-              aria-hidden="true"
-            />
-            <Input
-              type="search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search repositories…"
-              aria-label="Search repositories"
-              className="pl-9"
-            />
-          </div>
+          <DiscoverySearch
+            label="Search repositories"
+            placeholder="Search repositories…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
 
           {(topTags.length > 0 || user || authorHex) && (
             <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filter repositories">
               {user && (
-                <button
-                  type="button"
-                  onClick={() => setAuthor(mine ? undefined : user.pubkey)}
-                  aria-pressed={mine}
-                  className={cn(
-                    'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                    mine
-                      ? 'border-primary/40 bg-gradient-to-r from-primary/15 to-nebula/15 text-foreground'
-                      : 'border-border/60 text-muted-foreground hover:border-primary/30 hover:text-foreground',
-                  )}
-                >
+                <FilterPill active={mine} onClick={() => setAuthor(mine ? undefined : user.pubkey)}>
                   <User className="size-3" aria-hidden="true" />
                   Your repos
                   {mine && <X className="size-3" aria-hidden="true" />}
-                </button>
+                </FilterPill>
               )}
               {authorHex && !mine && (
-                <button
-                  type="button"
+                <FilterPill
+                  active
                   onClick={() => setAuthor(undefined)}
-                  aria-pressed="true"
                   aria-label={`Clear author filter: ${authorLabel}`}
-                  className={cn(
-                    'inline-flex items-center gap-1 rounded-full border border-primary/40 bg-gradient-to-r from-primary/15 to-nebula/15 px-2.5 py-1 text-xs font-medium text-foreground transition-colors',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                  )}
                 >
                   <User className="size-3" aria-hidden="true" />
                   {authorLabel}
                   <X className="size-3" aria-hidden="true" />
-                </button>
+                </FilterPill>
               )}
               {topTags.map((tag) => {
                 const active = tag === activeTag;
                 return (
-                  <button
+                  <FilterPill
                     key={tag}
-                    type="button"
+                    active={active}
                     onClick={() => setActiveTag(active ? undefined : tag)}
-                    aria-pressed={active}
-                    className={cn(
-                      'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
-                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                      active
-                        ? 'border-primary/40 bg-gradient-to-r from-primary/15 to-nebula/15 text-foreground'
-                        : 'border-border/60 text-muted-foreground hover:border-primary/30 hover:text-foreground',
-                    )}
                   >
                     #{tag}
                     {active && <X className="size-3" aria-hidden="true" />}
-                  </button>
+                  </FilterPill>
                 );
               })}
             </div>
           )}
         </div>
 
-        {isLoading ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <RepoCardSkeleton key={i} />
-            ))}
-          </div>
-        ) : filtered.length === 0 ? (
-          <Card className="border-dashed">
-            <CardContent className="px-8 py-12 text-center">
-              <p className="mx-auto max-w-sm text-muted-foreground">
-                {authorHex && (!repos || repos.length === 0)
-                  ? mine
-                    ? "You haven't announced any git repos on Nostr yet."
-                    : "This author hasn't announced any git repos on Nostr yet."
-                  : repos && repos.length > 0
-                    ? 'No repositories match your search.'
-                    : 'No repositories found. Try checking your relay connections or wait a moment for content to load.'}
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((repo) => (
-              <RepoCard key={`${repo.pubkey}:${repo.identifier}`} repo={repo} />
-            ))}
-          </div>
-        )}
+        <DiscoveryGrid
+          items={filtered}
+          isLoading={isLoading}
+          getKey={(repo) => `${repo.pubkey}:${repo.identifier}`}
+          renderItem={(repo) => <RepoCard repo={repo} />}
+          renderSkeleton={() => <RepoCardSkeleton />}
+          empty={
+            authorHex && (!repos || repos.length === 0)
+              ? mine
+                ? "You haven't announced any git repos on Nostr yet."
+                : "This author hasn't announced any git repos on Nostr yet."
+              : repos && repos.length > 0
+                ? 'No repositories match your search.'
+                : 'No repositories found. Try checking your relay connections or wait a moment for content to load.'
+          }
+        />
       </div>
     </Layout>
   );

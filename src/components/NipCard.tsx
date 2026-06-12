@@ -9,6 +9,7 @@ import { shortNpub } from '@/lib/nostr';
 import { markdownPreview } from '@/lib/markdownPreview';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { AvatarGroup, AvatarGroupCount } from '@/components/ui/avatar';
 
 const MAX_STACK = 4;
@@ -82,6 +83,19 @@ export function NipCard({ nip }: { nip: RankedNip }) {
           </div>
         </CardContent>
       </Link>
+    </Card>
+  );
+}
+
+export function NipCardSkeleton() {
+  return (
+    <Card>
+      <CardContent className="space-y-2 px-4">
+        <Skeleton className="h-4 w-16" />
+        <Skeleton className="h-5 w-2/3" />
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-3/4" />
+      </CardContent>
     </Card>
   );
 }

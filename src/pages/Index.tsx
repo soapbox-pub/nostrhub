@@ -247,6 +247,11 @@ const Index = () => {
           <Department
             title="The Review Section"
             subtitle="NIPs that earned the panel's seal."
+            action={
+              <Button asChild variant="outline" size="sm" className="rounded-full">
+                <Link to="/nips">Browse all NIPs</Link>
+              </Button>
+            }
           />
           <div className="grid grid-cols-1 gap-4 pt-2 sm:grid-cols-2 lg:grid-cols-3">
             {rankedLoading ? (
