@@ -3,8 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useSeoMeta } from '@unhead/react';
 import {
   ArrowLeft, ArrowRight, AlertCircle, Blocks, BookOpen, Check, ChevronDown,
-  FolderGit2, ImagePlus, Loader2, MonitorSmartphone, Pencil, PlusCircle,
-  Rocket, Search, ShoppingBag, Sparkles, Tags, Upload, X,
+  ExternalLink, FolderGit2, ImagePlus, Loader2, MonitorSmartphone, Pencil,
+  PlusCircle, Rocket, Search, ShoppingBag, Sparkles, Tags, Upload, X,
 } from 'lucide-react';
 import { nip19 } from 'nostr-tools';
 import { Layout } from '@/components/Layout';
@@ -1504,20 +1504,24 @@ export function SubmitAppPage() {
                             to="/create"
                             target="_blank"
                             rel="noopener"
-                            className="font-medium text-primary underline-offset-2 hover:underline"
+                            className="inline-flex items-center gap-0.5 font-medium text-primary underline-offset-2 hover:underline"
                           >
                             Draft your NIP
+                            <ExternalLink className="size-3" aria-hidden="true" />
+                            <span className="sr-only">(opens in a new tab)</span>
                           </Link>
                           {' '}or publish the NIP.md straight from{' '}
                           <Link
                             to="/repos"
                             target="_blank"
                             rel="noopener"
-                            className="font-medium text-primary underline-offset-2 hover:underline"
+                            className="inline-flex items-center gap-0.5 font-medium text-primary underline-offset-2 hover:underline"
                           >
                             your repo
+                            <ExternalLink className="size-3" aria-hidden="true" />
+                            <span className="sr-only">(opens in a new tab)</span>
                           </Link>
-                          . Both open in a new tab so you won't lose this form.
+                          .
                         </p>
                       </div>
                     </>
