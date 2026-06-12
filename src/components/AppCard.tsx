@@ -3,7 +3,6 @@ import { Blocks } from 'lucide-react';
 import type { AppInfo } from '@/lib/apps';
 import type { CompatTier } from '@/lib/appReviews';
 import { TierBadge } from '@/components/TierBadge';
-import { KindBadge } from '@/components/KindBadge';
 import { useAuthor } from '@/hooks/useAuthor';
 import { UserAvatar } from '@/components/UserAvatar';
 import { shortNpub } from '@/lib/nostr';
@@ -11,8 +10,6 @@ import { sanitizeUrl } from '@/lib/sanitizeUrl';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-
-const MAX_KINDS = 4;
 
 interface AppCardProps {
   app: AppInfo;
@@ -31,8 +28,6 @@ export function AppCard({ app, tier }: AppCardProps) {
 
   const icon = sanitizeUrl(app.picture);
   const website = sanitizeUrl(app.website);
-  const shownKinds = app.supportedKinds.slice(0, MAX_KINDS);
-  const extraKinds = app.supportedKinds.length - shownKinds.length;
 
   return (
     <Card className="group relative h-full overflow-hidden border-border/70 bg-card/60 backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-[0_8px_40px_-8px] hover:shadow-primary/30">
@@ -78,12 +73,6 @@ export function AppCard({ app, tier }: AppCardProps) {
                 {platform}
               </Badge>
             ))}
-            {shownKinds.map((kind) => (
-              <KindBadge key={kind} kind={kind} className="text-[10px] text-muted-foreground" />
-            ))}
-            {extraKinds > 0 && (
-              <span className="text-[10px] text-muted-foreground">+{extraKinds} kinds</span>
-            )}
           </div>
 
           <div className="flex items-center gap-2 border-t border-border/50 pt-3">
