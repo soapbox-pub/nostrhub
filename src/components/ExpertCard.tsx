@@ -58,7 +58,7 @@ export function ExpertCard({ pubkey, onRemove }: ExpertCardProps) {
         className="relative block h-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <CardContent className="flex h-full flex-col items-center gap-3 px-5 text-center">
-          <UserAvatar pubkey={pubkey} size="lg" showExpertBadge={false} className="size-16" />
+          <UserAvatar pubkey={pubkey} size="lg" className="size-16" />
 
           <div className="min-w-0 space-y-1">
             <h3 className="flex items-center justify-center gap-1.5 font-semibold leading-snug tracking-tight group-hover:text-primary">
