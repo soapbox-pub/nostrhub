@@ -87,13 +87,13 @@ const Index = () => {
   // NIP-50: hot-ranked sweep of the search relays for fresh launches, scoped to
   // the community author set so the firehose can't leak in. Ditto's NIP-50 runs
   // on OpenSearch, which analyzes the query into ORed, order-independent tokens
-  // — so single generic verbs like "released" match documents/studies/etc., and
-  // multi-word phrases ("just shipped") match generic prose ("shipped a project
-  // at work"). We use announcement terms whose tokens are *all* launch-adjacent
-  // (introducing, launching, "new release"); topicality comes from the
-  // community scope. One search per filter so each keeps its own `sort:hot`.
+  // — so generic verbs like "released" match documents/studies, and multi-word
+  // phrases ("just shipped") match generic prose ("shipped a project at work").
+  // "introducing" is the single highest-signal announcement verb: it almost
+  // always precedes a product/project name. Topicality comes from the community
+  // scope; `sort:hot` ranks the matches.
   const demoSearch = useNostrSearch({
-    searches: ['introducing sort:hot', 'launching sort:hot', 'new release sort:hot'],
+    searches: ['introducing sort:hot'],
     kinds: [1],
     authors: community.data?.authors,
     sinceDays: 30,
@@ -299,9 +299,9 @@ const Index = () => {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {demoLoading ? (
                 <>
-                  <CardSkeleton withImage />
-                  <CardSkeleton withImage />
-                  <CardSkeleton withImage />
+                  <CardSkeleton />
+                  <CardSkeleton />
+                  <CardSkeleton />
                 </>
               ) : (
                 demos.map((event) => <DemoReelCard key={event.id} event={event} />)
