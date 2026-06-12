@@ -51,8 +51,8 @@ const PLATFORM_LABELS: Record<AppPlatform, string> = {
 /** Placeholder examples reflecting how each platform tag is used in the wild. */
 const PLATFORM_PLACEHOLDERS: Record<AppPlatform, string> = {
   web: 'https://example.com/<bech32>',
-  ios: 'myapp://<bech32> or App Store link',
-  android: 'myapp://<bech32> or intent://… or Play Store link',
+  ios: 'https://example.com/<bech32> or myapp://<bech32>',
+  android: 'https://example.com/<bech32> or intent://…',
   desktop: 'https://example.com/download',
   linux: 'https://example.com/download',
   macos: 'https://example.com/download',
@@ -933,10 +933,17 @@ export function SubmitAppPage() {
       ]
     : [];
 
-  /** The URI we assume for a platform: web deep-links at the root, everything else lands on the website. */
+  /**
+   * The URI we assume for a platform. Web, iOS, and Android all get the
+   * root-level bech32 deep-link template: on mobile, universal links (iOS)
+   * and app links (Android) make https URLs on the app's own domain open
+   * the installed app, and fall back to the website otherwise. Desktop OS
+   * tags carry download/landing links by convention, so they get the
+   * website itself.
+   */
   const defaultPlatformUrl = (pl: AppPlatform, base: string | null = websiteBase): string => {
     if (!base) return '';
-    return pl === 'web' ? `${base}/<bech32>` : base;
+    return pl === 'web' || pl === 'ios' || pl === 'android' ? `${base}/<bech32>` : base;
   };
 
   const togglePlatform = (pl: AppPlatform) => {
@@ -1383,13 +1390,13 @@ export function SubmitAppPage() {
                                     {isEditing ? <Check className="size-3.5" aria-hidden="true" /> : <Pencil className="size-3.5" aria-hidden="true" />}
                                   </button>
                                 </div>
-                                {isEditing && p.platform === 'web' && webUrlPatterns.length > 0 && (
+                                {isEditing && ['web', 'ios', 'android'].includes(p.platform) && webUrlPatterns.length > 0 && (
                                   <div className="flex flex-wrap items-center gap-1.5 pl-23">
                                     {webUrlPatterns.map(({ label, url }) => (
                                       <button
                                         key={label}
                                         type="button"
-                                        onClick={() => updatePlatform('web', { url })}
+                                        onClick={() => updatePlatform(p.platform, { url })}
                                         aria-pressed={p.url === url}
                                         className={cn(
                                           'rounded-full px-2 py-0.5 font-mono text-[11px] font-medium transition-all motion-safe:active:scale-95',
