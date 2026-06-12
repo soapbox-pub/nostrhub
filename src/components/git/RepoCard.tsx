@@ -40,9 +40,6 @@ export function RepoCard({ repo }: { repo: GitRepoAnnouncement }) {
               <h3 className="truncate font-semibold leading-snug tracking-tight group-hover:text-primary">
                 {repo.name}
               </h3>
-              {repo.name !== repo.identifier && (
-                <p className="truncate font-mono text-xs text-muted-foreground">{repo.identifier}</p>
-              )}
             </div>
           </div>
 
