@@ -231,8 +231,15 @@ export function useDirectoryNips(): DirectoryNips {
     }
 
     return Array.from(items.values()).sort((a, b) => {
-      if (b.expertCount !== a.expertCount) return b.expertCount - a.expertCount;
-      if (b.totalCount !== a.totalCount) return b.totalCount - a.totalCount;
+      // Official NIPs get a +1 ranking bonus over community drafts.
+      const aOfficial = a.target.type === 'official' ? 1 : 0;
+      const bOfficial = b.target.type === 'official' ? 1 : 0;
+      const aExpert = a.expertCount + aOfficial;
+      const bExpert = b.expertCount + bOfficial;
+      if (bExpert !== aExpert) return bExpert - aExpert;
+      const aTotal = a.totalCount + aOfficial;
+      const bTotal = b.totalCount + bOfficial;
+      if (bTotal !== aTotal) return bTotal - aTotal;
       // Newest first; official NIPs (no created_at) sort after dated drafts.
       return (b.createdAt ?? 0) - (a.createdAt ?? 0);
     });
