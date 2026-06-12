@@ -84,10 +84,20 @@ const Index = () => {
     enabled: !community.isLoading,
   });
 
-  // NIP-50: hot-ranked sweep of the search relays for fresh demos and ships,
-  // scoped to the community author set so the firehose can't leak in.
+  // NIP-50: hot-ranked sweep of the search relays for fresh launches, scoped to
+  // the community author set so the firehose can't leak in. Ditto's NIP-50 runs
+  // on OpenSearch, which analyzes the query into ORed, order-independent tokens
+  // — so we use single high-signal launch verbs (one per filter) rather than
+  // multi-word phrases, which would just OR their tokens together and dilute the
+  // `sort:hot` ranking. Topicality comes from the community scope, not the words.
   const demoSearch = useNostrSearch({
-    searches: ['nostr demo sort:hot', 'just shipped sort:hot', 'built on nostr sort:hot'],
+    searches: [
+      'released sort:hot',
+      'releasing sort:hot',
+      'shipped sort:hot',
+      'launched sort:hot',
+      'introducing sort:hot',
+    ],
     kinds: [1],
     authors: community.data?.authors,
     sinceDays: 30,
