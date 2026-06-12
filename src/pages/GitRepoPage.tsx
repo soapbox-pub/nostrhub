@@ -171,15 +171,7 @@ export function GitRepoPage({ pubkey, identifier, relays }: GitRepoPageProps) {
     : state?.createdAt;
 
   return (
-    <Layout
-      sidebar={repo ? (
-        <>
-          <UsedByAppsCard apps={appsForRepo.data ?? []} />
-          <RelatedNipsCard nipRefs={nipRefs} />
-          <RepoSidebar repo={repo} />
-        </>
-      ) : undefined}
-    >
+    <Layout className="max-w-6xl">
       {isLoading ? (
         <RepoSkeleton />
       ) : isError || !repo ? (
@@ -254,19 +246,31 @@ export function GitRepoPage({ pubkey, identifier, relays }: GitRepoPageProps) {
             )}
           </header>
 
-          {/* ——— Files (clone, branches, and tags live in its header) ——— */}
-          <RepoFileBrowser repo={repo} state={state} />
+          {/* Below the hero: files + discussion on the left, repo metadata and
+              NIP-89 cross-references on the right. */}
+          <div className="space-y-8 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-8 lg:space-y-0">
+            <div className="min-w-0 space-y-8">
+              {/* ——— Files (clone, branches, and tags live in its header) ——— */}
+              <RepoFileBrowser repo={repo} state={state} />
 
-          {/* ——— Discussion ——— */}
-          <section className="space-y-4">
-            <h2 className="font-display text-xl font-semibold tracking-tight">Discussion</h2>
-            <CommentsSection
-              root={repo.event}
-              communityFilter={false}
-              emptyStateMessage="No discussion yet"
-              emptyStateSubtitle="Questions, praise, bug reports — start the conversation."
-            />
-          </section>
+              {/* ——— Discussion ——— */}
+              <section className="space-y-4">
+                <h2 className="font-display text-xl font-semibold tracking-tight">Discussion</h2>
+                <CommentsSection
+                  root={repo.event}
+                  communityFilter={false}
+                  emptyStateMessage="No discussion yet"
+                  emptyStateSubtitle="Questions, praise, bug reports — start the conversation."
+                />
+              </section>
+            </div>
+
+            <aside aria-label="Repository details" className="space-y-4 lg:sticky lg:top-24">
+              <UsedByAppsCard apps={appsForRepo.data ?? []} />
+              <RelatedNipsCard nipRefs={nipRefs} />
+              <RepoSidebar repo={repo} />
+            </aside>
+          </div>
         </article>
       )}
     </Layout>
