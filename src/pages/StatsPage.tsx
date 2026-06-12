@@ -3,6 +3,7 @@ import { TrendingUp } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { ClientBarChart } from '@/components/ClientBarChart';
 import { NetworkUsersChart } from '@/components/NetworkUsersChart';
+import { RelayCountCard } from '@/components/RelayCountCard';
 import { useClientCounts } from '@/hooks/useClientCounts';
 import { ago, WEEK } from '@/lib/timeRanges';
 
@@ -29,6 +30,10 @@ const StatsPage = () => {
           </p>
         </div>
       </div>
+
+      <section className="mb-12">
+        <RelayCountCard />
+      </section>
 
       <section>
         <NetworkUsersChart />
