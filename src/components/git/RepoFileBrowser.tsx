@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Check,
   ChevronDown,
@@ -13,12 +14,14 @@ import {
   FolderOpen,
   GitBranch,
   Loader2,
+  ScrollText,
   Tag as TagIcon,
 } from 'lucide-react';
 import { MarkdownContent } from '@/components/MarkdownContent';
 import { CopyButton } from '@/components/git/CopyButton';
 import { CloneButton } from '@/components/git/CloneButton';
 import { useRepoSnapshot, useRepoFile } from '@/hooks/useRepoSnapshot';
+import { useToast } from '@/hooks/useToast';
 import {
   findReadme,
   formatBytes,
@@ -59,6 +62,7 @@ function TreeRow({
   selected,
   onToggle,
   onSelect,
+  trailing,
 }: {
   node: RepoTreeFile;
   depth: number;
@@ -66,6 +70,8 @@ function TreeRow({
   selected: string | undefined;
   onToggle: (path: string) => void;
   onSelect: (path: string) => void;
+  /** Optional action rendered after the row (e.g. "Publish NIP" for NIP.md). */
+  trailing?: React.ReactNode;
 }) {
   const isDir = node.type === 'dir';
   const isOpen = isDir && expanded.has(node.path);
@@ -73,39 +79,42 @@ function TreeRow({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => (isDir ? onToggle(node.path) : onSelect(node.path))}
-        className={cn(
-          'flex w-full items-center gap-1.5 rounded-md py-1 pr-2 text-left text-sm transition-colors',
-          'hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-          isSelected ? 'bg-gradient-to-r from-primary/15 to-nebula/10 font-medium' : 'text-muted-foreground hover:text-foreground',
-        )}
-        style={{ paddingLeft: `${depth * 14 + 8}px` }}
-        aria-expanded={isDir ? isOpen : undefined}
-        aria-current={isSelected ? 'true' : undefined}
-      >
-        {isDir ? (
-          <>
-            {isOpen ? (
-              <ChevronDown className="size-3.5 shrink-0 opacity-60" aria-hidden="true" />
-            ) : (
-              <ChevronRight className="size-3.5 shrink-0 opacity-60" aria-hidden="true" />
-            )}
-            {isOpen ? (
-              <FolderOpen className="size-4 shrink-0 text-chart-3" aria-hidden="true" />
-            ) : (
-              <Folder className="size-4 shrink-0 text-chart-3" aria-hidden="true" />
-            )}
-          </>
-        ) : (
-          <>
-            <span className="size-3.5 shrink-0" aria-hidden="true" />
-            <FileCode2 className="size-4 shrink-0 opacity-70" aria-hidden="true" />
-          </>
-        )}
-        <span className="min-w-0 truncate font-mono text-[13px]">{node.name}</span>
-      </button>
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => (isDir ? onToggle(node.path) : onSelect(node.path))}
+          className={cn(
+            'flex min-w-0 flex-1 items-center gap-1.5 rounded-md py-1 pr-2 text-left text-sm transition-colors',
+            'hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+            isSelected ? 'bg-gradient-to-r from-primary/15 to-nebula/10 font-medium' : 'text-muted-foreground hover:text-foreground',
+          )}
+          style={{ paddingLeft: `${depth * 14 + 8}px` }}
+          aria-expanded={isDir ? isOpen : undefined}
+          aria-current={isSelected ? 'true' : undefined}
+        >
+          {isDir ? (
+            <>
+              {isOpen ? (
+                <ChevronDown className="size-3.5 shrink-0 opacity-60" aria-hidden="true" />
+              ) : (
+                <ChevronRight className="size-3.5 shrink-0 opacity-60" aria-hidden="true" />
+              )}
+              {isOpen ? (
+                <FolderOpen className="size-4 shrink-0 text-chart-3" aria-hidden="true" />
+              ) : (
+                <Folder className="size-4 shrink-0 text-chart-3" aria-hidden="true" />
+              )}
+            </>
+          ) : (
+            <>
+              <span className="size-3.5 shrink-0" aria-hidden="true" />
+              <FileCode2 className="size-4 shrink-0 opacity-70" aria-hidden="true" />
+            </>
+          )}
+          <span className="min-w-0 truncate font-mono text-[13px]">{node.name}</span>
+        </button>
+        {trailing}
+      </div>
       {isDir && isOpen && node.children?.map((child) => (
         <TreeRow
           key={child.path}
@@ -118,6 +127,55 @@ function TreeRow({
         />
       ))}
     </>
+  );
+}
+
+/**
+ * "Publish NIP" action for a root-level NIP.md: reads the file from the
+ * snapshot and hands its markdown to the NIP editor, prefilled.
+ */
+function PublishNipButton({ snapshot, repo }: { snapshot: RepoSnapshot; repo: GitRepoAnnouncement }) {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [busy, setBusy] = useState(false);
+
+  const handleClick = async () => {
+    setBusy(true);
+    try {
+      const bytes = await snapshot.readFile('NIP.md');
+      const text = new TextDecoder('utf-8').decode(bytes);
+      const heading = text.split('\n').find((l) => l.startsWith('# '));
+      const title = heading ? heading.replace(/^#\s+/, '').trim() : repo.name;
+      navigate('/create', { state: { title, content: text } });
+    } catch (err) {
+      toast({
+        title: "Couldn't read NIP.md",
+        description: err instanceof Error ? err.message : 'Unknown error',
+        variant: 'destructive',
+      });
+      setBusy(false);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={busy}
+      aria-label="Publish NIP.md as a NIP"
+      title="Publish this NIP.md as a NIP"
+      className={cn(
+        'mr-1 inline-flex shrink-0 items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary transition-colors',
+        'hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50',
+      )}
+    >
+      {busy ? (
+        <Loader2 className="size-3 animate-spin" aria-hidden="true" />
+      ) : (
+        <ScrollText className="size-3" aria-hidden="true" />
+      )}
+      Publish NIP
+    </button>
   );
 }
 
@@ -492,6 +550,11 @@ export function RepoFileBrowser({ repo, state }: RepoFileBrowserProps) {
                     selected={selected}
                     onToggle={toggleDir}
                     onSelect={setSelectedPath}
+                    trailing={
+                      node.type === 'file' && node.path === 'NIP.md'
+                        ? <PublishNipButton snapshot={snapshot} repo={repo} />
+                        : undefined
+                    }
                   />
                 ))}
               </nav>

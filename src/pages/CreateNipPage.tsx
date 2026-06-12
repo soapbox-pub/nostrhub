@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useSeoMeta } from '@unhead/react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, AlertCircle } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { NipEditor, type NipEditorInitial } from '@/components/NipEditor';
@@ -14,12 +14,30 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const GITHUB_BASE = 'https://github.com/nostr-protocol/nips/blob/master';
 
+/** Prefill passed via router state, e.g. "Publish NIP" from a repo's NIP.md. */
+interface CreateNipLocationState {
+  title?: string;
+  content?: string;
+}
+
+function parseLocationState(state: unknown): CreateNipLocationState | undefined {
+  if (typeof state !== 'object' || state === null) return undefined;
+  const { title, content } = state as Record<string, unknown>;
+  if (typeof title !== 'string' && typeof content !== 'string') return undefined;
+  return {
+    title: typeof title === 'string' ? title : undefined,
+    content: typeof content === 'string' ? content : undefined,
+  };
+}
+
 const CreateNipPage = () => {
   const { user } = useCurrentUser();
   const [searchParams] = useSearchParams();
+  const location = useLocation();
 
   const forkParam = searchParams.get('fork'); // custom NIP naddr
   const officialForkParam = searchParams.get('officialFork'); // official NIP code
+  const statePrefill = useMemo(() => parseLocationState(location.state), [location.state]);
 
   const { data: customForkSource } = useCustomNip(forkParam ?? undefined);
   const { data: officialForkSource } = useOfficialNip(officialForkParam ?? undefined);
@@ -49,8 +67,11 @@ const CreateNipPage = () => {
         forkLabel: `NIP-${officialForkParam.toUpperCase()}`,
       };
     }
+    if (statePrefill) {
+      return { title: statePrefill.title, content: statePrefill.content };
+    }
     return undefined;
-  }, [forkParam, customForkSource, officialForkParam, officialForkSource]);
+  }, [forkParam, customForkSource, officialForkParam, officialForkSource, statePrefill]);
 
   // Remount the editor once fork data resolves so its initial state hydrates.
   const editorKey = `${forkParam ?? ''}:${officialForkParam ?? ''}:${initial ? 'ready' : 'empty'}`;

@@ -1498,6 +1498,27 @@ export function SubmitAppPage() {
                       <div className="space-y-2">
                         <Label className="text-sm">NIPs this app implements <span className="font-normal text-muted-foreground">(optional)</span></Label>
                         <NipPicker nipRefs={nipRefs} setNipRefs={setNipRefs} pubkey={user.pubkey} />
+                        <p className="text-xs text-muted-foreground">
+                          Not published yet?{' '}
+                          <Link
+                            to="/create"
+                            target="_blank"
+                            rel="noopener"
+                            className="font-medium text-primary underline-offset-2 hover:underline"
+                          >
+                            Draft your NIP
+                          </Link>
+                          {' '}or publish the NIP.md straight from{' '}
+                          <Link
+                            to="/repos"
+                            target="_blank"
+                            rel="noopener"
+                            className="font-medium text-primary underline-offset-2 hover:underline"
+                          >
+                            your repo
+                          </Link>
+                          . Both open in a new tab so you won't lose this form.
+                        </p>
                       </div>
                     </>
                   )}
