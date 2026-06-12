@@ -87,12 +87,13 @@ const Index = () => {
   // NIP-50: hot-ranked sweep of the search relays for fresh launches, scoped to
   // the community author set so the firehose can't leak in. Ditto's NIP-50 runs
   // on OpenSearch, which analyzes the query into ORed, order-independent tokens
-  // — so multi-word phrases (e.g. "just shipped") just OR their tokens together
-  // and match generic posts ("shipped a project at work"), diluting `sort:hot`.
-  // We use single high-signal announcement verbs that imply launching something
-  // new (one per filter); topicality comes from the community scope, not prose.
+  // — so single generic verbs like "released" match documents/studies/etc., and
+  // multi-word phrases ("just shipped") match generic prose ("shipped a project
+  // at work"). We use announcement terms whose tokens are *all* launch-adjacent
+  // (introducing, launching, "new release"); topicality comes from the
+  // community scope. One search per filter so each keeps its own `sort:hot`.
   const demoSearch = useNostrSearch({
-    searches: ['introducing sort:hot', 'launching sort:hot', 'released sort:hot'],
+    searches: ['introducing sort:hot', 'launching sort:hot', 'new release sort:hot'],
     kinds: [1],
     authors: community.data?.authors,
     sinceDays: 30,
