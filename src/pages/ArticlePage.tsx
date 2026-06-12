@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { nip19 } from 'nostr-tools';
 import type { NostrEvent } from '@nostrify/nostrify';
 import { Layout } from '@/components/Layout';
+import { DetailSurface } from '@/components/DetailSurface';
 import { MarkdownContent } from '@/components/MarkdownContent';
 import { UserAvatar } from '@/components/UserAvatar';
 import { useAuthor } from '@/hooks/useAuthor';
@@ -67,13 +68,15 @@ export function ArticlePage({ pubkey, identifier }: ArticlePageProps) {
       <Layout className="max-w-3xl">
         <div className="space-y-6">
           <Skeleton className="aspect-[21/9] w-full rounded-2xl" />
-          <Skeleton className="h-10 w-3/4" />
-          <Skeleton className="h-4 w-40" />
-          <div className="space-y-3">
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-2/3" />
-          </div>
+          <DetailSurface className="space-y-6">
+            <Skeleton className="h-10 w-3/4" />
+            <Skeleton className="h-4 w-40" />
+            <div className="space-y-3">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-2/3" />
+            </div>
+          </DetailSurface>
         </div>
       </Layout>
     );
@@ -104,7 +107,8 @@ export function ArticlePage({ pubkey, identifier }: ArticlePageProps) {
           />
         )}
 
-        <header className="space-y-4">
+        <DetailSurface className="space-y-6">
+          <header className="space-y-4">
           <span className="text-[11px] font-bold uppercase tracking-[0.3em] text-nebula">
             Feature
           </span>
@@ -140,6 +144,7 @@ export function ArticlePage({ pubkey, identifier }: ArticlePageProps) {
         <Separator />
 
         <MarkdownContent content={event.content} className="text-base" />
+        </DetailSurface>
       </article>
     </Layout>
   );

@@ -4,6 +4,7 @@ import { useSeoMeta } from '@unhead/react';
 import { BookOpen, GitFork, AlertCircle } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { BackLink, DetailHero, HeroExternalLink } from '@/components/DetailHero';
+import { DetailSurface } from '@/components/DetailSurface';
 import { MarkdownContent } from '@/components/MarkdownContent';
 import { ApproveButton } from '@/components/ApproveButton';
 import { CommentsSection } from '@/components/comments/CommentsSection';
@@ -14,7 +15,6 @@ import { uniqueRepoRefs } from '@/lib/apps';
 import { cn } from '@/lib/utils';
 import type { NipTarget } from '@/hooks/useNipApprovals';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
@@ -65,6 +65,7 @@ const OfficialNipPage = () => {
         </Alert>
       ) : (
         <article>
+          <DetailSurface>
           <DetailHero
             icon={<BookOpen className="size-7 text-primary" aria-hidden="true" />}
             kicker={`NIP-${code}`}
@@ -81,6 +82,7 @@ const OfficialNipPage = () => {
               </>
             }
           />
+          </DetailSurface>
 
           {/* Below the hero: NIP text + discussion on the left, cross-references
               from NIP-89 app listings on the right. */}
@@ -91,14 +93,10 @@ const OfficialNipPage = () => {
                 'lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-8 lg:space-y-0',
             )}
           >
-            <div className="min-w-0">
-              <Card>
-                <CardContent className="p-6">
-                  <MarkdownContent content={data.content} />
-                </CardContent>
-              </Card>
+            <DetailSurface className="min-w-0">
+              <MarkdownContent content={data.content} />
 
-              <section className="mt-10 space-y-4">
+              <section className="mt-10 space-y-4 border-t border-border/60 pt-6">
                 <h2 className="text-xl font-semibold tracking-tight">Discussion</h2>
                 <CommentsSection
                   root={new URL(`${GITHUB_BASE}/${code}.md`)}
@@ -106,7 +104,7 @@ const OfficialNipPage = () => {
                   emptyStateSubtitle="Share feedback on this NIP with the community."
                 />
               </section>
-            </div>
+            </DetailSurface>
 
             {apps.length > 0 && (
               <aside aria-label="NIP cross-references" className="space-y-4 lg:sticky lg:top-24">

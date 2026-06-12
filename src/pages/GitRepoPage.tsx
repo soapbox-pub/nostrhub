@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { BackLink, DetailHero, HeroExternalLink } from '@/components/DetailHero';
+import { DetailSurface } from '@/components/DetailSurface';
 import { UserAvatar } from '@/components/UserAvatar';
 import { CopyButton } from '@/components/git/CopyButton';
 import { RepoFileBrowser } from '@/components/git/RepoFileBrowser';
@@ -185,6 +186,7 @@ export function GitRepoPage({ pubkey, identifier, relays }: GitRepoPageProps) {
       ) : (
         <article className="space-y-8">
           {/* ——— Header ——— */}
+          <DetailSurface>
           <DetailHero
             icon={<FolderGit2 className="size-7 text-primary" aria-hidden="true" />}
             title={repo.name}
@@ -229,6 +231,7 @@ export function GitRepoPage({ pubkey, identifier, relays }: GitRepoPageProps) {
                 : undefined
             }
           />
+          </DetailSurface>
 
           {/* Below the hero: files + discussion on the left, repo metadata and
               NIP-89 cross-references on the right. */}
@@ -238,14 +241,14 @@ export function GitRepoPage({ pubkey, identifier, relays }: GitRepoPageProps) {
               <RepoFileBrowser repo={repo} state={state} />
 
               {/* ——— Discussion ——— */}
-              <section className="space-y-4">
+              <DetailSurface as="section" className="space-y-4">
                 <h2 className="font-display text-xl font-semibold tracking-tight">Discussion</h2>
                 <CommentsSection
                   root={repo.event}
                   emptyStateMessage="No discussion yet"
                   emptyStateSubtitle="Questions, praise, bug reports. Start the conversation."
                 />
-              </section>
+              </DetailSurface>
             </div>
 
             <aside aria-label="Repository details" className="space-y-4 lg:sticky lg:top-24">

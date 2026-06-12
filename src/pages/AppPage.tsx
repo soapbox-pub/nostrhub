@@ -5,6 +5,7 @@ import { nip19 } from 'nostr-tools';
 import { AlertCircle, Blocks, BookOpen, ChevronDown, ChevronRight, ExternalLink, FolderGit2, Pencil, ShoppingBag } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { BackLink, DetailHero } from '@/components/DetailHero';
+import { DetailSurface } from '@/components/DetailSurface';
 import { CommentsSection } from '@/components/comments/CommentsSection';
 import { UserAvatar } from '@/components/UserAvatar';
 import { ExpertToggleButton } from '@/components/ExpertToggleButton';
@@ -403,6 +404,7 @@ export function AppPage({ pubkey, identifier }: AppPageProps) {
       ) : (
         <article className="space-y-6">
           {/* Header: shared detail-page hero — brand tile, title, tier, actions */}
+          <DetailSurface>
           <DetailHero
             icon={<Blocks className="size-7 text-primary" aria-hidden="true" />}
             image={icon}
@@ -439,6 +441,7 @@ export function AppPage({ pubkey, identifier }: AppPageProps) {
               ) : undefined
             }
           />
+          </DetailSurface>
 
           {/* Description and details on the left, resource cards on the right —
               the sidebar starts at description level, below the name row. */}
@@ -449,7 +452,7 @@ export function AppPage({ pubkey, identifier }: AppPageProps) {
                 'lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-8 lg:space-y-0',
             )}
           >
-            <div className="min-w-0 space-y-6">
+            <DetailSurface className="min-w-0 space-y-6">
               <div className="space-y-3">
                 {app.about && (
                   <p className="max-w-prose whitespace-pre-wrap break-words leading-relaxed text-foreground/90">
@@ -569,7 +572,7 @@ export function AppPage({ pubkey, identifier }: AppPageProps) {
                   emptyStateSubtitle="Share your experience with this app."
                 />
               </section>
-            </div>
+            </DetailSurface>
 
             {hasSidebarContent(app) && (
               <aside aria-label="App resources" className="space-y-4 lg:sticky lg:top-24">

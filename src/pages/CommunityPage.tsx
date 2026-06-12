@@ -33,7 +33,7 @@ export function CommunityPage() {
 
   return (
     <Layout fullBleed>
-      <div className="flex h-full overflow-hidden">
+      <div className="flex h-full overflow-hidden bg-background">
         {/* Desktop channel sidebar */}
         <aside className="hidden w-60 shrink-0 border-r bg-muted/30 md:block">
           <ChannelSidebar activeTopic={topic} />
