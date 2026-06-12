@@ -26,7 +26,7 @@ export function useAppSearch(query: string) {
     queryFn: async ({ signal }) => {
       const events = await nostr
         .group(SEARCH_RELAYS)
-        .query([{ kinds: [APP_HANDLER_KIND], search: `${search} sort:hot`, limit: 50 }], {
+        .query([{ kinds: [APP_HANDLER_KIND], search, limit: 50 }], {
           signal: AbortSignal.any([signal, AbortSignal.timeout(8000)]),
         })
         .catch(() => [] as NostrEvent[]);

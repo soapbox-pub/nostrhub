@@ -60,13 +60,13 @@ export function AppsPage() {
   const [search, setSearch] = useState('');
   const [platform, setPlatform] = useState<AppPlatform>();
   const [tierFilter, setTierFilter] = useState<TierFilter>('all');
-  const [sortBy, setSortBy] = useState<SortBy>('newest');
+  const [sortBy, setSortBy] = useState<SortBy>('hot');
 
   const query = useDebounced(search).trim();
   const searching = query.length > 0;
 
   const browse = useAppSearch('sort:hot');
-  const results = useAppSearch(query);
+  const results = useAppSearch(searching ? `${query} sort:hot` : '');
   const reviews = useAllAppReviews();
 
   useSeoMeta({
