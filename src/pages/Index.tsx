@@ -89,11 +89,11 @@ const Index = () => {
   // on OpenSearch, which analyzes the query into ORed, order-independent tokens
   // — so generic verbs like "released" match documents/studies, and multi-word
   // phrases ("just shipped") match generic prose ("shipped a project at work").
-  // "introducing" is the single highest-signal announcement verb: it almost
-  // always precedes a product/project name. Topicality comes from the community
-  // scope; `sort:hot` ranks the matches.
+  // We use announcement terms whose tokens are *all* launch-adjacent
+  // (introducing, launching, "new release"); topicality comes from the
+  // community scope. One search per filter so each keeps its own `sort:hot`.
   const demoSearch = useNostrSearch({
-    searches: ['introducing sort:hot'],
+    searches: ['introducing sort:hot', 'launching sort:hot', 'new release sort:hot'],
     kinds: [1],
     authors: community.data?.authors,
     sinceDays: 30,
