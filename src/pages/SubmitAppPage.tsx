@@ -884,12 +884,31 @@ export function SubmitAppPage() {
   };
 
   // --- platform helpers ---
+
+  /** Website with trailing slashes stripped, or null if absent/invalid. */
+  const websiteBase = useMemo(() => {
+    const w = website.trim().replace(/\/+$/, '');
+    return w && isValidUrl(w) ? w : null;
+  }, [website]);
+
+  /** Deep-link patterns most web apps follow; one tap fills the URL. */
+  const webUrlPatterns: Array<{ label: string; url: string }> = websiteBase
+    ? [
+        { label: '/<bech32>', url: `${websiteBase}/<bech32>` },
+        { label: '/e/<bech32>', url: `${websiteBase}/e/<bech32>` },
+        { label: '/p/<bech32>', url: `${websiteBase}/p/<bech32>` },
+        { label: '/a/<bech32>', url: `${websiteBase}/a/<bech32>` },
+        { label: 'just my homepage', url: websiteBase },
+      ]
+    : [];
+
   const togglePlatform = (pl: AppPlatform) => {
     setPlatforms((prev) => {
       const existing = prev.find((p) => p.platform === pl);
       if (existing) return prev.filter((p) => p.platform !== pl);
-      // Friendly default: prefill the web URL from the website field.
-      const url = pl === 'web' && website.trim() ? website.trim() : '';
+      // Assume the common case for web: root-level NIP-19 deep links on the
+      // app's own domain. It's just a prefill, so diverging is one edit away.
+      const url = pl === 'web' && websiteBase ? `${websiteBase}/<bech32>` : '';
       return [...prev, { platform: pl, url, hint: '' }];
     });
     clearError(`platform-${pl}`);
@@ -1154,6 +1173,28 @@ export function SubmitAppPage() {
                                 aria-invalid={!!errors[`platform-${p.platform}`]}
                                 className="font-mono text-xs"
                               />
+                              {p.platform === 'web' && webUrlPatterns.length > 0 && (
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  <span className="text-xs text-muted-foreground">Common patterns:</span>
+                                  {webUrlPatterns.map(({ label, url }) => (
+                                    <button
+                                      key={label}
+                                      type="button"
+                                      onClick={() => updatePlatform('web', { url })}
+                                      aria-pressed={p.url === url}
+                                      className={cn(
+                                        'rounded-full px-2 py-0.5 font-mono text-[11px] font-medium transition-all motion-safe:active:scale-95',
+                                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                                        p.url === url
+                                          ? 'bg-primary/15 text-primary ring-1 ring-primary/30'
+                                          : 'bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary',
+                                      )}
+                                    >
+                                      {label}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
                               <FieldError message={errors[`platform-${p.platform}`]} />
                             </div>
                           ))}
