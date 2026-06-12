@@ -57,22 +57,39 @@ export function ArticlesPage() {
   });
 
   // The freshest expert pieces lead the page; the rest of the feed is filled
-  // from the broader community, deduped against the expert articles by address
-  // and ordered newest-first.
+  // from the broader community, deduped against the expert articles by address.
+  // Community backfill is ranked by web-of-trust — how many experts follow the
+  // author — then by recency, so vouched-for voices surface above the noise.
   const combined = useMemo(() => {
     const lead = (expertArticles ?? []).slice(0, EXPERT_LEAD_COUNT);
     const seen = new Set(lead.map((a) => a.naddr));
+    const followCounts = community.data?.followCounts;
 
-    const rest = [...(expertArticles ?? []).slice(EXPERT_LEAD_COUNT), ...(communityArticles ?? [])]
+    // Remaining expert articles keep their newest-first order and stay ahead of
+    // the community backfill.
+    const expertRest = (expertArticles ?? []).slice(EXPERT_LEAD_COUNT).filter((a) => {
+      if (seen.has(a.naddr)) return false;
+      seen.add(a.naddr);
+      return true;
+    });
+
+    // Community backfill: only authors the panel actually follows, ranked by
+    // follow count (desc) then recency.
+    const communityRest = (communityArticles ?? [])
       .filter((a) => {
         if (seen.has(a.naddr)) return false;
+        if ((followCounts?.get(a.author) ?? 0) === 0) return false;
         seen.add(a.naddr);
         return true;
       })
-      .sort((a, b) => b.publishedAt - a.publishedAt);
+      .sort((a, b) => {
+        const fa = followCounts?.get(a.author) ?? 0;
+        const fb = followCounts?.get(b.author) ?? 0;
+        return fb - fa || b.publishedAt - a.publishedAt;
+      });
 
-    return [...lead, ...rest];
-  }, [expertArticles, communityArticles]);
+    return [...lead, ...expertRest, ...communityRest];
+  }, [expertArticles, communityArticles, community.data?.followCounts]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
