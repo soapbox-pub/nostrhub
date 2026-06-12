@@ -56,40 +56,32 @@ export function ArticlesPage() {
       'Long-form dispatches from the panel: in-depth articles and essays on building the Nostr protocol.',
   });
 
-  // The freshest expert pieces lead the page. Everything after the leads —
-  // remaining expert articles plus the broader community — is merged into a
-  // single pool ranked by web-of-trust (how many experts follow the author)
-  // then recency, so a well-followed or fresh post isn't buried beneath every
-  // old expert article. Community authors with no expert follows are dropped.
+  // The freshest expert pieces lead the page. Everything after the leads comes
+  // from the community set (which already includes the experts), ranked by
+  // web-of-trust — how many experts follow the author — then recency. Experts
+  // are ranked like everyone else, so a well-followed or fresh community post
+  // isn't buried beneath old expert articles. Authors with no expert follows
+  // are dropped.
   const combined = useMemo(() => {
     const lead = (expertArticles ?? []).slice(0, EXPERT_LEAD_COUNT);
     const seen = new Set(lead.map((a) => a.naddr));
     const followCounts = community.data?.followCounts;
-    const expertSet = new Set(experts);
 
-    // Trust score = how many experts follow the author. Experts get a small
-    // floor (the panel implicitly vouches for itself) so a typical expert
-    // outranks an unfollowed author, but a widely-followed community voice can
-    // still rise above a stale expert post rather than every expert article
-    // sitting on top.
-    const EXPERT_FLOOR = Math.max(1, Math.ceil(experts.length / 2));
-    const trust = (a: ExpertArticle) => {
-      const follows = followCounts?.get(a.author) ?? 0;
-      return expertSet.has(a.author) ? Math.max(follows, EXPERT_FLOOR) : follows;
-    };
-
-    const pool = [...(expertArticles ?? []).slice(EXPERT_LEAD_COUNT), ...(communityArticles ?? [])]
+    const rest = (communityArticles ?? [])
       .filter((a) => {
         if (seen.has(a.naddr)) return false;
-        // Drop community authors with no web-of-trust signal.
-        if (!expertSet.has(a.author) && (followCounts?.get(a.author) ?? 0) === 0) return false;
+        if ((followCounts?.get(a.author) ?? 0) === 0) return false;
         seen.add(a.naddr);
         return true;
       })
-      .sort((a, b) => trust(b) - trust(a) || b.publishedAt - a.publishedAt);
+      .sort((a, b) => {
+        const fa = followCounts?.get(a.author) ?? 0;
+        const fb = followCounts?.get(b.author) ?? 0;
+        return fb - fa || b.publishedAt - a.publishedAt;
+      });
 
-    return [...lead, ...pool];
-  }, [expertArticles, communityArticles, community.data?.followCounts, experts]);
+    return [...lead, ...rest];
+  }, [expertArticles, communityArticles, community.data?.followCounts]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
