@@ -11,10 +11,11 @@ import { UserAvatar } from '@/components/UserAvatar';
 import { useExpertPress } from '@/hooks/useExpertPress';
 import { useNostrSearch } from '@/hooks/useNostrSearch';
 import { useReleases } from '@/hooks/useReleases';
-import { customToRanked } from '@/hooks/useRankedNips';
+import { customToRanked, type RankedNip } from '@/hooks/useRankedNips';
 import { useCommunityAuthors } from '@/hooks/useCommunityAuthors';
 import { useCustomNips } from '@/hooks/useCustomNips';
 import { useExperts } from '@/hooks/useExperts';
+import { useNipApprovals, nipTargetKey, type NipTarget } from '@/hooks/useNipApprovals';
 import { noteExcerpt } from '@/lib/noteText';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -71,7 +72,7 @@ const Index = () => {
       'NostrHub is where the developer community collaborates on building the Nostr protocol. Discover, draft, and discuss NIPs together.',
   });
 
-  const { experts } = useExperts();
+  const { experts, expertSet } = useExperts();
   const community = useCommunityAuthors();
   const press = useExpertPress();
 
@@ -135,7 +136,41 @@ const Index = () => {
         .slice(0, 6),
     [demoSearch.data],
   );
-  const latestNips = (latestNipsQuery.data ?? []).slice(0, 9);
+  const latestNipsBase = useMemo(
+    () => (latestNipsQuery.data ?? []).slice(0, 9),
+    [latestNipsQuery.data],
+  );
+
+  // Fetch expert `nostrhub.approve` labels for the latest NIPs so cards can show
+  // their expert approval stack (matching the ranked NIP directory behavior).
+  const latestNipTargets = useMemo<NipTarget[]>(
+    () => latestNipsBase.map((nip) => ({ type: 'custom', address: nip.address })),
+    [latestNipsBase],
+  );
+  const latestNipApprovals = useNipApprovals(latestNipTargets, { expertsOnly: true });
+
+  // Merge approval data (and implicit expert-authorship) into each card's model.
+  const latestNips = useMemo<RankedNip[]>(() => {
+    const approvals = latestNipApprovals.data;
+    return latestNipsBase.map((nip) => {
+      const ranked = customToRanked(nip);
+      const a = approvals?.[nipTargetKey(ranked.target)];
+      const expertAuthored = expertSet.has(nip.author);
+      // An expert authoring a NIP counts as an implicit expert endorsement,
+      // unless they've also explicitly approved it (avoid double-counting).
+      const authoredBonus = expertAuthored && !a?.experts.includes(nip.author) ? 1 : 0;
+      const expertApprovers =
+        authoredBonus > 0 ? [nip.author, ...(a?.experts ?? [])] : a?.experts ?? [];
+      return {
+        ...ranked,
+        expertCount: (a?.expertCount ?? 0) + authoredBonus,
+        totalCount: (a?.totalCount ?? 0) + authoredBonus,
+        expertApprovers,
+        expertAuthored,
+      };
+    });
+  }, [latestNipsBase, latestNipApprovals.data, expertSet]);
+
   const latestReleases = (releasesQuery.data ?? []).slice(0, 6);
   const releasesLoading = community.isLoading || (hasCommunity && releasesQuery.isLoading);
 
@@ -317,7 +352,7 @@ const Index = () => {
                 </>
               ) : (
                 latestNips.map((nip) => (
-                  <NipCard key={nip.address} nip={customToRanked(nip)} />
+                  <NipCard key={nip.key} nip={nip} />
                 ))
               )}
             </div>
