@@ -4,6 +4,7 @@ import { Blocks, ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
 import type { AppInfo } from '@/lib/apps';
 import { TIERS, TRACKED_NIPS, type TierAggregate } from '@/lib/appReviews';
 import { TierBadge } from '@/components/TierBadge';
+import { AppLikeButton } from '@/components/AppLikeButton';
 import { useAuthor } from '@/hooks/useAuthor';
 import { sanitizeUrl } from '@/lib/sanitizeUrl';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -73,6 +74,9 @@ export function AppListRow({ row }: { row: AppRow }) {
         <div className="shrink-0 px-2 sm:px-3">
           <TierBadge tier={overall?.tier ?? null} size="md" />
         </div>
+
+        {/* Like button */}
+        <AppLikeButton app={app} className="shrink-0" />
 
         {/* Expand toggle */}
         <button
