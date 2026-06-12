@@ -84,15 +84,23 @@ const Index = () => {
     enabled: !community.isLoading,
   });
 
-  // NIP-50: hot-ranked sweep of the search relays for fresh demos and ships.
+  // NIP-50: hot-ranked sweep of the search relays for fresh demos and ships,
+  // scoped to the community author set so the firehose can't leak in.
   const demoSearch = useNostrSearch({
     searches: ['nostr demo sort:hot', 'just shipped sort:hot', 'built on nostr sort:hot'],
     kinds: [1],
+    authors: community.data?.authors,
     sinceDays: 30,
     limit: 20,
+    enabled: !community.isLoading && (community.data?.authors.length ?? 0) > 0,
   });
 
   const hasExperts = experts.length > 0;
+  const hasCommunity = (community.data?.authors.length ?? 0) > 0;
+
+  // The demo reel waits on the community set before its search can run; treat
+  // "community still loading" as part of the demo loading state.
+  const demoLoading = community.isLoading || (hasCommunity && demoSearch.isLoading);
 
   // Recent NIP-89 app listings published by the experts themselves.
   const expertApps = useApps({ authors: experts, limit: 50, enabled: hasExperts });
@@ -269,16 +277,16 @@ const Index = () => {
           </div>
         </section>
 
-        {/* ── The demo reel (NIP-50 search) ────────────────────────── */}
-        {(demoSearch.isLoading || demos.length > 0) && (
-          <section className="space-y-5" aria-label="Fresh demos and launches from across the network">
+        {/* ── The demo reel (NIP-50 search, community-scoped) ──────── */}
+        {hasCommunity && (demoLoading || demos.length > 0) && (
+          <section className="space-y-5" aria-label="Fresh demos and launches from the community">
             <Department
               title="Shipping Now"
-              subtitle="Demos and launches, live from the search relays."
+              subtitle="Demos and launches from across the community."
               accent="nebula"
             />
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {demoSearch.isLoading ? (
+              {demoLoading ? (
                 <>
                   <CardSkeleton withImage />
                   <CardSkeleton withImage />

@@ -7,6 +7,8 @@ export interface UseNostrSearchOptions {
   /** Human-readable NIP-50 search strings; each becomes its own filter. */
   searches: string[];
   kinds: number[];
+  /** Restrict results to these author pubkeys (hex). */
+  authors?: string[];
   /** Restrict results to the last N days. */
   sinceDays?: number;
   /** Per-search result limit. */
@@ -19,22 +21,37 @@ export interface UseNostrSearchOptions {
  * (relay.ditto.pub + relay.dreamith.to — most pool relays ignore the `search`
  * filter field). Results are deduplicated and kind-checked, preserving the
  * relay's result ranking (e.g. `sort:hot`) instead of re-sorting by time.
+ *
+ * Pass `authors` to scope the search to a trusted set of pubkeys (e.g. the
+ * community author set); it is applied both as a relay-side `authors` filter
+ * and as a client-side guard.
  */
 export function useNostrSearch(options: UseNostrSearchOptions) {
   const { nostr } = useNostr();
-  const { searches, kinds, sinceDays, limit = 20, enabled = true } = options;
+  const { searches, kinds, authors, sinceDays, limit = 20, enabled = true } = options;
 
   return useQuery<NostrEvent[]>({
-    queryKey: ['nostr-search', kinds, searches, sinceDays ?? null, limit],
+    queryKey: [
+      'nostr-search',
+      kinds,
+      searches,
+      authors ? [...authors].sort() : null,
+      sinceDays ?? null,
+      limit,
+    ],
     queryFn: async ({ signal }) => {
       const since =
         sinceDays !== undefined
           ? Math.floor(Date.now() / 1000) - sinceDays * 86400
           : undefined;
 
+      const hasAuthors = authors !== undefined && authors.length > 0;
+      const authorSet = hasAuthors ? new Set(authors) : undefined;
+
       const filters: NostrFilter[] = searches.map((search) => {
         const filter: NostrFilter = { kinds, search, limit };
         if (since !== undefined) filter.since = since;
+        if (hasAuthors) filter.authors = authors;
         return filter;
       });
 
@@ -47,6 +64,7 @@ export function useNostrSearch(options: UseNostrSearchOptions) {
       return events.filter((ev) => {
         if (!kinds.includes(ev.kind) || seen.has(ev.id)) return false;
         if (since !== undefined && ev.created_at < since) return false;
+        if (authorSet && !authorSet.has(ev.pubkey)) return false;
         seen.add(ev.id);
         return true;
       });
