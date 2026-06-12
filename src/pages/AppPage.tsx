@@ -421,7 +421,6 @@ export function AppPage({ pubkey, identifier }: AppPageProps) {
                 app.nip05 ?? undefined
               )
             }
-            metrics={app.name ? <ClientMetrics clientTags={[app.name]} /> : undefined}
             primaryAction={
               website ? (
                 <Button asChild className="gap-1.5">
@@ -442,7 +441,11 @@ export function AppPage({ pubkey, identifier }: AppPageProps) {
                 </Button>
               ) : undefined
             }
-          />
+          >
+            {/* Usage metrics: active users + 30-day series, between the title
+                row and the action row, keyed on the app name as `#client`. */}
+            {app.name && <ClientMetrics clientTags={[app.name]} />}
+          </DetailHero>
           </DetailSurface>
 
           {/* Description and details on the left, resource cards on the right —
