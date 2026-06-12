@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { useSeoMeta } from '@unhead/react';
 import { Link } from 'react-router-dom';
-import { PenLine } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { NipCard } from '@/components/NipCard';
 import { LeadArticleCard, ArticleCard } from '@/components/ArticleCards';
@@ -12,11 +11,9 @@ import { UserAvatar } from '@/components/UserAvatar';
 import { useExpertPress } from '@/hooks/useExpertPress';
 import { useNostrSearch } from '@/hooks/useNostrSearch';
 import { useApps } from '@/hooks/useApps';
-import { useRankedNips, customToRanked } from '@/hooks/useRankedNips';
+import { useRankedNips } from '@/hooks/useRankedNips';
 import { useCommunityAuthors } from '@/hooks/useCommunityAuthors';
-import { useCustomNips } from '@/hooks/useCustomNips';
 import { useExperts } from '@/hooks/useExperts';
-import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { noteExcerpt } from '@/lib/noteText';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -74,15 +71,9 @@ const Index = () => {
   });
 
   const { experts } = useExperts();
-  const { user } = useCurrentUser();
   const { ranked, isLoading: rankedLoading } = useRankedNips();
   const community = useCommunityAuthors();
   const press = useExpertPress();
-  const draftsQuery = useCustomNips({
-    authors: community.data?.authors,
-    limit: 30,
-    enabled: !community.isLoading,
-  });
 
   // NIP-50: hot-ranked sweep of the search relays for fresh launches, scoped to
   // the community author set so the firehose can't leak in. Ditto's NIP-50 runs
@@ -136,7 +127,6 @@ const Index = () => {
     [demoSearch.data],
   );
   const topNips = ranked.slice(0, 7);
-  const drafts = (draftsQuery.data ?? []).slice(0, 6);
   const showroomApps = (communityApps.data ?? []).slice(0, 3);
   const showroomLoading = community.isLoading || (hasCommunity && communityApps.isLoading);
 
@@ -335,46 +325,6 @@ const Index = () => {
             </div>
           </section>
         )}
-
-        {/* ── Rumor mill (fresh community drafts) ──────────────────── */}
-        <section className="space-y-5" aria-label="Latest community drafts">
-          <Department
-            title="The Rumor Mill"
-            subtitle="Fresh NIP drafts from the community lab."
-            action={
-              user && (
-                <Button asChild size="sm" className="gap-1.5 rounded-full shadow-lg shadow-primary/25">
-                  <Link to="/create">
-                    <PenLine className="size-4" />
-                    Draft a New NIP
-                  </Link>
-                </Button>
-              )
-            }
-          />
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {community.isLoading || draftsQuery.isLoading ? (
-              <>
-                <CardSkeleton />
-                <CardSkeleton />
-              </>
-            ) : drafts.length > 0 ? (
-              drafts.map((nip) => <NipCard key={nip.address} nip={customToRanked(nip)} />)
-            ) : (
-              <Card className="border-dashed sm:col-span-2 lg:col-span-3">
-                <CardContent className="px-8 py-12 text-center">
-                  <p className="mx-auto max-w-sm text-muted-foreground">
-                    The rumor mill is quiet.{' '}
-                    <Link to="/create" className="font-medium text-primary hover:underline">
-                      Start the next rumor
-                    </Link>
-                    .
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </section>
       </div>
     </Layout>
   );
