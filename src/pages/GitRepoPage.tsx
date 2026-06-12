@@ -4,6 +4,7 @@ import { nip19 } from 'nostr-tools';
 import { formatDistanceToNow } from 'date-fns';
 import {
   AlertCircle,
+  Blocks,
   Crown,
   ExternalLink,
   Fingerprint,
@@ -19,13 +20,34 @@ import { RepoFileBrowser } from '@/components/git/RepoFileBrowser';
 import { CommentsSection } from '@/components/comments/CommentsSection';
 import { useGitRepo } from '@/hooks/useGitRepo';
 import { useAuthor } from '@/hooks/useAuthor';
+import { useAppsForRepo } from '@/hooks/useAppsForRepo';
 import { shortNpub } from '@/lib/nostr';
-import type { GitRepoAnnouncement } from '@/lib/git';
+import { sanitizeUrl } from '@/lib/sanitizeUrl';
+import { GIT_REPO_KIND, type GitRepoAnnouncement } from '@/lib/git';
+import type { AppInfo } from '@/lib/apps';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+
+/** A compact app card for the cross-reference list. */
+function AppChip({ app }: { app: AppInfo }) {
+  const icon = sanitizeUrl(app.picture);
+  return (
+    <Link
+      to={`/${app.naddr}`}
+      className="flex items-center gap-2.5 rounded-lg border border-border/60 bg-muted/20 px-3 py-2 transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <span className="grid size-7 shrink-0 place-items-center overflow-hidden rounded-lg bg-muted">
+        {icon
+          ? <img src={icon} alt="" className="size-full object-cover" />
+          : <Blocks className="size-4 text-muted-foreground" aria-hidden="true" />}
+      </span>
+      <span className="min-w-0 flex-1 truncate text-sm font-medium">{app.name}</span>
+    </Link>
+  );
+}
 
 interface GitRepoPageProps {
   /** Repository owner (hex pubkey). */
@@ -147,6 +169,8 @@ export function GitRepoPage({ pubkey, identifier, relays }: GitRepoPageProps) {
   const author = useAuthor(pubkey);
   const repo = data?.repo ?? null;
   const state = data?.state ?? null;
+  const repoAddress = `${GIT_REPO_KIND}:${pubkey}:${identifier}`;
+  const appsForRepo = useAppsForRepo(repoAddress);
 
   const authorName =
     author.data?.metadata?.name || author.data?.metadata?.display_name || shortNpub(pubkey);
@@ -239,6 +263,21 @@ export function GitRepoPage({ pubkey, identifier, relays }: GitRepoPageProps) {
 
           {/* ——— Files (clone, branches, and tags live in its header) ——— */}
           <RepoFileBrowser repo={repo} state={state} />
+
+          {/* ——— Apps using this repo ——— */}
+          {(appsForRepo.data?.length ?? 0) > 0 && (
+            <section className="space-y-3">
+              <h2 className="font-display text-xl font-semibold tracking-tight">Used by apps</h2>
+              <p className="text-sm text-muted-foreground">
+                Nostr apps that link to this repository in their NIP-89 listing.
+              </p>
+              <div className="grid gap-1.5 sm:grid-cols-2">
+                {appsForRepo.data!.map((app) => (
+                  <AppChip key={app.address} app={app} />
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* ——— Discussion ——— */}
           <section className="space-y-4">

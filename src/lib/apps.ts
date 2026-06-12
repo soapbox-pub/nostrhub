@@ -33,6 +33,45 @@ export const APP_CATEGORY_TAGS = [
   'distributed', 'decentralization',
 ];
 
+/** GitHub blob base for official NIPs — same URL format used by NIP approvals and NIP forks. */
+export const NIPS_REPO_BASE = 'https://github.com/nostr-protocol/nips/blob/master';
+
+/** Extract a NIP number from a GitHub blob URL, e.g. ".../blob/master/01.md" → "01". */
+export function nipNumberFromUrl(url: string): string | null {
+  const m = url.match(/\/([A-F0-9]{2})\.md$/i);
+  return m ? m[1].toUpperCase() : null;
+}
+
+/** Build the canonical GitHub blob URL for an official NIP number (e.g. "01" → full URL). */
+export function nipGithubUrl(number: string): string {
+  return `${NIPS_REPO_BASE}/${number.toUpperCase()}.md`;
+}
+
+/**
+ * A NIP referenced by a kind 31990 app event.
+ * - `type: 'custom'` — a community NIP (kind 30817), addressed by naddr coordinate.
+ * - `type: 'official'` — an official NIP by number (e.g. "01", "34").
+ */
+export type AppNipRef =
+  | { type: 'custom'; address: string; relayHint?: string }
+  | { type: 'official'; number: string };
+
+/** A NIP-34 git repository (kind 30617) referenced by a kind 31990 app event. */
+export interface AppRepoRef {
+  address: string;   // "30617:<pubkey>:<d>"
+  pubkey: string;
+  identifier: string;
+  relayHint?: string;
+}
+
+/** A Zapstore app listing (kind 32267) referenced by a kind 31990 app event. */
+export interface AppZapstoreRef {
+  address: string;   // "32267:<pubkey>:<d>"
+  pubkey: string;
+  identifier: string;
+  relayHint?: string;
+}
+
 /** Parsed app data from a kind 31990 event. */
 export interface AppInfo {
   event: NostrEvent;
@@ -49,6 +88,12 @@ export interface AppInfo {
   platforms: AppPlatform[];
   /** Category hashtags (`t` tags). */
   hashtags: string[];
+  /** NIPs this app explicitly references (custom or official). */
+  nipRefs: AppNipRef[];
+  /** NIP-34 git repos this app is associated with. */
+  repoRefs: AppRepoRef[];
+  /** Zapstore app listing(s) for this app. */
+  zapstoreRefs: AppZapstoreRef[];
   /** Plain address coordinate: "31990:<pubkey>:<d-tag>". */
   address: string;
   /** bech32 naddr for routing to the app's detail page. */
@@ -96,6 +141,51 @@ export function parseAppEvent(event: NostrEvent): AppInfo | null {
     ),
   );
 
+  // NIP references: `a` tags with marker "nip" (custom NIPs, kind 30817)
+  // and `i` tags with marker "nip" (official NIPs by number, e.g. "nip-01").
+  const nipRefs: AppNipRef[] = [];
+  for (const tag of event.tags) {
+    if (tag[0] === 'a' && tag[3] === 'nip' && tag[1]) {
+      nipRefs.push({ type: 'custom', address: tag[1], relayHint: tag[2] || undefined });
+    } else if (tag[0] === 'i' && tag[2] === 'nip' && tag[1]) {
+      // value like "nip-01" → number "01"
+      const num = tag[1].replace(/^nip-/i, '').padStart(2, '0');
+      nipRefs.push({ type: 'official', number: num });
+    }
+  }
+
+  // Git repo references: `a` tags with marker "repo" (kind 30617)
+  const repoRefs: AppRepoRef[] = [];
+  for (const tag of event.tags) {
+    if (tag[0] === 'a' && tag[3] === 'repo' && tag[1]) {
+      const parts = tag[1].split(':');
+      if (parts.length === 3 && parts[0] === '30617') {
+        repoRefs.push({
+          address: tag[1],
+          pubkey: parts[1],
+          identifier: parts[2],
+          relayHint: tag[2] || undefined,
+        });
+      }
+    }
+  }
+
+  // Zapstore listing references: `a` tags with marker "zapstore" (kind 32267)
+  const zapstoreRefs: AppZapstoreRef[] = [];
+  for (const tag of event.tags) {
+    if (tag[0] === 'a' && tag[3] === 'zapstore' && tag[1]) {
+      const parts = tag[1].split(':');
+      if (parts.length === 3 && parts[0] === '32267') {
+        zapstoreRefs.push({
+          address: tag[1],
+          pubkey: parts[1],
+          identifier: parts[2],
+          relayHint: tag[2] || undefined,
+        });
+      }
+    }
+  }
+
   return {
     event,
     pubkey: event.pubkey,
@@ -108,6 +198,9 @@ export function parseAppEvent(event: NostrEvent): AppInfo | null {
     supportedKinds,
     platforms: Array.from(platforms),
     hashtags,
+    nipRefs,
+    repoRefs,
+    zapstoreRefs,
     address: `${APP_HANDLER_KIND}:${event.pubkey}:${identifier}`,
     naddr: nip19.naddrEncode({
       kind: APP_HANDLER_KIND,

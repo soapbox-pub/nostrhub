@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSeoMeta } from '@unhead/react';
 import { nip19 } from 'nostr-tools';
-import { AlertCircle, ArrowLeft, Blocks, ChevronDown, ExternalLink } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Blocks, BookOpen, ChevronDown, ExternalLink, FolderGit2, ShoppingBag } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { CommentsSection } from '@/components/comments/CommentsSection';
 import { UserAvatar } from '@/components/UserAvatar';
@@ -13,6 +13,7 @@ import { AppReviewCard } from '@/components/AppReviewCard';
 import { useApp } from '@/hooks/useApps';
 import { useAppReviews } from '@/hooks/useAppReviews';
 import { useAuthor } from '@/hooks/useAuthor';
+import { useGitRepo } from '@/hooks/useGitRepo';
 import { shortNpub } from '@/lib/nostr';
 import { sanitizeUrl } from '@/lib/sanitizeUrl';
 import {
@@ -21,6 +22,7 @@ import {
   aggregateReviews,
   type TierAggregate,
 } from '@/lib/appReviews';
+import { nipGithubUrl, nipNumberFromUrl, type AppInfo, type AppNipRef, type AppRepoRef, type AppZapstoreRef } from '@/lib/apps';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -33,6 +35,134 @@ interface AppPageProps {
   pubkey: string;
   /** The `d` tag identifier (from the naddr). */
   identifier: string;
+}
+
+/** A single NIP ref row — resolves name for official NIPs, links to the page. */
+function NipRefRow({ ref }: { ref: AppNipRef }) {
+  if (ref.type === 'official') {
+    const num = ref.number;
+    return (
+      <div className="flex items-center gap-2.5 rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
+        <BookOpen className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+        <Link
+          to={`/nip/${num.toLowerCase()}`}
+          className="flex-1 text-sm font-medium hover:text-primary hover:underline"
+        >
+          NIP-{num}
+        </Link>
+        <a
+          href={nipGithubUrl(num)}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`View NIP-${num} on GitHub`}
+          className="text-muted-foreground hover:text-foreground"
+        >
+          <ExternalLink className="size-3.5" aria-hidden="true" />
+        </a>
+      </div>
+    );
+  }
+
+  // Custom NIP: encode the address as an naddr and link to it.
+  const parts = ref.address.split(':');
+  let href = ref.address;
+  try {
+    if (parts.length === 3 && parts[1].length === 64) {
+      href = '/' + nip19.naddrEncode({ kind: 30817, pubkey: parts[1], identifier: parts[2] });
+    }
+  } catch { /* fallback */ }
+
+  return (
+    <div className="flex items-center gap-2.5 rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
+      <BookOpen className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+      <Link to={href} className="flex-1 truncate font-mono text-xs text-muted-foreground hover:text-primary hover:underline">
+        {ref.address}
+      </Link>
+    </div>
+  );
+}
+
+/** A single repo ref row — fetches name from the NIP-34 event. */
+function RepoRefRow({ ref }: { ref: AppRepoRef }) {
+  const { data } = useGitRepo({ pubkey: ref.pubkey, identifier: ref.identifier });
+  const name = data?.repo?.name ?? ref.identifier;
+  const naddr = (() => {
+    try { return nip19.naddrEncode({ kind: 30617, pubkey: ref.pubkey, identifier: ref.identifier }); }
+    catch { return null; }
+  })();
+
+  return (
+    <div className="flex items-center gap-2.5 rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
+      <FolderGit2 className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+      {naddr ? (
+        <Link to={`/${naddr}`} className="flex-1 truncate text-sm font-medium hover:text-primary hover:underline">
+          {name}
+        </Link>
+      ) : (
+        <span className="flex-1 truncate font-mono text-xs text-muted-foreground">{ref.identifier}</span>
+      )}
+    </div>
+  );
+}
+
+/** A Zapstore listing row — links out to zap.store. */
+function ZapstoreRefRow({ ref }: { ref: AppZapstoreRef }) {
+  const zapstoreUrl = `https://zap.store/${ref.identifier}`;
+  return (
+    <div className="flex items-center gap-2.5 rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
+      <ShoppingBag className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+      <span className="flex-1 truncate text-sm font-medium">{ref.identifier}</span>
+      <a
+        href={zapstoreUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="View on Zapstore"
+        className="text-muted-foreground hover:text-foreground"
+      >
+        <ExternalLink className="size-3.5" aria-hidden="true" />
+      </a>
+    </div>
+  );
+}
+
+/** Related NIPs, repos, and Zapstore listings declared on the app event. */
+function AppRelatedSection({ app }: { app: AppInfo }) {
+  const hasNips = app.nipRefs.length > 0;
+  const hasRepos = app.repoRefs.length > 0;
+  const hasZapstore = app.zapstoreRefs.length > 0;
+  if (!hasNips && !hasRepos && !hasZapstore) return null;
+
+  return (
+    <section className="space-y-6 border-t border-border/60 pt-6">
+      {hasNips && (
+        <div className="space-y-2">
+          <h2 className="text-xl font-semibold tracking-tight">NIPs</h2>
+          <p className="text-sm text-muted-foreground">Nostr Implementation Possibilities this app implements.</p>
+          <div className="space-y-1.5">
+            {app.nipRefs.map((ref, i) => <NipRefRow key={i} ref={ref} />)}
+          </div>
+        </div>
+      )}
+      {hasRepos && (
+        <div className="space-y-2">
+          <h2 className="text-xl font-semibold tracking-tight">Source Code</h2>
+          <p className="text-sm text-muted-foreground">Git repositories announced on Nostr via NIP-34.</p>
+          <div className="space-y-1.5">
+            {app.repoRefs.map((ref, i) => <RepoRefRow key={i} ref={ref} />)}
+          </div>
+        </div>
+      )}
+      {hasZapstore && (
+        <div className="space-y-2">
+          <h2 className="text-xl font-semibold tracking-tight">Install</h2>
+          <p className="text-sm text-muted-foreground">Downloadable builds available on Zapstore.</p>
+          <div className="space-y-1.5">
+            {app.zapstoreRefs.map((ref, i) => <ZapstoreRefRow key={i} ref={ref} />)}
+          </div>
+        </div>
+      )}
+    </section>
+  );
 }
 
 /** ProtonDB-style per-NIP compatibility breakdown table. */
@@ -295,6 +425,9 @@ export function AppPage({ pubkey, identifier }: AppPageProps) {
               </div>
             </section>
           )}
+
+          {/* Related NIPs, repos, Zapstore */}
+          <AppRelatedSection app={app} />
 
           {/* Discussion */}
           <section className="space-y-4 border-t border-border/60 pt-6">

@@ -48,6 +48,31 @@ export function useCustomNips(options: UseCustomNipsOptions = {}) {
   });
 }
 
+/** Fetch a single custom NIP by its address coordinate ("30817:<pubkey>:<d>"). */
+export function useCustomNipByAddress(address: string | undefined) {
+  const { nostr } = useNostr();
+
+  return useQuery<CustomNip | null>({
+    queryKey: ['custom-nip-by-address', address ?? ''],
+    queryFn: async ({ signal }) => {
+      if (!address) return null;
+      const parts = address.split(':');
+      if (parts.length !== 3 || parts[0] !== String(CUSTOM_NIP_KIND)) return null;
+      const [, pubkey, identifier] = parts;
+
+      const events = await nostr.query(
+        [{ kinds: [CUSTOM_NIP_KIND], authors: [pubkey], '#d': [identifier], limit: 1 }],
+        { signal: AbortSignal.any([signal, AbortSignal.timeout(5000)]) },
+      );
+
+      const event = events.find(isValidCustomNip);
+      return event ? parseCustomNip(event) : null;
+    },
+    enabled: !!address,
+    staleTime: 60 * 1000,
+  });
+}
+
 /** Fetch a single custom NIP by its naddr identifier. */
 export function useCustomNip(naddr: string | undefined) {
   const { nostr } = useNostr();
