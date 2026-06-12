@@ -79,6 +79,31 @@ export function useZapstoreSearch(query: string, limit = 20) {
 }
 
 /**
+ * Fetch a single Zapstore listing (kind 32267) by its (pubkey, d-tag) address.
+ * Used to resolve references on app detail pages into rich rows.
+ */
+export function useZapstoreApp(pubkey: string | undefined, identifier: string | undefined) {
+  const { nostr } = useNostr();
+
+  return useQuery<ZapstoreApp | null>({
+    queryKey: ['zapstore-app', pubkey, identifier],
+    queryFn: async ({ signal }) => {
+      const events = await nostr.query(
+        [{ kinds: [ZAPSTORE_APP_KIND], authors: [pubkey!], '#d': [identifier!], limit: 5 }],
+        { signal: AbortSignal.any([signal, AbortSignal.timeout(5000)]) },
+      );
+
+      const latest = events
+        .filter((ev) => ev.kind === ZAPSTORE_APP_KIND)
+        .sort((a, b) => b.created_at - a.created_at)[0];
+      return latest ? parseZapstoreApp(latest) : null;
+    },
+    enabled: Boolean(pubkey && identifier),
+    staleTime: 60 * 1000,
+  });
+}
+
+/**
  * Fetch Zapstore listings (kind 32267) authored by a specific pubkey.
  * Used to populate the "your listings" scrollbox in the submission form.
  */

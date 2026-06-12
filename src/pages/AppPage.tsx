@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSeoMeta } from '@unhead/react';
 import { nip19 } from 'nostr-tools';
-import { AlertCircle, ArrowLeft, Blocks, BookOpen, ChevronDown, ExternalLink, FolderGit2, Pencil, ShoppingBag } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Blocks, BookOpen, ChevronDown, ChevronRight, ExternalLink, FolderGit2, Pencil, ShoppingBag } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { CommentsSection } from '@/components/comments/CommentsSection';
 import { UserAvatar } from '@/components/UserAvatar';
@@ -14,7 +14,10 @@ import { useApp } from '@/hooks/useApps';
 import { useAppReviews } from '@/hooks/useAppReviews';
 import { useAuthor } from '@/hooks/useAuthor';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useCustomNipByAddress } from '@/hooks/useCustomNips';
 import { useGitRepo } from '@/hooks/useGitRepo';
+import { useOfficialNips } from '@/hooks/useOfficialNips';
+import { useZapstoreApp } from '@/hooks/useZapstoreSearch';
 import { shortNpub } from '@/lib/nostr';
 import { sanitizeUrl } from '@/lib/sanitizeUrl';
 import {
@@ -23,7 +26,7 @@ import {
   aggregateReviews,
   type TierAggregate,
 } from '@/lib/appReviews';
-import { nipGithubUrl, type AppInfo, type AppNipRef, type AppRepoRef, type AppZapstoreRef } from '@/lib/apps';
+import type { AppInfo, AppNipRef, AppRepoRef, AppZapstoreRef } from '@/lib/apps';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -38,91 +41,183 @@ interface AppPageProps {
   identifier: string;
 }
 
-/** A single NIP ref row — resolves name for official NIPs, links to the page. */
-function NipRefRow({ nipRef }: { nipRef: AppNipRef }) {
-  if (nipRef.type === 'official') {
-    const num = nipRef.number;
-    return (
-      <div className="flex items-center gap-2.5 rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
-        <BookOpen className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-        <Link
-          to={`/nip/${num.toLowerCase()}`}
-          className="flex-1 text-sm font-medium hover:text-primary hover:underline"
-        >
-          NIP-{num}
-        </Link>
-        <a
-          href={nipGithubUrl(num)}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label={`View NIP-${num} on GitHub`}
-          className="text-muted-foreground hover:text-foreground"
-        >
-          <ExternalLink className="size-3.5" aria-hidden="true" />
-        </a>
+/** Shared shell for a related-content row: icon block, title, sublabel, link affordance. */
+function RefRow({
+  to, href, icon, title, sublabel,
+}: {
+  /** Internal route target (rendered as a router Link). */
+  to?: string;
+  /** External target (rendered as a new-tab anchor). Ignored when `to` is set. */
+  href?: string;
+  icon: React.ReactNode;
+  title: React.ReactNode;
+  sublabel?: React.ReactNode;
+}) {
+  const body = (
+    <>
+      <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-lg border border-border/60 bg-muted/40 text-muted-foreground">
+        {icon}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-semibold leading-snug tracking-tight">
+          {title}
+        </span>
+        {sublabel && (
+          <span className="block truncate text-xs text-muted-foreground">{sublabel}</span>
+        )}
+      </span>
+      {to ? (
+        <ChevronRight
+          className="size-4 shrink-0 text-muted-foreground/50 transition-colors group-hover:text-primary"
+          aria-hidden="true"
+        />
+      ) : href ? (
+        <ExternalLink
+          className="size-4 shrink-0 text-muted-foreground/50 transition-colors group-hover:text-primary"
+          aria-hidden="true"
+        />
+      ) : null}
+    </>
+  );
+
+  const className = cn(
+    'group flex w-full items-center gap-3 rounded-xl border border-border/70 bg-card/60 px-3 py-2.5 backdrop-blur-sm',
+    (to || href) && 'transition-colors hover:border-primary/50 hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+  );
+
+  if (to) return <Link to={to} className={className}>{body}</Link>;
+  if (href) return <a href={href} target="_blank" rel="noopener noreferrer" className={className}>{body}</a>;
+  return <div className={className}>{body}</div>;
+}
+
+/** Loading placeholder matching RefRow's layout. */
+function RefRowSkeleton() {
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-card/60 px-3 py-2.5">
+      <Skeleton className="size-10 shrink-0 rounded-lg" />
+      <div className="flex-1 space-y-1.5">
+        <Skeleton className="h-4 w-40 max-w-full" />
+        <Skeleton className="h-3 w-64 max-w-full" />
       </div>
+    </div>
+  );
+}
+
+/** An official NIP reference — resolves the title from the live NIP index. */
+function OfficialNipRefRow({ number }: { number: string }) {
+  const { data: officialNips } = useOfficialNips();
+  const title = officialNips?.find(
+    (n) => n.number.toUpperCase() === number.toUpperCase(),
+  )?.title;
+
+  return (
+    <RefRow
+      to={`/nip/${number.toLowerCase()}`}
+      icon={<BookOpen className="size-4" aria-hidden="true" />}
+      title={
+        <>
+          <span className="font-mono text-primary">NIP-{number}</span>
+          {title && <span className="font-normal text-foreground/90"> · {title}</span>}
+        </>
+      }
+      sublabel="Official protocol NIP"
+    />
+  );
+}
+
+/** A community NIP reference (kind 30817) — resolves title and author. */
+function CustomNipRefRow({ address }: { address: string }) {
+  const { data: nip, isLoading } = useCustomNipByAddress(address);
+  const author = useAuthor(nip?.author);
+
+  if (isLoading) return <RefRowSkeleton />;
+
+  if (!nip) {
+    // Listing references a NIP our relays don't carry; keep it reachable.
+    const parts = address.split(':');
+    let to: string | undefined;
+    try {
+      if (parts.length === 3 && parts[1].length === 64) {
+        to = '/' + nip19.naddrEncode({ kind: 30817, pubkey: parts[1], identifier: parts[2] });
+      }
+    } catch { /* leave unlinked */ }
+    return (
+      <RefRow
+        to={to}
+        icon={<BookOpen className="size-4" aria-hidden="true" />}
+        title={parts[2] ?? address}
+        sublabel="Community NIP · not found on your relays"
+      />
     );
   }
 
-  // Custom NIP: encode the address as an naddr and link to it.
-  const parts = nipRef.address.split(':');
-  let href = nipRef.address;
-  try {
-    if (parts.length === 3 && parts[1].length === 64) {
-      href = '/' + nip19.naddrEncode({ kind: 30817, pubkey: parts[1], identifier: parts[2] });
-    }
-  } catch { /* fallback */ }
+  const meta = author.data?.metadata;
+  const authorName = meta?.name || meta?.display_name || shortNpub(nip.author);
 
   return (
-    <div className="flex items-center gap-2.5 rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
-      <BookOpen className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-      <Link to={href} className="flex-1 truncate font-mono text-xs text-muted-foreground hover:text-primary hover:underline">
-        {nipRef.address}
-      </Link>
-    </div>
+    <RefRow
+      to={`/${nip.naddr}`}
+      icon={<BookOpen className="size-4" aria-hidden="true" />}
+      title={nip.title}
+      sublabel={`Community NIP · by ${authorName}`}
+    />
   );
 }
 
-/** A single repo ref row — fetches name from the NIP-34 event. */
+/** A NIP reference row — official or community. */
+function NipRefRow({ nipRef }: { nipRef: AppNipRef }) {
+  return nipRef.type === 'official'
+    ? <OfficialNipRefRow number={nipRef.number} />
+    : <CustomNipRefRow address={nipRef.address} />;
+}
+
+/** A git repo reference (kind 30617) — resolves name and description. */
 function RepoRefRow({ repoRef }: { repoRef: AppRepoRef }) {
-  const { data } = useGitRepo({ pubkey: repoRef.pubkey, identifier: repoRef.identifier });
-  const name = data?.repo?.name ?? repoRef.identifier;
-  const naddr = (() => {
-    try { return nip19.naddrEncode({ kind: 30617, pubkey: repoRef.pubkey, identifier: repoRef.identifier }); }
-    catch { return null; }
+  const { data, isLoading } = useGitRepo({
+    pubkey: repoRef.pubkey,
+    identifier: repoRef.identifier,
+    relays: repoRef.relayHint ? [repoRef.relayHint] : undefined,
+  });
+  const repo = data?.repo;
+
+  if (isLoading) return <RefRowSkeleton />;
+
+  const to = (() => {
+    try { return '/' + nip19.naddrEncode({ kind: 30617, pubkey: repoRef.pubkey, identifier: repoRef.identifier }); }
+    catch { return undefined; }
   })();
 
   return (
-    <div className="flex items-center gap-2.5 rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
-      <FolderGit2 className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-      {naddr ? (
-        <Link to={`/${naddr}`} className="flex-1 truncate text-sm font-medium hover:text-primary hover:underline">
-          {name}
-        </Link>
-      ) : (
-        <span className="flex-1 truncate font-mono text-xs text-muted-foreground">{repoRef.identifier}</span>
-      )}
-    </div>
+    <RefRow
+      to={to}
+      icon={<FolderGit2 className="size-4" aria-hidden="true" />}
+      title={repo?.name ?? repoRef.identifier}
+      sublabel={repo?.description || (repo ? `Git repository · ${repo.identifier}` : 'Git repository on Nostr')}
+    />
   );
 }
 
-/** A Zapstore listing row — links out to zap.store. */
+/** A Zapstore listing reference (kind 32267) — resolves name, icon, and summary. */
 function ZapstoreRefRow({ zapRef }: { zapRef: AppZapstoreRef }) {
-  const zapstoreUrl = `https://zap.store/${zapRef.identifier}`;
+  const { data: app, isLoading } = useZapstoreApp(zapRef.pubkey, zapRef.identifier);
+
+  if (isLoading) return <RefRowSkeleton />;
+
+  const icon = sanitizeUrl(app?.icon);
+
   return (
-    <div className="flex items-center gap-2.5 rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
-      <ShoppingBag className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-      <span className="flex-1 truncate text-sm font-medium">{zapRef.identifier}</span>
-      <a
-        href={zapstoreUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="View on Zapstore"
-        className="text-muted-foreground hover:text-foreground"
-      >
-        <ExternalLink className="size-3.5" aria-hidden="true" />
-      </a>
-    </div>
+    <RefRow
+      href={`https://zap.store/${zapRef.identifier}`}
+      icon={
+        icon ? (
+          <img src={icon} alt="" loading="lazy" className="size-full object-cover" />
+        ) : (
+          <ShoppingBag className="size-4" aria-hidden="true" />
+        )
+      }
+      title={app?.name ?? zapRef.identifier}
+      sublabel={app?.summary || `Zapstore · ${zapRef.identifier}`}
+    />
   );
 }
 
@@ -139,8 +234,13 @@ function AppRelatedSection({ app }: { app: AppInfo }) {
         <div className="space-y-2">
           <h2 className="text-xl font-semibold tracking-tight">NIPs</h2>
           <p className="text-sm text-muted-foreground">Nostr Implementation Possibilities this app implements.</p>
-          <div className="space-y-1.5">
-            {app.nipRefs.map((nipRef, i) => <NipRefRow key={i} nipRef={nipRef} />)}
+          <div className="space-y-2">
+            {app.nipRefs.map((nipRef) => (
+              <NipRefRow
+                key={nipRef.type === 'official' ? `nip-${nipRef.number}` : nipRef.address}
+                nipRef={nipRef}
+              />
+            ))}
           </div>
         </div>
       )}
@@ -148,8 +248,8 @@ function AppRelatedSection({ app }: { app: AppInfo }) {
         <div className="space-y-2">
           <h2 className="text-xl font-semibold tracking-tight">Source Code</h2>
           <p className="text-sm text-muted-foreground">Git repositories announced on Nostr via NIP-34.</p>
-          <div className="space-y-1.5">
-            {app.repoRefs.map((repoRef, i) => <RepoRefRow key={i} repoRef={repoRef} />)}
+          <div className="space-y-2">
+            {app.repoRefs.map((repoRef) => <RepoRefRow key={repoRef.address} repoRef={repoRef} />)}
           </div>
         </div>
       )}
@@ -157,8 +257,8 @@ function AppRelatedSection({ app }: { app: AppInfo }) {
         <div className="space-y-2">
           <h2 className="text-xl font-semibold tracking-tight">Install</h2>
           <p className="text-sm text-muted-foreground">Downloadable builds available on Zapstore.</p>
-          <div className="space-y-1.5">
-            {app.zapstoreRefs.map((zapRef, i) => <ZapstoreRefRow key={i} zapRef={zapRef} />)}
+          <div className="space-y-2">
+            {app.zapstoreRefs.map((zapRef) => <ZapstoreRefRow key={zapRef.address} zapRef={zapRef} />)}
           </div>
         </div>
       )}
