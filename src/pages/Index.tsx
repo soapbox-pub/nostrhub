@@ -102,8 +102,12 @@ const Index = () => {
   // "community still loading" as part of the demo loading state.
   const demoLoading = community.isLoading || (hasCommunity && demoSearch.isLoading);
 
-  // Recent NIP-89 app listings published by the experts themselves.
-  const expertApps = useApps({ authors: experts, limit: 50, enabled: hasExperts });
+  // Recent NIP-89 app listings published across the community web of trust.
+  const communityApps = useApps({
+    authors: community.data?.authors,
+    limit: 50,
+    enabled: !community.isLoading && hasCommunity,
+  });
 
   // Hero avatar stack: up to 5 expert avatars, then a "+N" overflow count.
   const shownExperts = experts.slice(0, 5);
@@ -127,7 +131,8 @@ const Index = () => {
   );
   const topNips = ranked.slice(0, 7);
   const drafts = (draftsQuery.data ?? []).slice(0, 6);
-  const showroomApps = (expertApps.data ?? []).slice(0, 3);
+  const showroomApps = (communityApps.data ?? []).slice(0, 3);
+  const showroomLoading = community.isLoading || (hasCommunity && communityApps.isLoading);
 
   return (
     <Layout className="max-w-6xl">
@@ -299,12 +304,12 @@ const Index = () => {
           </section>
         )}
 
-        {/* ── The showroom (recent expert apps) ────────────────────── */}
-        {hasExperts && (expertApps.isLoading || showroomApps.length > 0) && (
-          <section className="space-y-5" aria-label="Recent apps published by the experts">
+        {/* ── The showroom (recent community apps) ─────────────────── */}
+        {hasCommunity && (showroomLoading || showroomApps.length > 0) && (
+          <section className="space-y-5" aria-label="Recent apps published by the community">
             <Department
               title="The Showroom"
-              subtitle="Fresh apps straight from the panel's workbenches."
+              subtitle="Fresh apps straight from the community's workbenches."
               action={
                 <Button asChild variant="outline" size="sm" className="rounded-full">
                   <Link to="/apps">Browse all apps</Link>
@@ -312,7 +317,7 @@ const Index = () => {
               }
             />
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {expertApps.isLoading ? (
+              {showroomLoading ? (
                 <>
                   <AppCardSkeleton />
                   <AppCardSkeleton />
