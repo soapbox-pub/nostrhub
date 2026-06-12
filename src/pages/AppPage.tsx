@@ -389,7 +389,6 @@ export function AppPage({ pubkey, identifier }: AppPageProps) {
 
   return (
     <Layout
-      className="max-w-5xl"
       sidebar={app && hasSidebarContent(app) ? <AppSidebar app={app} /> : undefined}
     >
       <Button variant="ghost" asChild className="-ml-2 mb-4">
