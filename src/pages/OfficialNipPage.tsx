@@ -1,8 +1,9 @@
 import { useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useSeoMeta } from '@unhead/react';
-import { ArrowLeft, ExternalLink, GitFork, AlertCircle } from 'lucide-react';
+import { BookOpen, GitFork, AlertCircle } from 'lucide-react';
 import { Layout } from '@/components/Layout';
+import { BackLink, DetailHero, HeroExternalLink } from '@/components/DetailHero';
 import { MarkdownContent } from '@/components/MarkdownContent';
 import { ApproveButton } from '@/components/ApproveButton';
 import { CommentsSection } from '@/components/comments/CommentsSection';
@@ -49,11 +50,7 @@ const OfficialNipPage = () => {
 
   return (
     <Layout className={apps.length > 0 ? 'max-w-6xl' : undefined}>
-      <Button variant="ghost" asChild className="mb-4 -ml-2">
-        <Link to="/">
-          <ArrowLeft className="mr-1.5 size-4" /> Back to NIPs
-        </Link>
-      </Button>
+      <BackLink to="/">Back to NIPs</BackLink>
 
       {isLoading ? (
         <div className="space-y-3">
@@ -68,27 +65,22 @@ const OfficialNipPage = () => {
         </Alert>
       ) : (
         <article>
-          <header className="space-y-4 border-b border-border/60 pb-6">
-            <div>
-              <p className="font-mono text-sm text-primary">NIP-{code}</p>
-              <h1 className="mt-1 text-3xl font-bold tracking-tight">{title}</h1>
-            </div>
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <ApproveButton target={target} />
-              <div className="flex gap-2">
+          <DetailHero
+            icon={<BookOpen className="size-7 text-primary" aria-hidden="true" />}
+            kicker={`NIP-${code}`}
+            title={title}
+            primaryAction={<ApproveButton target={target} />}
+            actions={
+              <>
                 <Button variant="outline" size="sm" asChild className="gap-1.5">
                   <Link to={`/create?officialFork=${code}`}>
-                    <GitFork className="size-4" /> Fork
+                    <GitFork className="size-4" aria-hidden="true" /> Fork
                   </Link>
                 </Button>
-                <Button variant="ghost" size="sm" asChild className="gap-1.5">
-                  <a href={`${GITHUB_BASE}/${code}.md`} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="size-4" /> GitHub
-                  </a>
-                </Button>
-              </div>
-            </div>
-          </header>
+                <HeroExternalLink href={`${GITHUB_BASE}/${code}.md`}>GitHub</HeroExternalLink>
+              </>
+            }
+          />
 
           {/* Below the hero: NIP text + discussion on the left, cross-references
               from NIP-89 app listings on the right. */}

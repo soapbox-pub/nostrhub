@@ -5,7 +5,6 @@ import { formatDistanceToNow } from 'date-fns';
 import {
   AlertCircle,
   Crown,
-  ExternalLink,
   Fingerprint,
   FolderGit2,
   Globe,
@@ -13,6 +12,7 @@ import {
   Users,
 } from 'lucide-react';
 import { Layout } from '@/components/Layout';
+import { BackLink, DetailHero, HeroExternalLink } from '@/components/DetailHero';
 import { UserAvatar } from '@/components/UserAvatar';
 import { CopyButton } from '@/components/git/CopyButton';
 import { RepoFileBrowser } from '@/components/git/RepoFileBrowser';
@@ -25,7 +25,6 @@ import { shortNpub } from '@/lib/nostr';
 import { GIT_REPO_KIND, type GitRepoAnnouncement } from '@/lib/git';
 import { uniqueNipRefs } from '@/lib/apps';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -172,6 +171,8 @@ export function GitRepoPage({ pubkey, identifier, relays }: GitRepoPageProps) {
 
   return (
     <Layout className="max-w-6xl">
+      <BackLink to="/repos">Back to Repositories</BackLink>
+
       {isLoading ? (
         <RepoSkeleton />
       ) : isError || !repo ? (
@@ -184,67 +185,50 @@ export function GitRepoPage({ pubkey, identifier, relays }: GitRepoPageProps) {
       ) : (
         <article className="space-y-8">
           {/* ——— Header ——— */}
-          <header className="space-y-4">
-            <div className="flex items-start gap-4">
-              <span
-                className="grid size-14 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-primary/20 via-primary/10 to-nebula/20 ring-1 ring-primary/20 glow motion-safe:animate-[float-slow_6s_ease-in-out_infinite]"
-                aria-hidden="true"
-              >
-                <FolderGit2 className="size-7 text-primary" />
-              </span>
-              <div className="min-w-0 space-y-1">
-                <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
-                  {repo.name}
-                </h1>
-                <p className="truncate font-mono text-sm text-muted-foreground">{identifier}</p>
-              </div>
-            </div>
-
-            {repo.description && (
-              <p className="max-w-prose text-lg leading-relaxed text-muted-foreground">
-                {repo.description}
-              </p>
-            )}
-
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
-              <Link
-                to={`/${nip19.npubEncode(pubkey)}`}
-                className="flex items-center gap-2 hover:text-primary"
-              >
-                <UserAvatar pubkey={pubkey} size="sm" />
-                <span className="font-medium text-foreground">{authorName}</span>
-              </Link>
-              {updatedAt ? (
-                <span>
-                  updated {formatDistanceToNow(new Date(updatedAt * 1000), { addSuffix: true })}
-                </span>
-              ) : null}
-            </div>
-
-            {repo.hashtags.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {repo.hashtags.map((tag) => (
-                  <Badge key={tag} variant="secondary" className="font-normal">
-                    #{tag}
-                  </Badge>
-                ))}
-              </div>
-            )}
-
-            {repo.webUrls.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {repo.webUrls.map((url) => (
-                  <Button key={url} variant="outline" size="sm" asChild className="gap-1.5">
-                    <a href={url} target="_blank" rel="noopener noreferrer">
-                      <Globe className="size-4" aria-hidden="true" />
+          <DetailHero
+            icon={<FolderGit2 className="size-7 text-primary" aria-hidden="true" />}
+            title={repo.name}
+            subtitle={<span className="block truncate font-mono">{identifier}</span>}
+            description={repo.description}
+            meta={
+              <>
+                <Link
+                  to={`/${nip19.npubEncode(pubkey)}`}
+                  className="flex items-center gap-2 hover:text-primary"
+                >
+                  <UserAvatar pubkey={pubkey} size="sm" />
+                  <span className="font-medium text-foreground">{authorName}</span>
+                </Link>
+                {updatedAt ? (
+                  <span>
+                    updated {formatDistanceToNow(new Date(updatedAt * 1000), { addSuffix: true })}
+                  </span>
+                ) : null}
+              </>
+            }
+            badges={
+              repo.hashtags.length > 0
+                ? repo.hashtags.map((tag) => (
+                    <Badge key={tag} variant="secondary" className="font-normal">
+                      #{tag}
+                    </Badge>
+                  ))
+                : undefined
+            }
+            actions={
+              repo.webUrls.length > 0
+                ? repo.webUrls.map((url) => (
+                    <HeroExternalLink
+                      key={url}
+                      href={url}
+                      icon={<Globe className="size-4" aria-hidden="true" />}
+                    >
                       <span className="max-w-56 truncate">{new URL(url).hostname}</span>
-                      <ExternalLink className="size-3 opacity-60" aria-hidden="true" />
-                    </a>
-                  </Button>
-                ))}
-              </div>
-            )}
-          </header>
+                    </HeroExternalLink>
+                  ))
+                : undefined
+            }
+          />
 
           {/* Below the hero: files + discussion on the left, repo metadata and
               NIP-89 cross-references on the right. */}

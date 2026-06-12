@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom';
 import { useSeoMeta } from '@unhead/react';
 import { nip19 } from 'nostr-tools';
-import { ArrowLeft, GitFork, AlertCircle, Pencil } from 'lucide-react';
+import { BookOpen, GitFork, AlertCircle, Pencil } from 'lucide-react';
 import { Layout } from '@/components/Layout';
+import { BackLink, DetailHero } from '@/components/DetailHero';
 import { MarkdownContent } from '@/components/MarkdownContent';
 import { ApproveButton } from '@/components/ApproveButton';
 import { CommentsSection } from '@/components/comments/CommentsSection';
@@ -47,11 +48,7 @@ export function CustomNipPage({ naddr }: { naddr: string }) {
 
   return (
     <Layout className={apps.length > 0 ? 'max-w-6xl' : undefined}>
-      <Button variant="ghost" asChild className="mb-4 -ml-2">
-        <Link to="/">
-          <ArrowLeft className="mr-1.5 size-4" /> Back to NIPs
-        </Link>
-      </Button>
+      <BackLink to="/">Back to NIPs</BackLink>
 
       {isLoading ? (
         <div className="space-y-3">
@@ -66,27 +63,48 @@ export function CustomNipPage({ naddr }: { naddr: string }) {
         </Alert>
       ) : (
         <article>
-          <header className="space-y-4 border-b border-border/60 pb-6">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="secondary" className="gap-1">
-                <GitFork className="size-3" /> Community NIP
-              </Badge>
-              {nip.kinds.map((k) => (
-                <Badge key={k} variant="outline" className="font-mono text-xs">
-                  kind {k}
+          <DetailHero
+            icon={<BookOpen className="size-7 text-primary" aria-hidden="true" />}
+            title={nip.title}
+            badges={
+              <>
+                <Badge variant="secondary" className="gap-1">
+                  <GitFork className="size-3" /> Community NIP
                 </Badge>
-              ))}
-            </div>
-            <h1 className="text-3xl font-bold tracking-tight">{nip.title}</h1>
-
-            <div className="flex flex-wrap items-center gap-3">
-              <Link to={`/${nip19.npubEncode(nip.author)}`} className="flex items-center gap-2 hover:text-primary">
-                <UserAvatar pubkey={nip.author} size="sm" />
-                <span className="text-sm font-medium">{authorName}</span>
-              </Link>
-              <ExpertToggleButton pubkey={nip.author} iconOnly />
-            </div>
-
+                {nip.kinds.map((k) => (
+                  <Badge key={k} variant="outline" className="font-mono text-xs">
+                    kind {k}
+                  </Badge>
+                ))}
+              </>
+            }
+            meta={
+              <>
+                <Link to={`/${nip19.npubEncode(nip.author)}`} className="flex items-center gap-2 hover:text-primary">
+                  <UserAvatar pubkey={nip.author} size="sm" />
+                  <span className="text-sm font-medium text-foreground">{authorName}</span>
+                </Link>
+                <ExpertToggleButton pubkey={nip.author} iconOnly />
+              </>
+            }
+            primaryAction={<ApproveButton target={target} />}
+            actions={
+              <>
+                {isOwner && (
+                  <Button variant="outline" size="sm" asChild className="gap-1.5">
+                    <Link to={`/edit/${nip.naddr}`}>
+                      <Pencil className="size-4" aria-hidden="true" /> Edit
+                    </Link>
+                  </Button>
+                )}
+                <Button variant="outline" size="sm" asChild className="gap-1.5">
+                  <Link to={`/create?fork=${nip.naddr}`}>
+                    <GitFork className="size-4" aria-hidden="true" /> Fork
+                  </Link>
+                </Button>
+              </>
+            }
+          >
             {nip.fork && (
               <p className="text-sm text-muted-foreground">
                 Forked from{' '}
@@ -99,25 +117,7 @@ export function CustomNipPage({ naddr }: { naddr: string }) {
                 )}
               </p>
             )}
-
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <ApproveButton target={target} />
-              <div className="flex gap-2">
-                {isOwner && (
-                  <Button variant="outline" size="sm" asChild className="gap-1.5">
-                    <Link to={`/edit/${nip.naddr}`}>
-                      <Pencil className="size-4" /> Edit
-                    </Link>
-                  </Button>
-                )}
-                <Button variant="outline" size="sm" asChild className="gap-1.5">
-                  <Link to={`/create?fork=${nip.naddr}`}>
-                    <GitFork className="size-4" /> Fork
-                  </Link>
-                </Button>
-              </div>
-            </div>
-          </header>
+          </DetailHero>
 
           {/* Below the hero: NIP text + discussion on the left, cross-references
               from NIP-89 app listings on the right. */}

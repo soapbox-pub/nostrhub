@@ -2,8 +2,9 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSeoMeta } from '@unhead/react';
 import { nip19 } from 'nostr-tools';
-import { AlertCircle, ArrowLeft, Blocks, BookOpen, ChevronDown, ChevronRight, ExternalLink, FolderGit2, Pencil, ShoppingBag } from 'lucide-react';
+import { AlertCircle, Blocks, BookOpen, ChevronDown, ChevronRight, ExternalLink, FolderGit2, Pencil, ShoppingBag } from 'lucide-react';
 import { Layout } from '@/components/Layout';
+import { BackLink, DetailHero } from '@/components/DetailHero';
 import { CommentsSection } from '@/components/comments/CommentsSection';
 import { UserAvatar } from '@/components/UserAvatar';
 import { ExpertToggleButton } from '@/components/ExpertToggleButton';
@@ -380,16 +381,12 @@ export function AppPage({ pubkey, identifier }: AppPageProps) {
 
   return (
     <Layout className={app && hasSidebarContent(app) ? 'max-w-6xl' : 'max-w-3xl'}>
-      <Button variant="ghost" asChild className="-ml-2 mb-4">
-        <Link to="/apps">
-          <ArrowLeft className="mr-1.5 size-4" /> Back to Apps
-        </Link>
-      </Button>
+      <BackLink to="/apps">Back to Apps</BackLink>
 
       {isLoading ? (
         <div className="space-y-4">
           <div className="flex items-center gap-4">
-            <Skeleton className="size-20 rounded-2xl" />
+            <Skeleton className="size-14 rounded-2xl sm:size-16" />
             <div className="space-y-2">
               <Skeleton className="h-8 w-56" />
               <Skeleton className="h-4 w-40" />
@@ -406,50 +403,43 @@ export function AppPage({ pubkey, identifier }: AppPageProps) {
         </Alert>
       ) : (
         <article className="space-y-6">
-          {/* Header: icon and name side by side, actions on the right */}
-          <header className="flex flex-wrap items-center gap-4">
-            <span className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-2xl border border-border/60 bg-muted/40 shadow-md sm:size-20">
-              {icon ? (
-                <img src={icon} alt="" className="size-full object-cover" />
-              ) : (
-                <Blocks className="size-8 text-muted-foreground" aria-hidden="true" />
-              )}
-            </span>
-
-            <div className="min-w-0 flex-1 space-y-1">
-              <div className="flex flex-wrap items-center gap-3">
-                <h1 className="font-display text-3xl font-bold tracking-tight">{app.name}</h1>
-                <TierBadge tier={overall?.tier ?? null} size="lg" />
-              </div>
-              {overall ? (
-                <p className="text-sm text-muted-foreground">
+          {/* Header: shared detail-page hero — brand tile, title, tier, actions */}
+          <DetailHero
+            icon={<Blocks className="size-7 text-primary" aria-hidden="true" />}
+            image={icon}
+            title={app.name}
+            titleAside={<TierBadge tier={overall?.tier ?? null} size="lg" />}
+            subtitle={
+              overall ? (
+                <>
                   Based on {overall.count} compatibility report{overall.count !== 1 ? 's' : ''}{' '}
                   across {perNip.size} NIP{perNip.size !== 1 ? 's' : ''}.
-                </p>
-              ) : app.nip05 ? (
-                <p className="text-sm text-muted-foreground">{app.nip05}</p>
-              ) : null}
-            </div>
-
-            <div className="flex items-center gap-2">
-              {isOwner && (
-                <Button asChild variant="outline" className="gap-1.5 rounded-full">
-                  <Link to={`/apps/edit/${app.naddr}`}>
-                    <Pencil className="size-4" aria-hidden="true" />
-                    Edit
-                  </Link>
-                </Button>
-              )}
-              {website && (
-                <Button asChild className="gap-1.5 rounded-full">
+                </>
+              ) : (
+                app.nip05 ?? undefined
+              )
+            }
+            primaryAction={
+              website ? (
+                <Button asChild className="gap-1.5">
                   <a href={website} target="_blank" rel="noopener noreferrer">
                     Open app
                     <ExternalLink className="size-4" aria-hidden="true" />
                   </a>
                 </Button>
-              )}
-            </div>
-          </header>
+              ) : undefined
+            }
+            actions={
+              isOwner ? (
+                <Button asChild variant="outline" size="sm" className="gap-1.5">
+                  <Link to={`/apps/edit/${app.naddr}`}>
+                    <Pencil className="size-4" aria-hidden="true" />
+                    Edit
+                  </Link>
+                </Button>
+              ) : undefined
+            }
+          />
 
           {/* Description and details on the left, resource cards on the right —
               the sidebar starts at description level, below the name row. */}
@@ -487,7 +477,7 @@ export function AppPage({ pubkey, identifier }: AppPageProps) {
                       </Badge>
                     ))}
                     {app.hashtags.map((tag) => (
-                      <Badge key={tag} variant="outline" className="text-xs text-muted-foreground">
+                      <Badge key={tag} variant="secondary" className="font-normal">
                         #{tag}
                       </Badge>
                     ))}
