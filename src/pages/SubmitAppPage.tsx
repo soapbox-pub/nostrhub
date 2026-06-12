@@ -1512,7 +1512,7 @@ export function SubmitAppPage() {
                           </Link>
                           {' '}or publish the NIP.md straight from{' '}
                           <Link
-                            to="/repos?mine=1"
+                            to={`/repos?author=${nip19.npubEncode(user.pubkey)}`}
                             target="_blank"
                             rel="noopener"
                             className="inline-flex items-center gap-0.5 font-medium text-primary underline-offset-2 hover:underline"

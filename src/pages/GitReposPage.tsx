@@ -1,14 +1,30 @@
 import { useMemo, useState } from 'react';
 import { useSeoMeta } from '@unhead/react';
 import { useSearchParams } from 'react-router-dom';
+import { nip19 } from 'nostr-tools';
 import { Search, User, X } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { RepoCard, RepoCardSkeleton } from '@/components/git/RepoCard';
 import { useGitRepos } from '@/hooks/useGitRepos';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useAuthor } from '@/hooks/useAuthor';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+
+/** Resolve an `author` query param (npub, nprofile, or hex) to a hex pubkey. */
+function authorParamToHex(value: string | null): string | undefined {
+  if (!value) return undefined;
+  if (/^[0-9a-f]{64}$/i.test(value)) return value.toLowerCase();
+  try {
+    const decoded = nip19.decode(value);
+    if (decoded.type === 'npub') return decoded.data;
+    if (decoded.type === 'nprofile') return decoded.data.pubkey;
+  } catch {
+    // fall through
+  }
+  return undefined;
+}
 
 /** Discovery page for NIP-34 git repositories announced on Nostr. */
 export function GitReposPage() {
@@ -17,22 +33,31 @@ export function GitReposPage() {
   const [search, setSearch] = useState('');
   const [activeTag, setActiveTag] = useState<string>();
 
-  // `/repos?mine=1` filters to the logged-in user's announcements.
-  const mineParam = searchParams.has('mine');
-  const mine = mineParam && Boolean(user);
+  // `/repos?author=<npub|nprofile|hex>` filters to one author's announcements.
+  const authorHex = useMemo(
+    () => authorParamToHex(searchParams.get('author')),
+    [searchParams],
+  );
+  const mine = Boolean(user) && authorHex === user!.pubkey;
+  const filteredAuthor = useAuthor(mine ? undefined : authorHex);
 
   const { data: repos, isLoading } = useGitRepos(
-    mine ? { authors: [user!.pubkey], limit: 200 } : {},
+    authorHex ? { authors: [authorHex], limit: 200 } : {},
   );
 
-  const setMine = (on: boolean) => {
+  const setAuthor = (pubkey?: string) => {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
-      if (on) next.set('mine', '1');
-      else next.delete('mine');
+      if (pubkey) next.set('author', nip19.npubEncode(pubkey));
+      else next.delete('author');
       return next;
     }, { replace: true });
   };
+
+  const authorLabel = mine
+    ? 'Your repos'
+    : filteredAuthor.data?.metadata?.name
+      ?? (authorHex ? `${nip19.npubEncode(authorHex).slice(0, 12)}…` : '');
 
   useSeoMeta({
     title: 'Repositories | NostrHub',
@@ -95,12 +120,12 @@ export function GitReposPage() {
             />
           </div>
 
-          {(topTags.length > 0 || user) && (
+          {(topTags.length > 0 || user || authorHex) && (
             <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filter repositories">
               {user && (
                 <button
                   type="button"
-                  onClick={() => setMine(!mine)}
+                  onClick={() => setAuthor(mine ? undefined : user.pubkey)}
                   aria-pressed={mine}
                   className={cn(
                     'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
@@ -113,6 +138,22 @@ export function GitReposPage() {
                   <User className="size-3" aria-hidden="true" />
                   Your repos
                   {mine && <X className="size-3" aria-hidden="true" />}
+                </button>
+              )}
+              {authorHex && !mine && (
+                <button
+                  type="button"
+                  onClick={() => setAuthor(undefined)}
+                  aria-pressed="true"
+                  aria-label={`Clear author filter: ${authorLabel}`}
+                  className={cn(
+                    'inline-flex items-center gap-1 rounded-full border border-primary/40 bg-gradient-to-r from-primary/15 to-nebula/15 px-2.5 py-1 text-xs font-medium text-foreground transition-colors',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  )}
+                >
+                  <User className="size-3" aria-hidden="true" />
+                  {authorLabel}
+                  <X className="size-3" aria-hidden="true" />
                 </button>
               )}
               {topTags.map((tag) => {
@@ -150,8 +191,10 @@ export function GitReposPage() {
           <Card className="border-dashed">
             <CardContent className="px-8 py-12 text-center">
               <p className="mx-auto max-w-sm text-muted-foreground">
-                {mine && (!repos || repos.length === 0)
-                  ? "You haven't announced any git repos on Nostr yet."
+                {authorHex && (!repos || repos.length === 0)
+                  ? mine
+                    ? "You haven't announced any git repos on Nostr yet."
+                    : "This author hasn't announced any git repos on Nostr yet."
                   : repos && repos.length > 0
                     ? 'No repositories match your search.'
                     : 'No repositories found. Try checking your relay connections or wait a moment for content to load.'}
