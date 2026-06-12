@@ -221,19 +221,53 @@ function ZapstoreRefRow({ zapRef }: { zapRef: AppZapstoreRef }) {
   );
 }
 
-/** Related NIPs, repos, and Zapstore listings declared on the app event. */
-function AppRelatedSection({ app }: { app: AppInfo }) {
-  const hasNips = app.nipRefs.length > 0;
-  const hasRepos = app.repoRefs.length > 0;
-  const hasZapstore = app.zapstoreRefs.length > 0;
-  if (!hasNips && !hasRepos && !hasZapstore) return null;
+/** Compact heading for a sidebar section. */
+function SidebarHeading({ children }: { children: React.ReactNode }) {
+  return (
+    <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+      {children}
+    </h2>
+  );
+}
+
+/** Whether the app declares anything worth a sidebar. */
+function hasSidebarContent(app: AppInfo): boolean {
+  return (
+    app.zapstoreRefs.length > 0 ||
+    app.repoRefs.length > 0 ||
+    app.nipRefs.length > 0 ||
+    app.supportedKinds.length > 0
+  );
+}
+
+/** Sidebar: install builds, source repos, implemented NIPs, handled kinds. */
+function AppSidebar({ app }: { app: AppInfo }) {
+  if (!hasSidebarContent(app)) return null;
 
   return (
-    <section className="space-y-6 border-t border-border/60 pt-6">
-      {hasNips && (
-        <div className="space-y-2">
-          <h2 className="text-xl font-semibold tracking-tight">NIPs</h2>
-          <p className="text-sm text-muted-foreground">Nostr Implementation Possibilities this app implements.</p>
+    <aside
+      aria-label="App resources"
+      className="space-y-6 border-t border-border/60 pt-6 lg:col-start-2 lg:row-start-1 lg:border-t-0 lg:pt-0"
+    >
+      {app.zapstoreRefs.length > 0 && (
+        <section className="space-y-2">
+          <SidebarHeading>Install</SidebarHeading>
+          <div className="space-y-2">
+            {app.zapstoreRefs.map((zapRef) => <ZapstoreRefRow key={zapRef.address} zapRef={zapRef} />)}
+          </div>
+        </section>
+      )}
+      {app.repoRefs.length > 0 && (
+        <section className="space-y-2">
+          <SidebarHeading>Source Code</SidebarHeading>
+          <div className="space-y-2">
+            {app.repoRefs.map((repoRef) => <RepoRefRow key={repoRef.address} repoRef={repoRef} />)}
+          </div>
+        </section>
+      )}
+      {app.nipRefs.length > 0 && (
+        <section className="space-y-2">
+          <SidebarHeading>Implements</SidebarHeading>
           <div className="space-y-2">
             {app.nipRefs.map((nipRef) => (
               <NipRefRow
@@ -242,27 +276,24 @@ function AppRelatedSection({ app }: { app: AppInfo }) {
               />
             ))}
           </div>
-        </div>
+        </section>
       )}
-      {hasRepos && (
-        <div className="space-y-2">
-          <h2 className="text-xl font-semibold tracking-tight">Source Code</h2>
-          <p className="text-sm text-muted-foreground">Git repositories announced on Nostr via NIP-34.</p>
-          <div className="space-y-2">
-            {app.repoRefs.map((repoRef) => <RepoRefRow key={repoRef.address} repoRef={repoRef} />)}
+      {app.supportedKinds.length > 0 && (
+        <section className="space-y-2">
+          <SidebarHeading>Handled Kinds</SidebarHeading>
+          <p className="text-xs text-muted-foreground">
+            Event kinds this app announces it can display or handle (NIP-89).
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {app.supportedKinds.map((kind) => (
+              <Badge key={kind} variant="outline" className="font-mono text-xs">
+                kind {kind}
+              </Badge>
+            ))}
           </div>
-        </div>
+        </section>
       )}
-      {hasZapstore && (
-        <div className="space-y-2">
-          <h2 className="text-xl font-semibold tracking-tight">Install</h2>
-          <p className="text-sm text-muted-foreground">Downloadable builds available on Zapstore.</p>
-          <div className="space-y-2">
-            {app.zapstoreRefs.map((zapRef) => <ZapstoreRefRow key={zapRef.address} zapRef={zapRef} />)}
-          </div>
-        </div>
-      )}
-    </section>
+    </aside>
   );
 }
 
@@ -446,111 +477,106 @@ export function AppPage({ pubkey, identifier }: AppPageProps) {
             )}
           </header>
 
-          {/* NIP compatibility breakdown */}
-          <section className="border-t border-border/60 pt-6">
-            <Collapsible open={nipOpen} onOpenChange={setNipOpen}>
-              <CollapsibleTrigger asChild>
-                <button
-                  type="button"
-                  className="flex w-full items-center justify-between gap-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  aria-expanded={nipOpen}
-                >
-                  <div className="space-y-1">
-                    <h2 className="text-xl font-semibold tracking-tight">NIP Compatibility</h2>
-                    <p className="text-sm text-muted-foreground">
-                      Community-reported compatibility per NIP — the median of all reports decides each
-                      tier, ProtonDB-style.
-                    </p>
+          {/* Sidebar (install, source, NIPs, kinds) + main column. On mobile the
+              sidebar stacks directly under the header so install links stay
+              near the top; on desktop it moves into the right-hand column. */}
+          <div
+            className={cn(
+              'space-y-6',
+              hasSidebarContent(app) &&
+                'lg:grid lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start lg:gap-x-10 lg:space-y-0',
+            )}
+          >
+            <AppSidebar app={app} />
+
+            <div className="space-y-6 lg:col-start-1 lg:row-start-1">
+              {/* NIP compatibility breakdown */}
+              <section className="border-t border-border/60 pt-6">
+                <Collapsible open={nipOpen} onOpenChange={setNipOpen}>
+                  <CollapsibleTrigger asChild>
+                    <button
+                      type="button"
+                      className="flex w-full items-center justify-between gap-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      aria-expanded={nipOpen}
+                    >
+                      <div className="space-y-1">
+                        <h2 className="text-xl font-semibold tracking-tight">NIP Compatibility</h2>
+                        <p className="text-sm text-muted-foreground">
+                          Community-reported compatibility per NIP — the median of all reports decides each
+                          tier, ProtonDB-style.
+                        </p>
+                      </div>
+                      <ChevronDown
+                        className={cn('size-5 shrink-0 text-muted-foreground transition-transform duration-200', nipOpen && 'rotate-180')}
+                        aria-hidden="true"
+                      />
+                    </button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-3">
+                    {reviews.isLoading ? (
+                      <Skeleton className="h-64 w-full rounded-xl" />
+                    ) : (
+                      <NipBreakdown perNip={perNip} />
+                    )}
+                  </CollapsibleContent>
+                </Collapsible>
+              </section>
+
+              {/* Submit reports */}
+              <section className="border-t border-border/60 pt-6">
+                <Collapsible open={reportOpen} onOpenChange={setReportOpen}>
+                  <CollapsibleTrigger asChild>
+                    <button
+                      type="button"
+                      className="flex w-full items-center justify-between gap-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      aria-expanded={reportOpen}
+                    >
+                      <div className="space-y-1">
+                        <h2 className="text-xl font-semibold tracking-tight">Submit a Report</h2>
+                        <p className="text-sm text-muted-foreground">
+                          Rate how well this app implements each NIP.
+                        </p>
+                      </div>
+                      <ChevronDown
+                        className={cn('size-5 shrink-0 text-muted-foreground transition-transform duration-200', reportOpen && 'rotate-180')}
+                        aria-hidden="true"
+                      />
+                    </button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-3">
+                    <AppReviewForm app={app} />
+                  </CollapsibleContent>
+                </Collapsible>
+              </section>
+
+              {/* Recent reports */}
+              {(reviews.data?.length ?? 0) > 0 && (
+                <section className="space-y-4 border-t border-border/60 pt-6">
+                  <h2 className="text-xl font-semibold tracking-tight">
+                    Reports
+                    <span className="ml-2 text-sm font-normal text-muted-foreground">
+                      {reviews.data!.length}
+                    </span>
+                  </h2>
+                  <div className="space-y-3">
+                    {reviews.data!.slice(0, 30).map((review) => (
+                      <AppReviewCard key={review.event.id} review={review} />
+                    ))}
                   </div>
-                  <ChevronDown
-                    className={cn('size-5 shrink-0 text-muted-foreground transition-transform duration-200', nipOpen && 'rotate-180')}
-                    aria-hidden="true"
-                  />
-                </button>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="mt-3">
-                {reviews.isLoading ? (
-                  <Skeleton className="h-64 w-full rounded-xl" />
-                ) : (
-                  <NipBreakdown perNip={perNip} />
-                )}
-              </CollapsibleContent>
-            </Collapsible>
-          </section>
+                </section>
+              )}
 
-          {/* Submit reports */}
-          <section className="border-t border-border/60 pt-6">
-            <Collapsible open={reportOpen} onOpenChange={setReportOpen}>
-              <CollapsibleTrigger asChild>
-                <button
-                  type="button"
-                  className="flex w-full items-center justify-between gap-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  aria-expanded={reportOpen}
-                >
-                  <div className="space-y-1">
-                    <h2 className="text-xl font-semibold tracking-tight">Submit a Report</h2>
-                    <p className="text-sm text-muted-foreground">
-                      Rate how well this app implements each NIP.
-                    </p>
-                  </div>
-                  <ChevronDown
-                    className={cn('size-5 shrink-0 text-muted-foreground transition-transform duration-200', reportOpen && 'rotate-180')}
-                    aria-hidden="true"
-                  />
-                </button>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="mt-3">
-                <AppReviewForm app={app} />
-              </CollapsibleContent>
-            </Collapsible>
-          </section>
-
-          {/* Recent reports */}
-          {(reviews.data?.length ?? 0) > 0 && (
-            <section className="space-y-4 border-t border-border/60 pt-6">
-              <h2 className="text-xl font-semibold tracking-tight">
-                Reports
-                <span className="ml-2 text-sm font-normal text-muted-foreground">
-                  {reviews.data!.length}
-                </span>
-              </h2>
-              <div className="space-y-3">
-                {reviews.data!.slice(0, 30).map((review) => (
-                  <AppReviewCard key={review.event.id} review={review} />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* Supported kinds */}
-          {app.supportedKinds.length > 0 && (
-            <section className="space-y-3 border-t border-border/60 pt-6">
-              <h2 className="text-xl font-semibold tracking-tight">Handled kinds</h2>
-              <p className="text-sm text-muted-foreground">
-                Event kinds this app announces it can display or handle (NIP-89).
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {app.supportedKinds.map((kind) => (
-                  <Badge key={kind} variant="outline" className="font-mono text-xs">
-                    kind {kind}
-                  </Badge>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* Related NIPs, repos, Zapstore */}
-          <AppRelatedSection app={app} />
-
-          {/* Discussion */}
-          <section className="space-y-4 border-t border-border/60 pt-6">
-            <h2 className="text-xl font-semibold tracking-tight">Discussion</h2>
-            <CommentsSection
-              root={app.event}
-              emptyStateMessage="No discussion yet"
-              emptyStateSubtitle="Share your experience with this app."
-            />
-          </section>
+              {/* Discussion */}
+              <section className="space-y-4 border-t border-border/60 pt-6">
+                <h2 className="text-xl font-semibold tracking-tight">Discussion</h2>
+                <CommentsSection
+                  root={app.event}
+                  emptyStateMessage="No discussion yet"
+                  emptyStateSubtitle="Share your experience with this app."
+                />
+              </section>
+            </div>
+          </div>
         </article>
       )}
     </Layout>
