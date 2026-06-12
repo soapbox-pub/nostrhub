@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useSeoMeta } from '@unhead/react';
 import { Link } from 'react-router-dom';
-import { Users } from 'lucide-react';
+import { Users, PenSquare } from 'lucide-react';
 import {
   LeadArticleCard,
   ArticleCard,
@@ -99,6 +99,14 @@ export function ArticlesPage() {
     <DiscoveryPage
       title="Articles"
       description="Long-form dispatches from the panel: in-depth essays and reporting on building the Nostr protocol."
+      action={
+        <Button asChild size="sm" className="gap-1.5 rounded-full">
+          <Link to="/articles/create">
+            <PenSquare className="size-4" />
+            Write
+          </Link>
+        </Button>
+      }
       filters={
         hasAnything && (
           <DiscoverySearch
