@@ -22,7 +22,7 @@ import { useCommunityAuthors } from '@/hooks/useCommunityAuthors';
 import { Button } from '@/components/ui/button';
 
 /** Expert articles lead the page; everything after this is community backfill. */
-const EXPERT_LEAD_COUNT = 4;
+const EXPERT_LEAD_COUNT = 10;
 
 function matchesSearch(article: ExpertArticle, q: string): boolean {
   if (!q) return true;

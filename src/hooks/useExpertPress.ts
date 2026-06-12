@@ -98,7 +98,7 @@ export function useExpertArticles() {
       const opts = { signal: AbortSignal.any([signal, AbortSignal.timeout(8000)]) };
       // Only a few leads are shown; a small buffer survives dedupe-to-latest.
       const events = await nostr.query(
-        [{ kinds: [ARTICLE_KIND], authors: experts, limit: 12 }],
+        [{ kinds: [ARTICLE_KIND], authors: experts, limit: 24 }],
         opts,
       );
       return collectArticles(events);
