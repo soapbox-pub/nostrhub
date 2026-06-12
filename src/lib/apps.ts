@@ -40,7 +40,6 @@ export interface AppInfo {
   identifier: string;
   name: string;
   picture?: string;
-  banner?: string;
   about?: string;
   website?: string;
   nip05?: string;
@@ -103,7 +102,6 @@ export function parseAppEvent(event: NostrEvent): AppInfo | null {
     identifier,
     name: metadata.name || metadata.display_name || identifier,
     picture: metadata.picture,
-    banner: metadata.banner,
     about: metadata.about,
     website: metadata.website,
     nip05: metadata.nip05,

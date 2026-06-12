@@ -102,7 +102,6 @@ export function AppPage({ pubkey, identifier }: AppPageProps) {
     [reviews.data],
   );
 
-  const banner = sanitizeUrl(app?.banner);
   const icon = sanitizeUrl(app?.picture);
   const website = sanitizeUrl(app?.website);
 
@@ -116,7 +115,6 @@ export function AppPage({ pubkey, identifier }: AppPageProps) {
 
       {isLoading ? (
         <div className="space-y-4">
-          <Skeleton className="h-40 w-full rounded-2xl sm:h-52" />
           <div className="flex items-center gap-4">
             <Skeleton className="size-20 rounded-2xl" />
             <div className="space-y-2">
@@ -135,21 +133,10 @@ export function AppPage({ pubkey, identifier }: AppPageProps) {
         </Alert>
       ) : (
         <article className="space-y-6">
-          {/* Banner */}
-          <div
-            className="relative isolate h-40 overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-primary/20 via-nebula/15 to-background sm:h-52"
-            aria-hidden={banner ? undefined : 'true'}
-          >
-            {banner && (
-              <img src={banner} alt="" className="absolute inset-0 size-full object-cover" loading="lazy" />
-            )}
-            <span className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background/60 to-transparent" />
-          </div>
-
           {/* Header */}
           <header className="space-y-4 px-1 sm:px-2">
             <div className="flex flex-wrap items-end justify-between gap-4">
-              <span className="-mt-14 grid size-20 shrink-0 place-items-center overflow-hidden rounded-2xl border-4 border-background bg-muted/40 shadow-lg sm:-mt-16 sm:size-24">
+              <span className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-2xl border-4 border-background bg-muted/40 shadow-lg sm:size-24">
                 {icon ? (
                   <img src={icon} alt="" className="size-full object-cover" />
                 ) : (
