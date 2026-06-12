@@ -4,7 +4,7 @@ import { nip19 } from 'nostr-tools';
 import { BadgeCheck, Blocks, FileText, FolderGit2, Globe, Zap } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { UserAvatar } from '@/components/UserAvatar';
-import { NipCard } from '@/components/NipCard';
+import { NipCard, NipCardSkeleton } from '@/components/NipCard';
 import { AppCard, AppCardSkeleton } from '@/components/AppCard';
 import { ContributionChart } from '@/components/ContributionChart';
 import { RepoList, RepoListItem, RepoListItemSkeleton } from '@/components/git/RepoListItem';
@@ -15,8 +15,7 @@ import { useExperts } from '@/hooks/useExperts';
 import { useCustomNips } from '@/hooks/useCustomNips';
 import { useGitRepos } from '@/hooks/useGitRepos';
 import { useApps } from '@/hooks/useApps';
-import { nipTargetKey, type NipTarget } from '@/hooks/useNipApprovals';
-import type { RankedNip } from '@/hooks/useRankedNips';
+import { customToRanked, type RankedNip } from '@/hooks/useRankedNips';
 import { shortNpub } from '@/lib/nostr';
 import { sanitizeUrl } from '@/lib/sanitizeUrl';
 import { Badge } from '@/components/ui/badge';
@@ -27,19 +26,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 interface ProfilePageProps {
   /** Hex pubkey of the profile owner. */
   pubkey: string;
-}
-
-function NipCardSkeleton() {
-  return (
-    <Card>
-      <CardContent className="space-y-2 px-4">
-        <Skeleton className="h-4 w-16" />
-        <Skeleton className="h-5 w-3/4" />
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-2/3" />
-      </CardContent>
-    </Card>
-  );
 }
 
 function EmptyState({ message }: { message: string }) {
@@ -85,21 +71,10 @@ export function ProfilePage({ pubkey }: ProfilePageProps) {
   });
 
   // Adapt this author's custom NIPs to the shape NipCard renders.
-  const nips: RankedNip[] = useMemo(() => {
-    return (nipsQuery.data ?? []).map((nip) => {
-      const target: NipTarget = { type: 'custom', address: nip.address };
-      return {
-        key: nipTargetKey(target),
-        target,
-        title: nip.title,
-        custom: nip,
-        kinds: nip.kinds,
-        expertCount: 0,
-        totalCount: 0,
-        expertApprovers: [],
-      };
-    });
-  }, [nipsQuery.data]);
+  const nips: RankedNip[] = useMemo(
+    () => (nipsQuery.data ?? []).map(customToRanked),
+    [nipsQuery.data],
+  );
 
   const repos = reposQuery.data ?? [];
   const apps = appsQuery.data ?? [];

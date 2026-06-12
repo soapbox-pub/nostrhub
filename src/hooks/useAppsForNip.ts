@@ -39,6 +39,35 @@ export function useAppsForCustomNip(nipAddress: string | undefined) {
 }
 
 /**
+ * Find NIP-89 app listings (kind 31990) that announce support for a specific
+ * event kind via a `k` tag: `["k", "20"]`.
+ */
+export function useAppsForKind(kind: string | undefined) {
+  const { nostr } = useNostr();
+
+  return useQuery<AppInfo[]>({
+    queryKey: ['apps-for-kind', kind],
+    queryFn: async ({ signal }) => {
+      const events = await nostr
+        .query(
+          [{ kinds: [APP_HANDLER_KIND], '#k': [kind!], limit: 100 }],
+          { signal: AbortSignal.any([signal, AbortSignal.timeout(8000)]) },
+        )
+        .catch(() => [] as NostrEvent[]);
+
+      // Confirm the `k` tag value matches exactly.
+      const filtered = events.filter((ev) =>
+        ev.tags.some(([n, v]) => n === 'k' && v === kind),
+      );
+
+      return dedupeAppEvents(filtered);
+    },
+    enabled: Boolean(kind),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/**
  * Find NIP-89 app listings (kind 31990) that reference an official NIP via a
  * NIP-73 URL `i` tag pointing at the canonical GitHub blob URL:
  *   `["i", "https://github.com/nostr-protocol/nips/blob/master/01.md"]`

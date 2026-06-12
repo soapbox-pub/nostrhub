@@ -63,7 +63,7 @@ export function GitReposPage() {
 
   useSeoMeta({
     title: 'Repositories | NostrHub',
-    description: 'Discover git repositories announced on Nostr — clone them over relays, no forge required.',
+    description: 'Discover git repositories announced on Nostr. Clone them over relays, no forge required.',
   });
 
   // The most common hashtags across loaded repos, for one-tap filtering.
@@ -96,7 +96,7 @@ export function GitReposPage() {
   return (
     <DiscoveryPage
       title="Repositories"
-      description="Code that lives on Nostr — announced over relays, cloneable from anywhere, owned by no forge."
+      description="Code that lives on Nostr: announced over relays, cloneable from anywhere, owned by no forge."
       filters={
         <>
           <DiscoverySearch

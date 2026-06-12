@@ -10,6 +10,7 @@ import { CommentsSection } from '@/components/comments/CommentsSection';
 import { UserAvatar } from '@/components/UserAvatar';
 import { ExpertToggleButton } from '@/components/ExpertToggleButton';
 import { RelatedReposCard, UsedByAppsCard } from '@/components/CrossRefCards';
+import { KindBadge } from '@/components/KindBadge';
 import { useCustomNip } from '@/hooks/useCustomNips';
 import { useAuthor } from '@/hooks/useAuthor';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -40,7 +41,7 @@ export function CustomNipPage({ naddr }: { naddr: string }) {
 
   useSeoMeta({
     title: nip ? `${nip.title} | NostrHub` : 'NIP | NostrHub',
-    description: nip ? `${nip.title} — a community NIP on NostrHub.` : undefined,
+    description: nip ? `${nip.title}: a community NIP on NostrHub.` : undefined,
   });
 
   const target: NipTarget | null = nip ? { type: 'custom', address: nip.address } : null;
@@ -72,9 +73,7 @@ export function CustomNipPage({ naddr }: { naddr: string }) {
                   <GitFork className="size-3" /> Community NIP
                 </Badge>
                 {nip.kinds.map((k) => (
-                  <Badge key={k} variant="outline" className="font-mono text-xs">
-                    kind {k}
-                  </Badge>
+                  <KindBadge key={k} kind={k} />
                 ))}
               </>
             }

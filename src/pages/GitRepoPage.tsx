@@ -131,7 +131,7 @@ function RepoSidebar({ repo }: { repo: GitRepoAnnouncement }) {
               <CopyButton value={repo.earliestCommit} label="Copy earliest unique commit id" />
             </div>
             <p className="mt-2 text-xs text-muted-foreground/80">
-              Earliest unique commit — identifies this project across forks and mirrors.
+              Earliest unique commit. Identifies this project across forks and mirrors.
             </p>
           </CardContent>
         </Card>
@@ -162,7 +162,7 @@ export function GitRepoPage({ pubkey, identifier, relays }: GitRepoPageProps) {
   useSeoMeta({
     title: repo ? `${repo.name} | NostrHub` : 'Git repository | NostrHub',
     description:
-      repo?.description ?? (repo ? `${repo.name} — a git repository announced on Nostr.` : undefined),
+      repo?.description ?? (repo ? `${repo.name}: a git repository announced on Nostr.` : undefined),
   });
 
   const updatedAt = repo
@@ -244,7 +244,7 @@ export function GitRepoPage({ pubkey, identifier, relays }: GitRepoPageProps) {
                   root={repo.event}
                   communityFilter={false}
                   emptyStateMessage="No discussion yet"
-                  emptyStateSubtitle="Questions, praise, bug reports — start the conversation."
+                  emptyStateSubtitle="Questions, praise, bug reports. Start the conversation."
                 />
               </section>
             </div>

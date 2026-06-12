@@ -13,6 +13,7 @@ import ExpertsPage from "./pages/ExpertsPage";
 import CommunityPage from "./pages/CommunityPage";
 import GitReposPage from "./pages/GitReposPage";
 import NipsPage from "./pages/NipsPage";
+import KindPage from "./pages/KindPage";
 import AppsPage from "./pages/AppsPage";
 import SubmitAppPage from "./pages/SubmitAppPage";
 import { DEFAULT_TOPIC } from "./lib/chat";
@@ -34,6 +35,7 @@ export function AppRouter() {
         <Route path="/chat" element={<Navigate to={`/chat/${DEFAULT_TOPIC}`} replace />} />
         <Route path="/chat/:topic" element={<CommunityPage />} />
         <Route path="/nip/:number" element={<OfficialNipPage />} />
+        <Route path="/k/:kind" element={<KindPage />} />
         <Route path="/create" element={<CreateNipPage />} />
         <Route path="/edit/:naddr" element={<EditNipPage />} />
         {/* NIP-19 route for npub1, note1, naddr1, nevent1, nprofile1 */}

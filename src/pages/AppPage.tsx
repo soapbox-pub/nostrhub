@@ -9,6 +9,7 @@ import { CommentsSection } from '@/components/comments/CommentsSection';
 import { UserAvatar } from '@/components/UserAvatar';
 import { ExpertToggleButton } from '@/components/ExpertToggleButton';
 import { TierBadge } from '@/components/TierBadge';
+import { KindBadge } from '@/components/KindBadge';
 import { AppReviewForm } from '@/components/AppReviewForm';
 import { AppReviewCard } from '@/components/AppReviewCard';
 import { SidebarCardTitle } from '@/components/CrossRefCards';
@@ -289,9 +290,7 @@ function AppSidebar({ app }: { app: AppInfo }) {
           <CardContent>
             <div className="flex flex-wrap gap-1.5">
               {app.supportedKinds.map((kind) => (
-                <Badge key={kind} variant="outline" className="font-mono text-xs">
-                  kind {kind}
-                </Badge>
+                <KindBadge key={kind} kind={kind} />
               ))}
             </div>
             <p className="mt-2 text-xs text-muted-foreground/80">
@@ -497,7 +496,7 @@ export function AppPage({ pubkey, identifier }: AppPageProps) {
                       <div className="space-y-1">
                         <h2 className="text-xl font-semibold tracking-tight">NIP Compatibility</h2>
                         <p className="text-sm text-muted-foreground">
-                          Community-reported compatibility per NIP — the median of all reports decides each
+                          Community-reported compatibility per NIP. The median of all reports decides each
                           tier, ProtonDB-style.
                         </p>
                       </div>

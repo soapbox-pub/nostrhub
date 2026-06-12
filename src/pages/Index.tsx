@@ -12,33 +12,16 @@ import { UserAvatar } from '@/components/UserAvatar';
 import { useExpertPress } from '@/hooks/useExpertPress';
 import { useNostrSearch } from '@/hooks/useNostrSearch';
 import { useApps } from '@/hooks/useApps';
-import { useRankedNips, type RankedNip } from '@/hooks/useRankedNips';
+import { useRankedNips, customToRanked } from '@/hooks/useRankedNips';
 import { useCommunityAuthors } from '@/hooks/useCommunityAuthors';
 import { useCustomNips } from '@/hooks/useCustomNips';
 import { useExperts } from '@/hooks/useExperts';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { nipTargetKey } from '@/hooks/useNipApprovals';
-import type { CustomNip } from '@/lib/nips';
 import { noteExcerpt } from '@/lib/noteText';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { AvatarGroup, AvatarGroupCount } from '@/components/ui/avatar';
-
-/** Adapt a community draft into the shape `NipCard` renders. */
-function draftToRanked(nip: CustomNip): RankedNip {
-  const target = { type: 'custom', address: nip.address } as const;
-  return {
-    key: nipTargetKey(target),
-    target,
-    title: nip.title,
-    custom: nip,
-    kinds: nip.kinds,
-    expertCount: 0,
-    totalCount: 0,
-    expertApprovers: [],
-  };
-}
 
 /** Editorial department header: slab title with a highlighter swipe and a short dek. */
 function Department({
@@ -87,7 +70,7 @@ const Index = () => {
   useSeoMeta({
     title: 'NostrHub — Build Nostr Together',
     description:
-      'NostrHub is where the developer community collaborates on building the Nostr protocol — discover, draft, and discuss NIPs together.',
+      'NostrHub is where the developer community collaborates on building the Nostr protocol. Discover, draft, and discuss NIPs together.',
   });
 
   const { experts } = useExperts();
@@ -357,7 +340,7 @@ const Index = () => {
                 <CardSkeleton />
               </>
             ) : drafts.length > 0 ? (
-              drafts.map((nip) => <NipCard key={nip.address} nip={draftToRanked(nip)} />)
+              drafts.map((nip) => <NipCard key={nip.address} nip={customToRanked(nip)} />)
             ) : (
               <Card className="border-dashed sm:col-span-2 lg:col-span-3">
                 <CardContent className="px-8 py-12 text-center">

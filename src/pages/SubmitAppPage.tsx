@@ -1277,7 +1277,7 @@ export function SubmitAppPage() {
                 Edit <span className="text-cosmic">your app</span>
               </h1>
               <p className="max-w-prose text-muted-foreground">
-                Update your listing and save — relays replace the old revision of your{' '}
+                Update your listing and save. Relays replace the old revision of your{' '}
                 <span className="font-mono text-sm">kind:{APP_HANDLER_KIND}</span> event.
               </p>
             </>

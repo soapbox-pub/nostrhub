@@ -163,7 +163,7 @@ export function AppReviewForm({ app }: { app: AppInfo }) {
                           <span className="font-semibold" style={{ color: tier.color }}>
                             {tier.label}
                           </span>
-                          <span className="text-muted-foreground"> — {tier.description}</span>
+                          <span className="text-muted-foreground">: {tier.description}</span>
                         </div>
                       </div>
                     );
@@ -258,7 +258,7 @@ export function AppReviewForm({ app }: { app: AppInfo }) {
                                         } as React.CSSProperties)
                                       : { backgroundColor: tier.color }
                                   }
-                                  title={`${tier.label} — ${tier.description}`}
+                                  title={`${tier.label}: ${tier.description}`}
                                   aria-pressed={isSelected}
                                   aria-label={`Rate ${nip.name} as ${tier.label}`}
                                 >

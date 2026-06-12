@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useOfficialNips } from '@/hooks/useOfficialNips';
+import { useOfficialNips, type OfficialNip } from '@/hooks/useOfficialNips';
 import { useCustomNips } from '@/hooks/useCustomNips';
 import { useNipApprovals, type NipTarget, nipTargetKey } from '@/hooks/useNipApprovals';
 import { useExperts } from '@/hooks/useExperts';
@@ -21,6 +21,37 @@ export interface RankedNip {
   expertApprovers: string[];
   /** True when the NIP was authored by one of the configured experts. */
   expertAuthored?: boolean;
+}
+
+/** Adapt an official NIP into the shape `NipCard` renders (no approval data). */
+export function officialToRanked(nip: OfficialNip): RankedNip {
+  const target = { type: 'official', number: nip.number } as const;
+  return {
+    key: nipTargetKey(target),
+    target,
+    title: nip.title,
+    number: nip.number,
+    deprecated: nip.deprecated,
+    kinds: nip.eventKinds?.map((ek) => ek.kind),
+    expertCount: 0,
+    totalCount: 0,
+    expertApprovers: [],
+  };
+}
+
+/** Adapt a community NIP into the shape `NipCard` renders (no approval data). */
+export function customToRanked(nip: CustomNip): RankedNip {
+  const target = { type: 'custom', address: nip.address } as const;
+  return {
+    key: nipTargetKey(target),
+    target,
+    title: nip.title,
+    custom: nip,
+    kinds: nip.kinds,
+    expertCount: 0,
+    totalCount: 0,
+    expertApprovers: [],
+  };
 }
 
 /**

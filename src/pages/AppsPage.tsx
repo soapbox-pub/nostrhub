@@ -90,7 +90,7 @@ export function AppsPage() {
   useSeoMeta({
     title: 'Apps | NostrHub',
     description:
-      'Discover Nostr applications announced on the network via NIP-89 — search the directory and see how well each app implements the NIPs, ProtonDB-style.',
+      'Discover Nostr applications announced on the network via NIP-89. Search the directory and see how well each app implements the NIPs, ProtonDB-style.',
   });
 
   const active = mine ? myApps : searching ? results : browse;

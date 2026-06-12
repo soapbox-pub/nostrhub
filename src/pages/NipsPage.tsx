@@ -13,44 +13,14 @@ import { useOfficialNips } from '@/hooks/useOfficialNips';
 import { useCustomNips } from '@/hooks/useCustomNips';
 import { useCommunityAuthors } from '@/hooks/useCommunityAuthors';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { nipTargetKey } from '@/hooks/useNipApprovals';
-import type { RankedNip } from '@/hooks/useRankedNips';
-import type { OfficialNip } from '@/hooks/useOfficialNips';
-import type { CustomNip } from '@/lib/nips';
+import {
+  officialToRanked,
+  customToRanked,
+  type RankedNip,
+} from '@/hooks/useRankedNips';
 import { Button } from '@/components/ui/button';
 
 type Source = 'official' | 'community' | 'mine';
-
-/** Adapt an official NIP into the shape `NipCard` renders. */
-function officialToRanked(nip: OfficialNip): RankedNip {
-  const target = { type: 'official', number: nip.number } as const;
-  return {
-    key: nipTargetKey(target),
-    target,
-    title: nip.title,
-    number: nip.number,
-    deprecated: nip.deprecated,
-    kinds: nip.eventKinds?.map((ek) => ek.kind),
-    expertCount: 0,
-    totalCount: 0,
-    expertApprovers: [],
-  };
-}
-
-/** Adapt a community NIP draft into the shape `NipCard` renders. */
-function customToRanked(nip: CustomNip): RankedNip {
-  const target = { type: 'custom', address: nip.address } as const;
-  return {
-    key: nipTargetKey(target),
-    target,
-    title: nip.title,
-    custom: nip,
-    kinds: nip.kinds,
-    expertCount: 0,
-    totalCount: 0,
-    expertApprovers: [],
-  };
-}
 
 /** Directory of all NIPs: the official index plus community drafts. */
 export function NipsPage() {
@@ -69,7 +39,7 @@ export function NipsPage() {
   useSeoMeta({
     title: 'NIPs | NostrHub',
     description:
-      'Browse Nostr Implementation Possibilities — the official protocol spec index alongside fresh drafts from the community.',
+      'Browse Nostr Implementation Possibilities: the official protocol spec index alongside fresh drafts from the community.',
   });
 
   // Official NIPs keep their README (index) order; community drafts are
@@ -109,7 +79,7 @@ export function NipsPage() {
   return (
     <DiscoveryPage
       title="NIPs"
-      description="Nostr Implementation Possibilities — the official protocol index alongside fresh drafts from the community lab."
+      description="Nostr Implementation Possibilities: the official protocol index alongside fresh drafts from the community lab."
       action={
         user && (
           <Button asChild size="sm" className="gap-1.5 rounded-full shadow-lg shadow-primary/25">

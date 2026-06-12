@@ -3,6 +3,7 @@ import { Blocks } from 'lucide-react';
 import type { AppInfo } from '@/lib/apps';
 import type { CompatTier } from '@/lib/appReviews';
 import { TierBadge } from '@/components/TierBadge';
+import { KindBadge } from '@/components/KindBadge';
 import { useAuthor } from '@/hooks/useAuthor';
 import { UserAvatar } from '@/components/UserAvatar';
 import { shortNpub } from '@/lib/nostr';
@@ -17,7 +18,7 @@ interface AppCardProps {
   app: AppInfo;
   /**
    * Overall compatibility tier from aggregated kind 31986 reports.
-   * Omit to hide the badge; `null` renders the "No Data" state.
+   * Shown only when reports exist — omit or pass `null` to hide.
    */
   tier?: CompatTier | null;
 }
@@ -62,7 +63,7 @@ export function AppCard({ app, tier }: AppCardProps) {
                 </p>
               )}
             </div>
-            {tier !== undefined && (
+            {tier != null && (
               <TierBadge tier={tier} size="sm" className="shrink-0" />
             )}
           </div>
@@ -78,9 +79,7 @@ export function AppCard({ app, tier }: AppCardProps) {
               </Badge>
             ))}
             {shownKinds.map((kind) => (
-              <Badge key={kind} variant="outline" className="font-mono text-[10px] text-muted-foreground">
-                k:{kind}
-              </Badge>
+              <KindBadge key={kind} kind={kind} className="text-[10px] text-muted-foreground" />
             ))}
             {extraKinds > 0 && (
               <span className="text-[10px] text-muted-foreground">+{extraKinds} kinds</span>
