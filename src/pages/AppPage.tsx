@@ -380,6 +380,23 @@ export function AppPage({ pubkey, identifier }: AppPageProps) {
   const icon = sanitizeUrl(app?.picture);
   const website = sanitizeUrl(app?.website);
 
+  // `#client` tag values to count usage by: the app name, its lowercase form,
+  // and the website hostname (sans `www.`). Different clients tag posts with
+  // different conventions, so OR'ing these widens the match. Deduplicated.
+  const clientTags = (() => {
+    const tags = new Set<string>();
+    if (app?.name) {
+      tags.add(app.name);
+      tags.add(app.name.toLowerCase());
+    }
+    if (website) {
+      try {
+        tags.add(new URL(website).hostname.replace(/^www\./, ''));
+      } catch { /* unparseable URL — skip */ }
+    }
+    return [...tags].filter(Boolean);
+  })();
+
   return (
     <Layout className={app && hasSidebarContent(app) ? 'max-w-6xl' : 'max-w-3xl'}>
       <BackLink to="/apps">Back to Apps</BackLink>
@@ -444,8 +461,8 @@ export function AppPage({ pubkey, identifier }: AppPageProps) {
             }
           >
             {/* Usage metrics: active users + 30-day series, between the title
-                row and the action row, keyed on the app name as `#client`. */}
-            {app.name && <ClientMetrics clientTags={[app.name]} />}
+                row and the action row, keyed on the app name / hostname as `#client`. */}
+            {clientTags.length > 0 && <ClientMetrics clientTags={clientTags} />}
           </DetailHero>
           </DetailSurface>
 
