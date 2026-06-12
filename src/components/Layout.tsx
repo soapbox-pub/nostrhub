@@ -27,14 +27,18 @@ interface LayoutProps {
   fullBleed?: boolean;
 }
 
+/** Primary destinations shown in the top header nav. */
 const NAV_ITEMS = [
-  { to: '/', label: 'Home', end: true },
   { to: '/nips', label: 'NIPs' },
   { to: '/repos', label: 'Repos' },
   { to: '/apps', label: 'Apps' },
+  { to: '/chat', label: 'Chat' },
+];
+
+/** Secondary destinations surfaced in the footer to keep the header uncluttered. */
+const FOOTER_NAV_ITEMS = [
   { to: '/stats', label: 'Stats' },
   { to: '/experts', label: 'Experts' },
-  { to: '/chat', label: 'Chat' },
 ];
 
 function Logo({ onClick }: { onClick?: () => void }) {
@@ -87,11 +91,10 @@ export function Layout({ children, sidebar, className, fullBleed = false }: Layo
               </div>
 
               <nav className="flex flex-col gap-1 p-4" aria-label="Primary mobile">
-                {NAV_ITEMS.map((item) => (
+                {[...NAV_ITEMS, ...FOOTER_NAV_ITEMS].map((item) => (
                   <NavLink
                     key={item.to}
                     to={item.to}
-                    end={item.end}
                     onClick={() => setMobileMenuOpen(false)}
                     className={({ isActive }) =>
                       cn(
@@ -117,7 +120,6 @@ export function Layout({ children, sidebar, className, fullBleed = false }: Layo
               <NavLink
                 key={item.to}
                 to={item.to}
-                end={item.end}
                 className={({ isActive }) =>
                   cn(
                     'relative rounded-md px-3 py-2 text-sm font-medium transition-colors',
@@ -168,31 +170,54 @@ export function Layout({ children, sidebar, className, fullBleed = false }: Layo
 /** Editorial footer rendered once at the bottom of the content column. */
 function SiteFooter() {
   return (
-    <footer className="mt-16 flex flex-wrap items-center justify-between gap-4 border-t border-border/60 pt-6">
-      <div className="flex items-center gap-3">
-        <div
-          aria-hidden="true"
-          className="h-9 w-20 text-foreground/70 bg-[repeating-linear-gradient(90deg,currentColor_0,currentColor_2px,transparent_2px,transparent_5px)]"
-        />
-        <div className="font-mono text-[10px] uppercase leading-tight text-muted-foreground">
-          <p className="flex items-center gap-1.5">
-            <span className="inline-block size-1 rounded-full bg-nebula shadow-[0_0_8px] shadow-nebula/70" aria-hidden="true" />
-            Build the Nostr protocol together
-          </p>
-          <p>Display until the heat death of the universe</p>
+    <footer className="mt-16 overflow-hidden rounded-xl border border-primary/15 bg-gradient-to-b from-muted/40 to-muted/10 backdrop-blur-sm">
+      <nav
+        className="flex flex-wrap items-center gap-1 border-b border-border/50 px-5 py-3"
+        aria-label="Secondary"
+      >
+        {FOOTER_NAV_ITEMS.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            className={({ isActive }) =>
+              cn(
+                'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+                'hover:bg-accent/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                isActive ? 'text-foreground' : 'text-muted-foreground',
+              )
+            }
+          >
+            {item.label}
+          </NavLink>
+        ))}
+      </nav>
+
+      <div className="flex flex-wrap items-center justify-between gap-4 px-5 py-5">
+        <div className="flex items-center gap-3">
+          <div
+            aria-hidden="true"
+            className="h-9 w-20 text-foreground/70 bg-[repeating-linear-gradient(90deg,currentColor_0,currentColor_2px,transparent_2px,transparent_5px)]"
+          />
+          <div className="font-mono text-[10px] uppercase leading-tight text-muted-foreground">
+            <p className="flex items-center gap-1.5">
+              <span className="inline-block size-1 rounded-full bg-nebula shadow-[0_0_8px] shadow-nebula/70" aria-hidden="true" />
+              Build the Nostr protocol together
+            </p>
+            <p>Display until the heat death of the universe</p>
+          </div>
         </div>
+        <p className="font-mono text-[10px] uppercase text-muted-foreground">
+          Vibed with{' '}
+          <a
+            href="https://soapbox.pub/mkstack"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-foreground hover:text-primary"
+          >
+            MKStack
+          </a>
+        </p>
       </div>
-      <p className="font-mono text-[10px] uppercase text-muted-foreground">
-        Vibed with{' '}
-        <a
-          href="https://soapbox.pub/mkstack"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="font-medium text-foreground hover:text-primary"
-        >
-          MKStack
-        </a>
-      </p>
     </footer>
   );
 }
