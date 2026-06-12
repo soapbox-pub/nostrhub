@@ -839,6 +839,10 @@ export function SubmitAppPage() {
   const [repoRefs, setRepoRefs] = useState<RepoRefEntry[]>([]);
   const [zapstoreRefs, setZapstoreRefs] = useState<ZapstoreRefEntry[]>([]);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  /** Address of the Zapstore listing the form was prefilled from, if any. */
+  const [appliedZapstore, setAppliedZapstore] = useState<string | null>(null);
+
+  const myZapstoreApps = useMyZapstoreApps(user?.pubkey);
 
   useSeoMeta({
     title: 'Submit an App | NostrHub',
@@ -947,6 +951,71 @@ export function SubmitAppPage() {
   };
   const toggleTag = (t: string) =>
     setTags((p) => p.includes(t) ? p.filter((x) => x !== t) : [...p, t]);
+
+  // --- Zapstore prefill ---
+
+  /** Map a NIP-82 `f` tag (e.g. "android-arm64-v8a", "darwin-arm64") to our platform set. */
+  const platformFromFTag = (f: string): AppPlatform | null => {
+    const v = f.toLowerCase();
+    if (v.startsWith('android')) return 'android';
+    if (v.startsWith('ios')) return 'ios';
+    if (v.startsWith('darwin') || v.startsWith('macos')) return 'macos';
+    if (v.startsWith('windows')) return 'windows';
+    if (v.startsWith('linux')) return 'linux';
+    if (v.startsWith('web')) return 'web';
+    return null;
+  };
+
+  /**
+   * Prefill the form from an existing kind 32267 Zapstore listing: name,
+   * description, icon, website, category tags, and platforms, plus the
+   * listing reference itself. Fields the listing doesn't carry are left alone.
+   */
+  const applyZapstoreListing = (app: ZapstoreApp) => {
+    const tag = (n: string) => app.event.tags.find(([t]) => t === n)?.[1];
+    const tagValues = (n: string) =>
+      app.event.tags.filter(([t, v]) => t === n && v).map(([, v]) => v);
+
+    setName(tag('name') ?? app.identifier);
+
+    const summary = tag('summary') || app.event.content.trim();
+    if (summary) setAbout(summary.slice(0, 500));
+
+    const icon = tag('icon');
+    if (icon && isValidUrl(icon)) setPicture(icon);
+
+    const url = tag('url') ?? tag('website');
+    if (url && isValidUrl(url)) setWebsite(url.trim());
+
+    const listingTags = tagValues('t')
+      .map((t) => t.trim().toLowerCase().replace(/\s+/g, '-'))
+      .filter(Boolean);
+    if (listingTags.length > 0) {
+      setTags((prev) => Array.from(new Set([...prev, ...listingTags])));
+    }
+
+    const listingPlatforms = Array.from(
+      new Set(tagValues('f').map(platformFromFTag).filter((p): p is AppPlatform => p !== null)),
+    );
+    if (listingPlatforms.length > 0) {
+      setPlatforms((prev) => {
+        const next = [...prev];
+        for (const pl of listingPlatforms) {
+          if (!next.some((p) => p.platform === pl)) next.push({ platform: pl, url: '', hint: '' });
+        }
+        return next;
+      });
+    }
+
+    // Link the listing itself, swapping out a previously applied one.
+    setZapstoreRefs((prev) => {
+      const kept = prev.filter((r) => r.address !== appliedZapstore && r.address !== app.address);
+      return [...kept, { address: app.address, relayHint: '', name: app.name }];
+    });
+    setAppliedZapstore(app.address);
+    setErrors({});
+    toast({ title: `Prefilled from ${app.name}`, description: 'Look it over and tweak anything you like.' });
+  };
 
   // --- step validation ---
   const validateStep = (i: number): boolean => {
@@ -1093,6 +1162,39 @@ export function SubmitAppPage() {
                   {/* ─────────────────── Step 1: Basics ─────────────────── */}
                   {current.id === 'basics' && (
                     <>
+                      {(myZapstoreApps.data?.length ?? 0) > 0 && (
+                        <div className="space-y-2 rounded-lg border border-nebula/30 bg-nebula/5 p-3 motion-safe:animate-in motion-safe:fade-in">
+                          <p className="text-xs font-medium">
+                            <ShoppingBag className="mr-1 inline size-3.5 text-nebula" aria-hidden="true" />
+                            Already on Zapstore? Start from a listing and we'll fill in the basics:
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {myZapstoreApps.data!.slice(0, 6).map((app) => (
+                              <button
+                                key={app.address}
+                                type="button"
+                                onClick={() => applyZapstoreListing(app)}
+                                aria-pressed={appliedZapstore === app.address}
+                                className={cn(
+                                  'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-all motion-safe:active:scale-95',
+                                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                                  appliedZapstore === app.address
+                                    ? 'border-nebula/50 bg-nebula/15 text-foreground'
+                                    : 'border-border/60 bg-background/60 text-muted-foreground hover:border-nebula/40 hover:text-foreground',
+                                )}
+                              >
+                                {app.icon ? (
+                                  <img src={app.icon} alt="" className="size-4 rounded object-cover" />
+                                ) : (
+                                  <ShoppingBag className="size-3" aria-hidden="true" />
+                                )}
+                                {app.name}
+                                {appliedZapstore === app.address && <Check className="size-3 text-nebula" aria-hidden="true" />}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       <LogoUploader
                         picture={picture}
                         setPicture={(url) => { setPicture(url); clearError('picture'); }}
