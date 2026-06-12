@@ -265,20 +265,6 @@ const Index = () => {
           </section>
         )}
 
-        {/* ── Network pulse (active users graph) ───────────────────── */}
-        <section className="space-y-5" aria-label="Active users on the Nostr network">
-          <Department
-            title="The Pulse"
-            subtitle="Monthly active users across the Nostr network."
-            action={
-              <Button asChild variant="outline" size="sm" className="rounded-full">
-                <Link to="/stats">View network stats</Link>
-              </Button>
-            }
-          />
-          <NetworkUsersChart />
-        </section>
-
         {/* ── Overheard on the wire (pull quotes) ──────────────────── */}
         {hasExperts && (press.isLoading || pullQuotes.length > 0) && (
           <section className="space-y-5" aria-label="Recent posts from the experts">
@@ -373,6 +359,20 @@ const Index = () => {
             </div>
           </section>
         )}
+
+        {/* ── Network pulse (active users graph) ───────────────────── */}
+        <section className="space-y-5" aria-label="Active users on the Nostr network">
+          <Department
+            title="The Pulse"
+            subtitle="Monthly active users across the Nostr network."
+            action={
+              <Button asChild variant="outline" size="sm" className="rounded-full">
+                <Link to="/stats">View network stats</Link>
+              </Button>
+            }
+          />
+          <NetworkUsersChart />
+        </section>
       </div>
     </Layout>
   );
