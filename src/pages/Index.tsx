@@ -203,7 +203,15 @@ const Index = () => {
         {/* ── The features (expert long-form articles) ─────────────── */}
         {hasExperts && (press.isLoading || articles.length > 0) && (
           <section className="space-y-5" aria-label="Feature articles from the experts">
-            <Department title="The Features" subtitle="Long-form dispatches from the panel." />
+            <Department
+              title="The Features"
+              subtitle="Long-form dispatches from the panel."
+              action={
+                <Button asChild variant="outline" size="sm" className="rounded-full">
+                  <Link to="/articles">Browse all articles</Link>
+                </Button>
+              }
+            />
             {press.isLoading ? (
               <CardSkeleton withImage />
             ) : (

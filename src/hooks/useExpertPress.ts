@@ -65,6 +65,47 @@ function parseArticle(event: NostrEvent): ExpertArticle | null {
 
 const NOTE_WINDOW_DAYS = 30;
 
+/** Dedupe raw 30023 events to the latest per (author, d) and parse, newest-first. */
+function collectArticles(events: NostrEvent[]): ExpertArticle[] {
+  const latestArticles = new Map<string, NostrEvent>();
+  for (const ev of events) {
+    if (ev.kind !== ARTICLE_KIND) continue;
+    const d = ev.tags.find(([n]) => n === 'd')?.[1] ?? '';
+    const key = `${ev.pubkey}:${d}`;
+    const prev = latestArticles.get(key);
+    if (!prev || ev.created_at > prev.created_at) latestArticles.set(key, ev);
+  }
+  return Array.from(latestArticles.values())
+    .map(parseArticle)
+    .filter((a): a is ExpertArticle => a !== null)
+    .sort((a, b) => b.publishedAt - a.publishedAt);
+}
+
+/**
+ * Every long-form article (kind 30023) published by the panel of experts,
+ * deduped to the latest revision per address and ordered newest-first by
+ * publish date. Scoped to expert authors, consistent with the app's trust
+ * model. Powers the `/articles` directory.
+ */
+export function useExpertArticles() {
+  const { nostr } = useNostr();
+  const { experts } = useExperts();
+
+  return useQuery<ExpertArticle[]>({
+    queryKey: ['expert-articles', [...experts].sort()],
+    queryFn: async ({ signal }) => {
+      const opts = { signal: AbortSignal.any([signal, AbortSignal.timeout(8000)]) };
+      const events = await nostr.query(
+        [{ kinds: [ARTICLE_KIND], authors: experts, limit: 200 }],
+        opts,
+      );
+      return collectArticles(events);
+    },
+    enabled: experts.length > 0,
+    staleTime: 60 * 1000,
+  });
+}
+
 /**
  * The experts' own publishing output. Long-form articles (kind 30023) come
  * from the app's relay pool via a normal REQ — no NIP-50 — and are simply
@@ -91,18 +132,7 @@ export function useExpertPress() {
 
       // Articles: keep only the latest event per (author, d) address,
       // newest-first by publish date.
-      const latestArticles = new Map<string, NostrEvent>();
-      for (const ev of articleEvents) {
-        if (ev.kind !== ARTICLE_KIND) continue;
-        const d = ev.tags.find(([n]) => n === 'd')?.[1] ?? '';
-        const key = `${ev.pubkey}:${d}`;
-        const prev = latestArticles.get(key);
-        if (!prev || ev.created_at > prev.created_at) latestArticles.set(key, ev);
-      }
-      const articles = Array.from(latestArticles.values())
-        .map(parseArticle)
-        .filter((a): a is ExpertArticle => a !== null)
-        .sort((a, b) => b.publishedAt - a.publishedAt);
+      const articles = collectArticles(articleEvents);
 
       // Notes: top-level posts only (no `e` tags), in hot order.
       const seen = new Set<string>();

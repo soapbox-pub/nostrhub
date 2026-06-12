@@ -5,6 +5,7 @@ import type { ExpertArticle } from '@/hooks/useExpertPress';
 import { UserAvatar } from '@/components/UserAvatar';
 import { shortNpub } from '@/lib/nostr';
 import { Card } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
 /** Compact byline: avatar, name, and publish date. */
@@ -157,6 +158,24 @@ export function ArticleCard({ article }: { article: ExpertArticle }) {
           />
         </div>
       </Link>
+    </Card>
+  );
+}
+
+/** Loading placeholder matching the shape of {@link ArticleCard}. */
+export function ArticleCardSkeleton() {
+  return (
+    <Card className="h-full overflow-hidden border-border/70 bg-card/60 py-0">
+      <Skeleton className="aspect-[16/9] w-full rounded-none" />
+      <div className="flex flex-col gap-2.5 p-5">
+        <Skeleton className="h-3 w-16" />
+        <Skeleton className="h-5 w-4/5" />
+        <Skeleton className="h-4 w-full" />
+        <div className="flex items-center gap-2 pt-2">
+          <Skeleton className="size-6 rounded-full" />
+          <Skeleton className="h-3 w-28" />
+        </div>
+      </div>
     </Card>
   );
 }

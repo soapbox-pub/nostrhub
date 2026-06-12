@@ -37,6 +37,7 @@ const NAV_ITEMS = [
 
 /** Secondary destinations surfaced in the footer to keep the header uncluttered. */
 const FOOTER_NAV_ITEMS = [
+  { to: '/articles', label: 'Articles' },
   { to: '/stats', label: 'Stats' },
   { to: '/experts', label: 'Experts' },
 ];
