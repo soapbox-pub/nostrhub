@@ -110,13 +110,16 @@ export function AppsPage() {
     // user picks an explicit sort.
     const sorted = [...result];
     if (sortBy === 'hot') {
-      // Hot: apps with reviews sorted by report count × rating score, then newest unrated apps at the bottom.
-      sorted.sort((a, b) => {
-        const aScore = a.overall ? a.overall.count * a.overall.rating : -1;
-        const bScore = b.overall ? b.overall.count * b.overall.rating : -1;
-        if (bScore !== aScore) return bScore - aScore;
-        return b.app.createdAt - a.app.createdAt;
+      // Reviewed apps sorted by count × rating first; unreviewed apps keep
+      // their relay-assigned order (position in the rows array) behind them.
+      const reviewed = sorted.filter((r) => r.overall);
+      const unreviewed = sorted.filter((r) => !r.overall);
+      reviewed.sort((a, b) => {
+        const aScore = a.overall!.count * a.overall!.rating;
+        const bScore = b.overall!.count * b.overall!.rating;
+        return bScore - aScore;
       });
+      return [...reviewed, ...unreviewed];
     } else if (sortBy === 'name') {
       sorted.sort((a, b) => a.app.name.localeCompare(b.app.name));
     } else if (sortBy === 'reports') {
