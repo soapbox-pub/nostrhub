@@ -19,39 +19,51 @@ import {
  * returns fewer than 50 results, recent events are fetched from the general
  * pool in parallel and appended (deduped) as a backfill.
  *
+ * Results are restricted to the community web-of-trust `authors` set (when
+ * provided) for spam resistance — applied relay-side and re-checked client-side
+ * — keeping the directory limited to the developer community. The query stays
+ * disabled until that set resolves.
+ *
  * Returns the latest revision per app address, restricted to listings with
  * complete metadata, preserving the relay's relevance ranking.
  */
-export function useAppSearch(query: string) {
+export function useAppSearch(query: string, authors?: string[]) {
   const { nostr } = useNostr();
   const search = query.trim();
   const isBrowse = search === 'sort:hot';
+  const allow = authors ? new Set(authors) : null;
 
   return useQuery<AppInfo[]>({
-    queryKey: ['app-search', search],
+    queryKey: ['app-search', search, allow ? allow.size : null],
     queryFn: async ({ signal }) => {
       const timeout = AbortSignal.any([signal, AbortSignal.timeout(8000)]);
+
+      const authorScope = authors && authors.length > 0 ? { authors } : {};
 
       // Always fire the search query. For browse, also fire the recency
       // backfill in parallel so there's no extra round-trip if we need it.
       const searchPromise = nostr
         .group(SEARCH_RELAYS)
-        .query([{ kinds: [APP_HANDLER_KIND], search, limit: 50 }], { signal: timeout })
+        .query([{ kinds: [APP_HANDLER_KIND], search, limit: 50, ...authorScope }], { signal: timeout })
         .catch(() => [] as NostrEvent[]);
 
       const backfillPromise = isBrowse
         ? nostr
             .query(
               [
-                { kinds: [APP_HANDLER_KIND], limit: 100 },
-                { kinds: [APP_HANDLER_KIND], '#t': APP_CATEGORY_TAGS, limit: 100 },
+                { kinds: [APP_HANDLER_KIND], limit: 100, ...authorScope },
+                { kinds: [APP_HANDLER_KIND], '#t': APP_CATEGORY_TAGS, limit: 100, ...authorScope },
               ],
               { signal: timeout },
             )
             .catch(() => [] as NostrEvent[])
         : Promise.resolve([] as NostrEvent[]);
 
-      const [searchEvents, backfillEvents] = await Promise.all([searchPromise, backfillPromise]);
+      const [rawSearch, rawBackfill] = await Promise.all([searchPromise, backfillPromise]);
+
+      // Defensive re-filter in case a relay ignores the authors constraint.
+      const searchEvents = allow ? rawSearch.filter((e) => allow.has(e.pubkey)) : rawSearch;
+      const backfillEvents = allow ? rawBackfill.filter((e) => allow.has(e.pubkey)) : rawBackfill;
 
       // Build ordered index from search results.
       const order = new Map<string, number>();

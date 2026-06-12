@@ -13,6 +13,7 @@ import { TIER_ICONS } from '@/lib/tierIcons';
 import { useAppSearch } from '@/hooks/useAppSearch';
 import { useApps } from '@/hooks/useApps';
 import { useAllAppReviews } from '@/hooks/useAppReviews';
+import { useCommunityAuthors } from '@/hooks/useCommunityAuthors';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { APP_PLATFORMS, hasFullAppMetadata, type AppPlatform } from '@/lib/apps';
 import {
@@ -76,8 +77,16 @@ export function AppsPage() {
   const searching = query.length > 0;
   const mine = mineOnly && Boolean(user);
 
-  const browse = useAppSearch('sort:hot');
-  const results = useAppSearch(searching ? `${query} sort:hot` : '');
+  // Restrict discovery to the community web-of-trust author set (the ~1000
+  // pubkeys derived from the experts' follows) for spam resistance. Browse and
+  // search both wait for the set to resolve before querying; "Your apps" is
+  // already author-scoped to the user and bypasses it.
+  const community = useCommunityAuthors();
+  const communityAuthors = community.data?.authors;
+  const communityReady = communityAuthors !== undefined;
+
+  const browse = useAppSearch(communityReady ? 'sort:hot' : '', communityAuthors);
+  const results = useAppSearch(searching && communityReady ? `${query} sort:hot` : '', communityAuthors);
   // "Your apps": author-scoped pool query (the hot/search lists may not
   // include the user's own listings), incomplete metadata included.
   const myApps = useApps({
@@ -172,7 +181,11 @@ export function AppsPage() {
     return sorted;
   }, [visibleRows, hiddenRows, platform, tierFilter, sortBy, showHidden, mine, query]);
 
-  const isLoading = active.isLoading || reviews.isLoading || (searching && search.trim() !== query);
+  const isLoading =
+    active.isLoading ||
+    reviews.isLoading ||
+    (!mine && !communityReady) ||
+    (searching && search.trim() !== query);
 
   return (
     <DiscoveryPage
