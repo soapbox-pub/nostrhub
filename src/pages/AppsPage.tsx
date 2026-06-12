@@ -146,7 +146,7 @@ export function AppsPage() {
   const isLoading = active.isLoading || reviews.isLoading || (searching && search.trim() !== query);
 
   return (
-    <Layout className="max-w-6xl">
+    <Layout>
       <div className="space-y-8">
         <header className="space-y-3">
           <div className="flex flex-wrap items-start justify-between gap-3">

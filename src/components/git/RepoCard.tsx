@@ -1,0 +1,126 @@
+import { Link } from 'react-router-dom';
+import { GitFork, Sparkles } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
+import { nip19 } from 'nostr-tools';
+import { useAuthor } from '@/hooks/useAuthor';
+import { UserAvatar } from '@/components/UserAvatar';
+import { shortNpub } from '@/lib/nostr';
+import { repoNaddr, type GitRepoAnnouncement } from '@/lib/git';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+
+const MAX_TAGS = 4;
+
+/** Card view for a NIP-34 git repository announcement (kind 30617). */
+export function RepoCard({ repo }: { repo: GitRepoAnnouncement }) {
+  const author = useAuthor(repo.pubkey);
+  const metadata = author.data?.metadata;
+  const authorName = metadata?.name || metadata?.display_name || shortNpub(repo.pubkey);
+  const nip05 = metadata?.nip05;
+  const naddr = repoNaddr(repo.pubkey, repo.identifier, repo.relays);
+  const authorNpub = (() => {
+    try {
+      return nip19.npubEncode(repo.pubkey);
+    } catch {
+      return repo.pubkey;
+    }
+  })();
+
+  const shownTags = repo.hashtags.slice(0, MAX_TAGS);
+  const extraTags = repo.hashtags.length - shownTags.length;
+
+  return (
+    <Card className="group relative h-full overflow-hidden border-border/70 bg-card/60 backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-[0_8px_40px_-8px] hover:shadow-primary/30">
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute -right-8 -top-10 size-32 rounded-full bg-primary/20 opacity-0 blur-2xl transition-opacity duration-300 group-hover:opacity-100"
+      />
+      <Link
+        to={`/${naddr}`}
+        className="relative block h-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <CardContent className="flex h-full flex-col gap-3 px-4">
+          {/* Header: icon + name */}
+          <div className="flex items-start gap-3">
+            <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-lg border border-border/60 bg-muted/40">
+              <GitFork className="size-4 text-muted-foreground" aria-hidden="true" />
+            </span>
+            <div className="min-w-0 flex-1 space-y-0.5">
+              <h3 className="truncate font-semibold leading-snug tracking-tight group-hover:text-primary">
+                {repo.name}
+              </h3>
+              {repo.name !== repo.identifier && (
+                <p className="truncate font-mono text-xs text-muted-foreground">{repo.identifier}</p>
+              )}
+            </div>
+            {repo.graspServers.length > 0 && (
+              <Badge variant="outline" className="shrink-0 gap-1 text-[10px] font-normal text-nebula border-nebula/40">
+                <Sparkles className="size-3" aria-hidden="true" /> GRASP
+              </Badge>
+            )}
+          </div>
+
+          {/* Description */}
+          {repo.description && (
+            <p className="line-clamp-2 flex-1 text-sm text-muted-foreground">{repo.description}</p>
+          )}
+
+          {/* Tags */}
+          {shownTags.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {shownTags.map((tag) => (
+                <Badge key={tag} variant="secondary" className="h-5 px-1.5 text-[11px] font-normal">
+                  #{tag}
+                </Badge>
+              ))}
+              {extraTags > 0 && (
+                <span className="text-[10px] text-muted-foreground">+{extraTags}</span>
+              )}
+            </div>
+          )}
+
+          {/* Author + timestamp */}
+          <div className="flex items-center gap-2 border-t border-border/50 pt-3">
+            <Link
+              to={`/${authorNpub}`}
+              onClick={(e) => e.stopPropagation()}
+              className="flex min-w-0 items-center gap-1.5 text-xs text-foreground/80 hover:text-primary"
+            >
+              <UserAvatar pubkey={repo.pubkey} size="sm" />
+              <span className="truncate">{nip05 ?? authorName}</span>
+            </Link>
+            <span className="ml-auto shrink-0 text-xs text-muted-foreground/60">
+              {formatDistanceToNow(new Date(repo.createdAt * 1000), { addSuffix: true })}
+            </span>
+          </div>
+        </CardContent>
+      </Link>
+    </Card>
+  );
+}
+
+export function RepoCardSkeleton() {
+  return (
+    <Card>
+      <CardContent className="space-y-3 px-4">
+        <div className="flex items-start gap-3">
+          <Skeleton className="size-10 rounded-lg" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-5 w-2/3" />
+            <Skeleton className="h-3 w-1/3" />
+          </div>
+        </div>
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-3/4" />
+        <div className="flex items-center gap-2 pt-1">
+          <Skeleton className="size-6 rounded-full" />
+          <Skeleton className="h-3 w-28" />
+          <Skeleton className="ml-auto h-3 w-16" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+export default RepoCard;

@@ -4,6 +4,7 @@ import { Blocks, ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
 import type { AppInfo } from '@/lib/apps';
 import { TIERS, TRACKED_NIPS, type TierAggregate } from '@/lib/appReviews';
 import { TierBadge } from '@/components/TierBadge';
+import { useAuthor } from '@/hooks/useAuthor';
 import { sanitizeUrl } from '@/lib/sanitizeUrl';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
@@ -22,6 +23,9 @@ export interface AppRow {
 export function AppListRow({ row }: { row: AppRow }) {
   const { app, overall, perNip } = row;
   const [expanded, setExpanded] = useState(false);
+
+  const author = useAuthor(app.pubkey);
+  const nip05 = author.data?.metadata?.nip05;
 
   const icon = sanitizeUrl(app.picture);
   const accentColor = overall ? TIERS[overall.tier].color : 'hsl(var(--border))';
@@ -59,6 +63,9 @@ export function AppListRow({ row }: { row: AppRow }) {
           </div>
           {app.about && (
             <p className="mt-0.5 truncate text-xs text-muted-foreground">{app.about}</p>
+          )}
+          {nip05 && (
+            <p className="mt-0.5 truncate text-xs text-muted-foreground/60">{nip05}</p>
           )}
         </div>
 

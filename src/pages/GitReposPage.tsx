@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useSeoMeta } from '@unhead/react';
 import { Search, X } from 'lucide-react';
 import { Layout } from '@/components/Layout';
-import { RepoList, RepoListItem, RepoListItemSkeleton } from '@/components/git/RepoListItem';
+import { RepoCard, RepoCardSkeleton } from '@/components/git/RepoCard';
 import { useGitRepos } from '@/hooks/useGitRepos';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -103,11 +103,11 @@ export function GitReposPage() {
         </div>
 
         {isLoading ? (
-          <RepoList>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
-              <RepoListItemSkeleton key={i} />
+              <RepoCardSkeleton key={i} />
             ))}
-          </RepoList>
+          </div>
         ) : filtered.length === 0 ? (
           <Card className="border-dashed">
             <CardContent className="px-8 py-12 text-center">
@@ -119,11 +119,11 @@ export function GitReposPage() {
             </CardContent>
           </Card>
         ) : (
-          <RepoList>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((repo) => (
-              <RepoListItem key={`${repo.pubkey}:${repo.identifier}`} repo={repo} />
+              <RepoCard key={`${repo.pubkey}:${repo.identifier}`} repo={repo} />
             ))}
-          </RepoList>
+          </div>
         )}
       </div>
     </Layout>
