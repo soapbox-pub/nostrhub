@@ -2,13 +2,15 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSeoMeta } from '@unhead/react';
 import {
-  ArrowLeft, AlertCircle, BookOpen, Check, FolderGit2,
-  Loader2, PlusCircle, Search, ShoppingBag, X,
+  ArrowLeft, ArrowRight, AlertCircle, Blocks, BookOpen, Check, ChevronDown,
+  FolderGit2, ImagePlus, Loader2, MonitorSmartphone, Pencil, PlusCircle,
+  Rocket, Search, ShoppingBag, Sparkles, Tags, Upload, X,
 } from 'lucide-react';
 import { nip19 } from 'nostr-tools';
 import { Layout } from '@/components/Layout';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useNostrPublish } from '@/hooks/useNostrPublish';
+import { useUploadFile } from '@/hooks/useUploadFile';
 import { useOfficialNips } from '@/hooks/useOfficialNips';
 import { useCustomNips } from '@/hooks/useCustomNips';
 import { useNipSearch } from '@/hooks/useNipSearch';
@@ -18,13 +20,19 @@ import { useMyZapstoreApps, useZapstoreSearch } from '@/hooks/useZapstoreSearch'
 import { useToast } from '@/hooks/useToast';
 import { LoginArea } from '@/components/auth/LoginArea';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Accordion, AccordionContent, AccordionItem, AccordionTrigger,
+} from '@/components/ui/accordion';
+import {
+  Collapsible, CollapsibleContent, CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { APP_PLATFORMS, APP_HANDLER_KIND, nipGithubUrl, type AppPlatform } from '@/lib/apps';
 import type { CustomNip } from '@/lib/nips';
@@ -40,6 +48,64 @@ const PLATFORM_LABELS: Record<AppPlatform, string> = {
   linux: 'Linux', macos: 'macOS', windows: 'Windows',
 };
 
+/** Well-known event kinds people can toggle on with one tap. */
+const COMMON_KINDS: Array<{ kind: number; label: string }> = [
+  { kind: 1, label: 'Notes' },
+  { kind: 0, label: 'Profiles' },
+  { kind: 30023, label: 'Articles' },
+  { kind: 20, label: 'Pictures' },
+  { kind: 21, label: 'Videos' },
+  { kind: 1111, label: 'Comments' },
+  { kind: 9735, label: 'Zap receipts' },
+  { kind: 1059, label: 'DMs (gift wrap)' },
+  { kind: 9802, label: 'Highlights' },
+  { kind: 30311, label: 'Live streams' },
+  { kind: 30617, label: 'Git repos' },
+  { kind: 31923, label: 'Calendar events' },
+];
+
+/** Friendly subset of common category tags, one tap to add. */
+const SUGGESTED_TAGS = [
+  'social', 'tools', 'messaging', 'media', 'music', 'video', 'pictures',
+  'marketplace', 'communities', 'zaps', 'news', 'productivity', 'education',
+];
+
+interface StepDef {
+  id: 'basics' | 'platforms' | 'protocol' | 'extras' | 'launch';
+  label: string;
+  icon: typeof Sparkles;
+  title: string;
+  blurb: string;
+}
+
+const STEPS: StepDef[] = [
+  {
+    id: 'basics', label: 'Basics', icon: Sparkles,
+    title: "What's your app?",
+    blurb: 'Name it, describe it, give it a face. This is what people see in the directory.',
+  },
+  {
+    id: 'platforms', label: 'Platforms', icon: MonitorSmartphone,
+    title: 'Where does it run?',
+    blurb: 'Tap the platforms you ship on and drop in a link for each. Skip any you like.',
+  },
+  {
+    id: 'protocol', label: 'Protocol', icon: Blocks,
+    title: 'What does it speak?',
+    blurb: 'Pick the event kinds your app can open. We\u2019ll suggest matching NIPs automatically.',
+  },
+  {
+    id: 'extras', label: 'Extras', icon: Tags,
+    title: 'Finishing touches',
+    blurb: 'Tags help people find you. Repos and Zapstore listings are bonus points, all optional.',
+  },
+  {
+    id: 'launch', label: 'Launch', icon: Rocket,
+    title: 'Ready for liftoff',
+    blurb: 'Here\u2019s how your listing will look. Happy with it? Hit publish.',
+  },
+];
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -48,10 +114,6 @@ interface PlatformEntry {
   platform: AppPlatform;
   url: string;
   hint: string;
-}
-
-interface KindEntry {
-  value: string;
 }
 
 interface NipRefEntry {
@@ -162,11 +224,10 @@ function SelectedChips({
 // ---------------------------------------------------------------------------
 
 function NipPicker({
-  nipRefs, setNipRefs, kindToNips, pubkey,
+  nipRefs, setNipRefs, pubkey,
 }: {
   nipRefs: NipRefEntry[];
   setNipRefs: React.Dispatch<React.SetStateAction<NipRefEntry[]>>;
-  kindToNips: Map<number, string[]>;
   pubkey: string;
 }) {
   const [query, setQuery] = useState('');
@@ -182,13 +243,6 @@ function NipPicker({
   const selectedCustomAddrs = new Set(
     nipRefs.filter((r) => r.type === 'custom').map((r) => r.address),
   );
-
-  // Inferred suggestions from entered kinds
-  const kindInferred = useMemo(() => {
-    const nums = new Set<string>();
-    return Array.from(nums).filter((n) => !selectedOfficialNums.has(n));
-  }, [kindToNips, selectedOfficialNums]);
-  void kindInferred; // used by parent
 
   const toggleOfficial = (num: string) => {
     if (selectedOfficialNums.has(num)) {
@@ -236,7 +290,7 @@ function NipPicker({
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search NIPs…"
+          placeholder="Search NIPs by number or title…"
           aria-label="Search NIPs"
           className="pl-9"
         />
@@ -313,10 +367,6 @@ function NipPicker({
           )
         )}
       </div>
-      <p className="text-xs text-muted-foreground">
-        Your custom NIPs appear by default. Search to find official NIPs (by number or title) or
-        community NIPs published by others.
-      </p>
     </div>
   );
 }
@@ -405,9 +455,6 @@ function RepoPicker({
           </div>
         )}
       </div>
-      <p className="text-xs text-muted-foreground">
-        Your NIP-34 git repos appear by default. Search to find any public repository.
-      </p>
     </div>
   );
 }
@@ -496,9 +543,6 @@ function ZapstorePicker({
           </div>
         )}
       </div>
-      <p className="text-xs text-muted-foreground">
-        Your Zapstore listings appear by default. Search to find any published app listing.
-      </p>
     </div>
   );
 }
@@ -518,6 +562,231 @@ function useDebounced(value: string, delay = 400): string {
 }
 
 // ---------------------------------------------------------------------------
+// Wizard chrome
+// ---------------------------------------------------------------------------
+
+function WizardProgress({
+  step, maxVisited, onJump,
+}: {
+  step: number;
+  maxVisited: number;
+  onJump: (i: number) => void;
+}) {
+  const pct = ((step + 1) / STEPS.length) * 100;
+  return (
+    <div className="space-y-3">
+      {/* Gradient progress bar */}
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted" role="progressbar"
+        aria-valuemin={1} aria-valuemax={STEPS.length} aria-valuenow={step + 1}
+        aria-label={`Step ${step + 1} of ${STEPS.length}`}>
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-primary to-nebula transition-all duration-500 ease-out"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+
+      {/* Step pills */}
+      <ol className="flex items-center justify-between gap-1">
+        {STEPS.map((s, i) => {
+          const Icon = s.icon;
+          const isCurrent = i === step;
+          const isDone = i < step;
+          const reachable = i <= maxVisited;
+          return (
+            <li key={s.id} className="min-w-0">
+              <button
+                type="button"
+                onClick={() => reachable && onJump(i)}
+                disabled={!reachable}
+                aria-current={isCurrent ? 'step' : undefined}
+                className={cn(
+                  'flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-medium transition-all',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  isCurrent
+                    ? 'bg-gradient-to-r from-primary/20 to-nebula/20 text-foreground ring-1 ring-primary/30'
+                    : isDone
+                      ? 'text-foreground hover:bg-muted'
+                      : reachable
+                        ? 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                        : 'cursor-default text-muted-foreground/50',
+                )}
+              >
+                {isDone ? (
+                  <Check className="size-3.5 text-primary" aria-hidden="true" />
+                ) : (
+                  <Icon className="size-3.5" aria-hidden="true" />
+                )}
+                <span className="hidden truncate sm:inline">{s.label}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
+  );
+}
+
+/** Small inline field error. */
+function FieldError({ message }: { message?: string }) {
+  if (!message) return null;
+  return (
+    <p className="text-xs font-medium text-destructive motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-1" role="alert">
+      {message}
+    </p>
+  );
+}
+
+/** One-tap toggleable chip. */
+function ToggleChip({
+  active, onClick, children, className,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-all',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'motion-safe:active:scale-95',
+        active
+          ? 'border-primary/50 bg-gradient-to-r from-primary/15 to-nebula/15 text-foreground shadow-sm'
+          : 'border-border/60 bg-background/60 text-muted-foreground hover:border-primary/30 hover:text-foreground',
+        className,
+      )}
+    >
+      {children}
+      {active && <Check className="size-3.5 text-primary" aria-hidden="true" />}
+    </button>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Logo uploader
+// ---------------------------------------------------------------------------
+
+function LogoUploader({
+  picture, setPicture, error,
+}: {
+  picture: string;
+  setPicture: (url: string) => void;
+  error?: string;
+}) {
+  const { mutateAsync: uploadFile, isPending: isUploading } = useUploadFile();
+  const { toast } = useToast();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const [showUrlInput, setShowUrlInput] = useState(false);
+
+  const handleFile = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'That doesn\u2019t look like an image', variant: 'destructive' });
+      return;
+    }
+    try {
+      const tags = await uploadFile(file);
+      setPicture(tags[0][1]);
+    } catch (err) {
+      toast({
+        title: 'Upload failed',
+        description: err instanceof Error ? err.message : 'Unknown error',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const validPreview = picture && isValidUrl(picture);
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-start gap-4">
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragOver(false);
+            const file = e.dataTransfer.files[0];
+            if (file) handleFile(file);
+          }}
+          aria-label={picture ? 'Change app logo' : 'Upload app logo'}
+          className={cn(
+            'group relative grid size-24 shrink-0 place-items-center overflow-hidden rounded-2xl border-2 border-dashed transition-all',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+            dragOver
+              ? 'scale-105 border-primary bg-primary/10'
+              : validPreview
+                ? 'border-transparent shadow-md'
+                : 'border-border hover:border-primary/50 hover:bg-muted/50',
+          )}
+        >
+          {isUploading ? (
+            <Loader2 className="size-6 animate-spin text-primary" aria-hidden="true" />
+          ) : validPreview ? (
+            <>
+              <img src={picture} alt="App logo preview" className="size-full object-cover" />
+              <span className="absolute inset-0 grid place-items-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+                <Upload className="size-5 text-white" aria-hidden="true" />
+              </span>
+            </>
+          ) : (
+            <span className="flex flex-col items-center gap-1 text-muted-foreground transition-colors group-hover:text-primary">
+              <ImagePlus className="size-6" aria-hidden="true" />
+              <span className="text-[10px] font-medium">Logo</span>
+            </span>
+          )}
+        </button>
+
+        <div className="min-w-0 flex-1 space-y-1.5 pt-1">
+          <p className="text-sm text-muted-foreground">
+            Drop an image or click to upload. Square works best since it shows next to your app everywhere.
+          </p>
+          {showUrlInput ? (
+            <Input
+              type="url"
+              value={picture}
+              onChange={(e) => setPicture(e.target.value)}
+              placeholder="https://example.com/logo.png"
+              aria-label="Logo URL"
+              className="max-w-sm font-mono text-xs"
+              autoFocus
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowUrlInput(true)}
+              className="text-xs font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              …or paste an image URL instead
+            </button>
+          )}
+        </div>
+      </div>
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="sr-only"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) handleFile(file);
+          e.target.value = '';
+        }}
+      />
+      <FieldError message={error} />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main page
 // ---------------------------------------------------------------------------
 
@@ -528,19 +797,27 @@ export function SubmitAppPage() {
   const navigate = useNavigate();
   const officialNips = useOfficialNips();
 
+  // --- wizard state ---
+  const [step, setStep] = useState(0);
+  const [maxVisited, setMaxVisited] = useState(0);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const stepTopRef = useRef<HTMLDivElement>(null);
+
   // --- form state ---
   const [name, setName] = useState('');
   const [about, setAbout] = useState('');
   const [picture, setPicture] = useState('');
   const [website, setWebsite] = useState('');
   const [nip05, setNip05] = useState('');
-  const [kinds, setKinds] = useState<KindEntry[]>([{ value: '' }]);
-  const [platforms, setPlatforms] = useState<PlatformEntry[]>([{ platform: 'web', url: '', hint: '' }]);
+  const [kinds, setKinds] = useState<number[]>([]);
+  const [customKind, setCustomKind] = useState('');
+  const [platforms, setPlatforms] = useState<PlatformEntry[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [nipRefs, setNipRefs] = useState<NipRefEntry[]>([]);
   const [repoRefs, setRepoRefs] = useState<RepoRefEntry[]>([]);
   const [zapstoreRefs, setZapstoreRefs] = useState<ZapstoreRefEntry[]>([]);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   useSeoMeta({
     title: 'Submit an App | NostrHub',
@@ -571,27 +848,56 @@ export function SubmitAppPage() {
     return map;
   }, [officialNips.data]);
 
-  // NIP numbers inferred from the entered kinds, not yet added.
+  // NIP numbers inferred from the selected kinds, not yet added.
   const suggestedNips = useMemo(() => {
     const already = new Set(nipRefs.filter((r) => r.type === 'official').map((r) => r.number));
     const nums = new Set<string>();
     for (const k of kinds) {
-      const n = parseInt(k.value, 10);
-      if (!Number.isNaN(n)) for (const num of kindToNips.get(n) ?? []) nums.add(num);
+      for (const num of kindToNips.get(k) ?? []) nums.add(num);
     }
     return Array.from(nums).filter((n) => !already.has(n)).sort();
   }, [kinds, kindToNips, nipRefs]);
 
+  const clearError = (key: string) =>
+    setErrors((prev) => {
+      if (!(key in prev)) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+
   // --- kind helpers ---
-  const addKind = () => setKinds((p) => [...p, { value: '' }]);
-  const removeKind = (i: number) => setKinds((p) => p.filter((_, idx) => idx !== i));
-  const updateKind = (i: number, v: string) => setKinds((p) => p.map((k, idx) => idx === i ? { value: v } : k));
+  const toggleKind = (k: number) => {
+    setKinds((prev) => prev.includes(k) ? prev.filter((x) => x !== k) : [...prev, k].sort((a, b) => a - b));
+    clearError('kinds');
+  };
+  const addCustomKind = () => {
+    const n = parseInt(customKind.trim(), 10);
+    if (!Number.isInteger(n) || n < 0) {
+      setErrors((prev) => ({ ...prev, customKind: 'Kinds are whole numbers (0 or higher).' }));
+      return;
+    }
+    clearError('customKind');
+    clearError('kinds');
+    setKinds((prev) => prev.includes(n) ? prev : [...prev, n].sort((a, b) => a - b));
+    setCustomKind('');
+  };
 
   // --- platform helpers ---
-  const addPlatform = () => setPlatforms((p) => [...p, { platform: 'web', url: '', hint: '' }]);
-  const removePlatform = (i: number) => setPlatforms((p) => p.filter((_, idx) => idx !== i));
-  const updatePlatform = (i: number, patch: Partial<PlatformEntry>) =>
-    setPlatforms((p) => p.map((pl, idx) => idx === i ? { ...pl, ...patch } : pl));
+  const togglePlatform = (pl: AppPlatform) => {
+    setPlatforms((prev) => {
+      const existing = prev.find((p) => p.platform === pl);
+      if (existing) return prev.filter((p) => p.platform !== pl);
+      // Friendly default: prefill the web URL from the website field.
+      const url = pl === 'web' && website.trim() ? website.trim() : '';
+      return [...prev, { platform: pl, url, hint: '' }];
+    });
+    clearError(`platform-${pl}`);
+  };
+  const updatePlatform = (pl: AppPlatform, patch: Partial<PlatformEntry>) => {
+    setPlatforms((prev) => prev.map((p) => p.platform === pl ? { ...p, ...patch } : p));
+    clearError(`platform-${pl}`);
+  };
 
   // --- tag helpers ---
   const addTag = (raw: string) => {
@@ -599,23 +905,57 @@ export function SubmitAppPage() {
     if (!t || tags.includes(t)) return;
     setTags((p) => [...p, t]);
   };
+  const toggleTag = (t: string) =>
+    setTags((p) => p.includes(t) ? p.filter((x) => x !== t) : [...p, t]);
+
+  // --- step validation ---
+  const validateStep = (i: number): boolean => {
+    const next: Record<string, string> = {};
+    if (STEPS[i].id === 'basics') {
+      if (!name.trim()) next.name = 'Give your app a name. It\u2019s the first thing people see.';
+      if (!about.trim()) next.about = 'A one-or-two sentence description helps people get it instantly.';
+      if (!picture.trim()) next.picture = 'Every great app needs a face. Upload a logo or paste a URL.';
+      else if (!isValidUrl(picture.trim())) next.picture = 'That logo URL doesn\u2019t look right. It needs to start with https://';
+      if (!website.trim()) next.website = 'Where can people learn more? A website URL is required.';
+      else if (!isValidUrl(website.trim())) next.website = 'That URL doesn\u2019t look right. It needs to start with https://';
+      if (nip05.trim() && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(nip05.trim())) {
+        next.nip05 = 'NIP-05 identifiers look like name@domain.com';
+      }
+    } else if (STEPS[i].id === 'platforms') {
+      for (const p of platforms) {
+        const url = p.url.trim();
+        if (url && !isValidUrl(url) && !isValidWsUrl(url)) {
+          next[`platform-${p.platform}`] = 'Needs to start with http://, https://, ws://, or wss://';
+        }
+      }
+    } else if (STEPS[i].id === 'protocol') {
+      if (kinds.length === 0) next.kinds = 'Pick at least one event kind so clients know what your app handles.';
+    }
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  };
+
+  const goToStep = (i: number) => {
+    setStep(i);
+    setMaxVisited((m) => Math.max(m, i));
+    setErrors({});
+    // Bring the wizard back into view without yanking the whole page around.
+    stepTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const handleNext = () => {
+    if (!validateStep(step)) return;
+    goToStep(Math.min(step + 1, STEPS.length - 1));
+  };
+  const handleBack = () => goToStep(Math.max(step - 1, 0));
 
   // --- submit ---
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim()) { toast({ title: 'App name is required', variant: 'destructive' }); return; }
-    if (!about.trim()) { toast({ title: 'Description is required', variant: 'destructive' }); return; }
-    if (!picture.trim() || !isValidUrl(picture.trim())) { toast({ title: 'A valid picture URL (https) is required', variant: 'destructive' }); return; }
-    if (!website.trim() || !isValidUrl(website.trim())) { toast({ title: 'A valid website URL (https) is required', variant: 'destructive' }); return; }
-    if (nip05.trim() && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(nip05.trim())) { toast({ title: 'NIP-05 identifier looks invalid', variant: 'destructive' }); return; }
-
-    const parsedKinds = kinds.map((k) => parseInt(k.value.trim(), 10)).filter((n) => Number.isInteger(n) && n >= 0);
-    if (parsedKinds.length === 0) { toast({ title: 'At least one supported event kind is required', variant: 'destructive' }); return; }
-
-    const validPlatforms = platforms.filter((p) => p.url.trim());
-    for (const p of validPlatforms) {
-      if (!isValidUrl(p.url.trim()) && !isValidWsUrl(p.url.trim())) {
-        toast({ title: `Invalid URL for ${PLATFORM_LABELS[p.platform]}`, description: 'Must start with http://, https://, ws://, or wss://', variant: 'destructive' });
+  const handlePublish = async () => {
+    // Safety net: re-validate everything before publishing.
+    for (let i = 0; i < STEPS.length - 1; i++) {
+      if (!validateStep(i)) {
+        goToStep(i);
+        toast({ title: 'Almost there!', description: 'A couple of fields need attention first.' });
         return;
       }
     }
@@ -628,8 +968,9 @@ export function SubmitAppPage() {
       ['alt', `NIP-89 handler: ${name.trim()}`],
     ];
 
-    for (const k of parsedKinds) eventTags.push(['k', String(k)]);
-    for (const p of validPlatforms) {
+    for (const k of kinds) eventTags.push(['k', String(k)]);
+    for (const p of platforms) {
+      if (!p.url.trim()) continue;
       const row: string[] = [p.platform, p.url.trim()];
       if (p.hint.trim()) row.push(p.hint.trim());
       eventTags.push(row);
@@ -653,241 +994,423 @@ export function SubmitAppPage() {
         pubkey: event.pubkey,
         identifier: event.tags.find(([n]) => n === 'd')?.[1] ?? '',
       });
-      toast({ title: 'App submitted successfully!' });
+      toast({ title: '🚀 Your app is live!', description: 'Welcome to the directory.' });
       navigate(`/${naddr}`);
     } catch (err) {
       toast({ title: 'Failed to publish', description: err instanceof Error ? err.message : 'Unknown error', variant: 'destructive' });
     }
   };
 
+  const current = STEPS[step];
+  const validLogo = picture && isValidUrl(picture);
+
   return (
     <Layout>
-      <Button variant="ghost" asChild className="mb-4 -ml-2">
-        <Link to="/apps"><ArrowLeft className="mr-1.5 size-4" /> Back to Apps</Link>
-      </Button>
+      <div className="mx-auto max-w-2xl">
+        <Button variant="ghost" asChild className="mb-4 -ml-2">
+          <Link to="/apps"><ArrowLeft className="mr-1.5 size-4" /> Back to Apps</Link>
+        </Button>
 
-      <div className="space-y-2 mb-6">
-        <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">Submit an App</h1>
-        <p className="max-w-prose text-muted-foreground">
-          Announce your Nostr application by publishing a{' '}
-          <span className="font-mono text-sm">kind:{APP_HANDLER_KIND}</span> NIP-89 handler event.
-          This registers your app in the directory so the community can discover and rate it.
-        </p>
-      </div>
+        <div ref={stepTopRef} className="scroll-mt-24 space-y-2 mb-6">
+          <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
+            Submit <span className="text-cosmic">your app</span>
+          </h1>
+          <p className="max-w-prose text-muted-foreground">
+            Five quick steps and your app joins the directory, published to Nostr itself as a{' '}
+            <span className="font-mono text-sm">kind:{APP_HANDLER_KIND}</span> event.
+          </p>
+        </div>
 
-      {!user ? (
-        <Card>
-          <CardContent className="space-y-4 pt-6">
-            <Alert><AlertCircle className="size-4" /><AlertDescription>You must be logged in to submit an app.</AlertDescription></Alert>
-            <LoginArea className="max-w-60" />
-          </CardContent>
-        </Card>
-      ) : (
-        <form onSubmit={handleSubmit} className="space-y-6" noValidate>
-
-          {/* ── App Details ── */}
+        {!user ? (
           <Card>
-            <CardHeader>
-              <CardTitle>App Details</CardTitle>
-              <CardDescription>Basic metadata stored in the event content as kind-0-style JSON.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="app-name">Name <span className="text-destructive">*</span></Label>
-                <Input id="app-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="My Nostr App" maxLength={100} required />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="app-about">Description <span className="text-destructive">*</span></Label>
-                <Textarea id="app-about" value={about} onChange={(e) => setAbout(e.target.value)} placeholder="A short description of what your app does." rows={3} maxLength={500} required />
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="app-picture">Logo URL <span className="text-destructive">*</span></Label>
-                  <Input id="app-picture" type="url" value={picture} onChange={(e) => setPicture(e.target.value)} placeholder="https://example.com/logo.png" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="app-website">Website <span className="text-destructive">*</span></Label>
-                  <Input id="app-website" type="url" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://example.com" />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="app-nip05">NIP-05 identifier</Label>
-                <Input id="app-nip05" value={nip05} onChange={(e) => setNip05(e.target.value)} placeholder="app@example.com" autoComplete="off" />
-                <p className="text-xs text-muted-foreground">Optional. Used for verification.</p>
-              </div>
+            <CardContent className="space-y-4 pt-6">
+              <Alert><AlertCircle className="size-4" /><AlertDescription>You must be logged in to submit an app.</AlertDescription></Alert>
+              <LoginArea className="max-w-60" />
             </CardContent>
           </Card>
+        ) : (
+          <div className="space-y-6">
+            <WizardProgress step={step} maxVisited={maxVisited} onJump={goToStep} />
 
-          {/* ── Supported Kinds ── */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Supported Event Kinds</CardTitle>
-              <CardDescription>
-                The Nostr event kinds (<code>k</code> tags) your app can open or handle.
-                Entering a kind will suggest related NIPs below.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {kinds.map((k, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <Input type="number" min={0} value={k.value} onChange={(e) => updateKind(i, e.target.value)}
-                    placeholder="e.g. 1" className="max-w-40" aria-label={`Kind ${i + 1}`} />
-                  {k.value && kindToNips.has(parseInt(k.value, 10)) && (
-                    <span className="text-xs text-muted-foreground">
-                      → NIP-{kindToNips.get(parseInt(k.value, 10))!.join(', NIP-')}
-                    </span>
+            {/* Step heading + body — keyed so each step animates in fresh */}
+            <div
+              key={current.id}
+              className="space-y-6 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-300"
+            >
+              <div className="space-y-1">
+                <h2 className="font-display text-xl font-bold tracking-tight sm:text-2xl">{current.title}</h2>
+                <p className="text-sm text-muted-foreground">{current.blurb}</p>
+              </div>
+
+              <Card className="border-border/70 bg-card/60 backdrop-blur-sm">
+                <CardContent className="space-y-6 pt-6">
+
+                  {/* ─────────────────── Step 1: Basics ─────────────────── */}
+                  {current.id === 'basics' && (
+                    <>
+                      <LogoUploader
+                        picture={picture}
+                        setPicture={(url) => { setPicture(url); clearError('picture'); }}
+                        error={errors.picture}
+                      />
+                      <div className="space-y-2">
+                        <Label htmlFor="app-name">Name</Label>
+                        <Input
+                          id="app-name" value={name}
+                          onChange={(e) => { setName(e.target.value); clearError('name'); }}
+                          placeholder="My Nostr App" maxLength={100}
+                          aria-invalid={!!errors.name}
+                          className="text-base font-medium"
+                        />
+                        <FieldError message={errors.name} />
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-baseline justify-between">
+                          <Label htmlFor="app-about">What does it do?</Label>
+                          <span className={cn('text-xs tabular-nums', about.length > 450 ? 'text-destructive' : 'text-muted-foreground/60')}>
+                            {about.length}/500
+                          </span>
+                        </div>
+                        <Textarea
+                          id="app-about" value={about}
+                          onChange={(e) => { setAbout(e.target.value); clearError('about'); }}
+                          placeholder="The coziest way to read long-form articles on Nostr."
+                          rows={3} maxLength={500}
+                          aria-invalid={!!errors.about}
+                        />
+                        <FieldError message={errors.about} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="app-website">Website</Label>
+                        <Input
+                          id="app-website" type="url" value={website}
+                          onChange={(e) => { setWebsite(e.target.value); clearError('website'); }}
+                          placeholder="https://example.com"
+                          aria-invalid={!!errors.website}
+                        />
+                        <FieldError message={errors.website} />
+                      </div>
+                      <Collapsible open={advancedOpen || !!errors.nip05} onOpenChange={setAdvancedOpen}>
+                        <CollapsibleTrigger className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md">
+                          <ChevronDown
+                            className={cn('size-4 transition-transform', (advancedOpen || !!errors.nip05) && 'rotate-180')}
+                            aria-hidden="true"
+                          />
+                          Advanced
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="pt-3">
+                          <div className="space-y-2">
+                            <Label htmlFor="app-nip05">
+                              NIP-05 <span className="font-normal text-muted-foreground">(optional)</span>
+                            </Label>
+                            <Input
+                              id="app-nip05" value={nip05}
+                              onChange={(e) => { setNip05(e.target.value); clearError('nip05'); }}
+                              placeholder="app@example.com" autoComplete="off"
+                              aria-invalid={!!errors.nip05}
+                            />
+                            <p className="text-xs text-muted-foreground">Used for verification, like a profile's NIP-05.</p>
+                            <FieldError message={errors.nip05} />
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    </>
                   )}
-                  {kinds.length > 1 && (
-                    <Button type="button" variant="ghost" size="icon" onClick={() => removeKind(i)} aria-label="Remove kind">
-                      <X className="size-4" />
-                    </Button>
+
+                  {/* ────────────────── Step 2: Platforms ────────────────── */}
+                  {current.id === 'platforms' && (
+                    <>
+                      <div className="flex flex-wrap gap-2" role="group" aria-label="Select platforms">
+                        {APP_PLATFORMS.map((pl) => (
+                          <ToggleChip
+                            key={pl}
+                            active={platforms.some((p) => p.platform === pl)}
+                            onClick={() => togglePlatform(pl)}
+                          >
+                            {PLATFORM_LABELS[pl]}
+                          </ToggleChip>
+                        ))}
+                      </div>
+
+                      {platforms.length === 0 ? (
+                        <p className="rounded-lg border border-dashed border-border/60 px-4 py-6 text-center text-sm text-muted-foreground">
+                          Nothing selected, and that's fine! You can add platform links later by editing your listing.
+                        </p>
+                      ) : (
+                        <div className="space-y-3">
+                          {platforms.map((p) => (
+                            <div
+                              key={p.platform}
+                              className="space-y-2 rounded-lg border border-border/60 bg-muted/30 p-3 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-1"
+                            >
+                              <Label htmlFor={`platform-url-${p.platform}`} className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                {PLATFORM_LABELS[p.platform]}
+                              </Label>
+                              <Input
+                                id={`platform-url-${p.platform}`}
+                                value={p.url}
+                                onChange={(e) => updatePlatform(p.platform, { url: e.target.value })}
+                                placeholder={`https://example.com/${p.platform === 'web' ? 'a/<bech32>' : 'app'}`}
+                                aria-invalid={!!errors[`platform-${p.platform}`]}
+                                className="font-mono text-xs"
+                              />
+                              <FieldError message={errors[`platform-${p.platform}`]} />
+                            </div>
+                          ))}
+                          <p className="text-xs text-muted-foreground">
+                            Tip: include <code className="rounded bg-muted px-1">&lt;bech32&gt;</code> in a URL and
+                            clients will swap in the event identifier when deep-linking to your app.
+                          </p>
+                        </div>
+                      )}
+                    </>
                   )}
-                </div>
-              ))}
-              <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={addKind}>
-                <PlusCircle className="size-4" /> Add kind
-              </Button>
-              {suggestedNips.length > 0 && (
-                <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                  <span className="text-xs text-muted-foreground">Inferred:</span>
-                  {suggestedNips.map((num) => (
-                    <button key={num} type="button"
-                      onClick={() => setNipRefs((p) => [...p, { type: 'official', number: num, address: '', relayHint: '' }])}
-                      className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-mono font-medium text-primary hover:bg-primary/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                      + NIP-{num}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
 
-          {/* ── Platform URLs ── */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Platform URLs</CardTitle>
-              <CardDescription>
-                URL templates per platform. Include <code className="rounded bg-muted px-1 text-xs">&lt;bech32&gt;</code> where the NIP-19 identifier goes.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {platforms.map((p, i) => (
-                <div key={i} className="rounded-lg border border-border/60 bg-muted/30 p-3 space-y-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex flex-wrap gap-1.5">
-                      {APP_PLATFORMS.map((pl) => (
-                        <button key={pl} type="button" onClick={() => updatePlatform(i, { platform: pl })}
-                          className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${p.platform === pl ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}>
-                          {PLATFORM_LABELS[pl]}
-                        </button>
-                      ))}
-                    </div>
-                    {platforms.length > 1 && (
-                      <Button type="button" variant="ghost" size="icon" className="shrink-0" onClick={() => removePlatform(i)} aria-label="Remove platform">
-                        <X className="size-4" />
-                      </Button>
-                    )}
-                  </div>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    <div className="space-y-1">
-                      <Label htmlFor={`platform-url-${i}`} className="text-xs">URL template</Label>
-                      <Input id={`platform-url-${i}`} value={p.url} onChange={(e) => updatePlatform(i, { url: e.target.value })}
-                        placeholder={`https://example.com/${p.platform === 'ios' ? 'app/<bech32>' : 'a/<bech32>'}`} className="font-mono text-xs" />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor={`platform-hint-${i}`} className="text-xs">Entity hint <span className="font-normal text-muted-foreground">(optional)</span></Label>
-                      <Input id={`platform-hint-${i}`} value={p.hint} onChange={(e) => updatePlatform(i, { hint: e.target.value })}
-                        placeholder="naddr, nevent, nprofile…" className="text-xs" />
-                    </div>
-                  </div>
-                </div>
-              ))}
-              <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={addPlatform}>
-                <PlusCircle className="size-4" /> Add platform
-              </Button>
-            </CardContent>
-          </Card>
+                  {/* ────────────────── Step 3: Protocol ────────────────── */}
+                  {current.id === 'protocol' && (
+                    <>
+                      <div className="space-y-3">
+                        <Label className="text-sm">Event kinds your app can open</Label>
+                        <div className="flex flex-wrap gap-2" role="group" aria-label="Select event kinds">
+                          {COMMON_KINDS.map(({ kind, label }) => (
+                            <ToggleChip key={kind} active={kinds.includes(kind)} onClick={() => toggleKind(kind)}>
+                              <span className="font-mono text-xs text-muted-foreground">{kind}</span>
+                              {label}
+                            </ToggleChip>
+                          ))}
+                        </div>
+                        {/* Custom kinds the user added that aren't in the preset list */}
+                        {kinds.filter((k) => !COMMON_KINDS.some((c) => c.kind === k)).length > 0 && (
+                          <div className="flex flex-wrap gap-1.5">
+                            {kinds.filter((k) => !COMMON_KINDS.some((c) => c.kind === k)).map((k) => (
+                              <Badge key={k} variant="secondary" className="gap-1 pr-1 font-mono text-xs">
+                                kind {k}
+                                {kindToNips.has(k) && (
+                                  <span className="font-sans text-muted-foreground">· NIP-{kindToNips.get(k)![0]}</span>
+                                )}
+                                <button
+                                  type="button" onClick={() => toggleKind(k)}
+                                  className="ml-0.5 rounded-sm opacity-70 hover:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                  aria-label={`Remove kind ${k}`}
+                                >
+                                  <X className="size-3" />
+                                </button>
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number" min={0} value={customKind}
+                            onChange={(e) => { setCustomKind(e.target.value); clearError('customKind'); }}
+                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomKind(); } }}
+                            placeholder="Other kind…" className="max-w-36"
+                            aria-label="Add a custom event kind"
+                          />
+                          <Button type="button" variant="outline" size="sm" onClick={addCustomKind} className="gap-1">
+                            <PlusCircle className="size-3.5" /> Add
+                          </Button>
+                        </div>
+                        <FieldError message={errors.customKind} />
+                        <FieldError message={errors.kinds} />
+                      </div>
 
-          {/* ── NIPs ── */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><BookOpen className="size-4" /> NIPs</CardTitle>
-              <CardDescription>
-                Nostr Implementation Possibilities this app implements. Your own custom NIPs appear
-                in the list by default; search to add official or community NIPs.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <NipPicker nipRefs={nipRefs} setNipRefs={setNipRefs} kindToNips={kindToNips} pubkey={user.pubkey} />
-            </CardContent>
-          </Card>
+                      {suggestedNips.length > 0 && (
+                        <div className="space-y-2 rounded-lg border border-primary/20 bg-primary/5 p-3 motion-safe:animate-in motion-safe:fade-in">
+                          <p className="text-xs font-medium text-foreground">
+                            <Sparkles className="mr-1 inline size-3.5 text-primary" aria-hidden="true" />
+                            Based on your kinds, your app probably implements these NIPs. Tap to add:
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {suggestedNips.map((num) => (
+                              <button
+                                key={num} type="button"
+                                onClick={() => setNipRefs((p) => [...p, { type: 'official', number: num, address: '', relayHint: '' }])}
+                                className="rounded-full bg-primary/10 px-2.5 py-1 font-mono text-xs font-medium text-primary transition-all hover:bg-primary/20 motion-safe:active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              >
+                                + NIP-{num}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
-          {/* ── Git Repos ── */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><FolderGit2 className="size-4" /> Git Repositories</CardTitle>
-              <CardDescription>
-                NIP-34 repository announcements for this app's source code. Your own repos appear
-                in the list by default; search to link any public repository.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <RepoPicker repoRefs={repoRefs} setRepoRefs={setRepoRefs} pubkey={user.pubkey} />
-            </CardContent>
-          </Card>
+                      <div className="space-y-2">
+                        <Label className="text-sm">NIPs this app implements <span className="font-normal text-muted-foreground">(optional)</span></Label>
+                        <NipPicker nipRefs={nipRefs} setNipRefs={setNipRefs} pubkey={user.pubkey} />
+                      </div>
+                    </>
+                  )}
 
-          {/* ── Zapstore ── */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><ShoppingBag className="size-4" /> Zapstore Listing</CardTitle>
-              <CardDescription>
-                Link to this app's Zapstore listing (kind 32267 — NIP-82 Software Application) so
-                users can find installable builds. Your own listings appear by default.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ZapstorePicker zapstoreRefs={zapstoreRefs} setZapstoreRefs={setZapstoreRefs} pubkey={user.pubkey} />
-            </CardContent>
-          </Card>
+                  {/* ─────────────────── Step 4: Extras ─────────────────── */}
+                  {current.id === 'extras' && (
+                    <>
+                      <div className="space-y-3">
+                        <Label className="text-sm">Category tags</Label>
+                        <div className="flex flex-wrap gap-2" role="group" aria-label="Suggested category tags">
+                          {SUGGESTED_TAGS.map((t) => (
+                            <ToggleChip key={t} active={tags.includes(t)} onClick={() => toggleTag(t)} className="px-2.5 py-1 text-xs">
+                              {t}
+                            </ToggleChip>
+                          ))}
+                        </div>
+                        {tags.filter((t) => !SUGGESTED_TAGS.includes(t)).length > 0 && (
+                          <div className="flex flex-wrap gap-1.5">
+                            {tags.filter((t) => !SUGGESTED_TAGS.includes(t)).map((t) => (
+                              <Badge key={t} variant="secondary" className="gap-1 pr-1">
+                                {t}
+                                <button
+                                  type="button" onClick={() => toggleTag(t)}
+                                  className="ml-0.5 rounded-sm opacity-70 hover:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                  aria-label={`Remove ${t}`}
+                                >
+                                  <X className="size-3" />
+                                </button>
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                        <div className="flex gap-2">
+                          <Input
+                            value={tagInput}
+                            onChange={(e) => setTagInput(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addTag(tagInput); setTagInput(''); } }}
+                            placeholder="Your own tag…" aria-label="Add a category tag" className="max-w-48"
+                          />
+                          <Button type="button" variant="outline" size="sm" onClick={() => { addTag(tagInput); setTagInput(''); }}>Add</Button>
+                        </div>
+                      </div>
 
-          {/* ── Category Tags ── */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Category Tags</CardTitle>
-              <CardDescription>Hashtag categories (<code>t</code> tags) for relay-side filtering.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex gap-2">
-                <Input value={tagInput} onChange={(e) => setTagInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addTag(tagInput); setTagInput(''); } }}
-                  placeholder="social, messaging, tools…" aria-label="Add a category tag" className="max-w-xs" />
-                <Button type="button" variant="outline" size="sm" onClick={() => { addTag(tagInput); setTagInput(''); }}>Add</Button>
+                      <Accordion type="multiple" className="w-full">
+                        <AccordionItem value="repos">
+                          <AccordionTrigger className="text-sm hover:no-underline">
+                            <span className="flex items-center gap-2">
+                              <FolderGit2 className="size-4 text-muted-foreground" aria-hidden="true" />
+                              Link source code
+                              {repoRefs.length > 0 && <Badge variant="secondary" className="text-xs">{repoRefs.length}</Badge>}
+                            </span>
+                          </AccordionTrigger>
+                          <AccordionContent>
+                            <RepoPicker repoRefs={repoRefs} setRepoRefs={setRepoRefs} pubkey={user.pubkey} />
+                          </AccordionContent>
+                        </AccordionItem>
+                        <AccordionItem value="zapstore">
+                          <AccordionTrigger className="text-sm hover:no-underline">
+                            <span className="flex items-center gap-2">
+                              <ShoppingBag className="size-4 text-muted-foreground" aria-hidden="true" />
+                              Link a Zapstore listing
+                              {zapstoreRefs.length > 0 && <Badge variant="secondary" className="text-xs">{zapstoreRefs.length}</Badge>}
+                            </span>
+                          </AccordionTrigger>
+                          <AccordionContent>
+                            <ZapstorePicker zapstoreRefs={zapstoreRefs} setZapstoreRefs={setZapstoreRefs} pubkey={user.pubkey} />
+                          </AccordionContent>
+                        </AccordionItem>
+                      </Accordion>
+                    </>
+                  )}
+
+                  {/* ─────────────────── Step 5: Launch ─────────────────── */}
+                  {current.id === 'launch' && (
+                    <>
+                      {/* Directory-style preview */}
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                          Your directory listing
+                        </p>
+                        <div className="flex items-center overflow-hidden rounded-xl border border-border/70 bg-card/60 shadow-sm backdrop-blur-sm">
+                          <div className="w-1 shrink-0 self-stretch bg-gradient-to-b from-primary to-nebula" />
+                          <span className="my-2.5 ml-3 grid size-12 shrink-0 place-items-center overflow-hidden rounded-lg border border-border/60 bg-muted/40 sm:size-14">
+                            {validLogo ? (
+                              <img src={picture} alt="" className="size-full object-cover" />
+                            ) : (
+                              <Blocks className="size-5 text-muted-foreground" aria-hidden="true" />
+                            )}
+                          </span>
+                          <div className="min-w-0 flex-1 px-3 py-2.5">
+                            <div className="flex items-center gap-2">
+                              <span className="truncate text-sm font-semibold tracking-tight sm:text-base">{name || 'Your app'}</span>
+                              {platforms.length > 0 && (
+                                <span className="hidden text-[10px] uppercase tracking-wider text-muted-foreground sm:inline">
+                                  {platforms.map((p) => p.platform).join(' / ')}
+                                </span>
+                              )}
+                            </div>
+                            {about && <p className="mt-0.5 truncate text-xs text-muted-foreground">{about}</p>}
+                            {nip05 && <p className="mt-0.5 truncate text-xs text-muted-foreground/60">{nip05}</p>}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Summary rows */}
+                      <div className="divide-y divide-border/40 rounded-lg border border-border/60">
+                        {([
+                          { label: 'Kinds', icon: Blocks, value: kinds.length ? kinds.map((k) => String(k)).join(', ') : 'None yet', target: 2 },
+                          { label: 'NIPs', icon: BookOpen, value: nipRefs.length ? nipRefs.map((r) => r.type === 'official' ? `NIP-${r.number}` : 'custom').join(', ') : 'None linked', target: 2 },
+                          { label: 'Platforms', icon: MonitorSmartphone, value: platforms.length ? platforms.map((p) => PLATFORM_LABELS[p.platform]).join(', ') : 'None linked', target: 1 },
+                          { label: 'Tags', icon: Tags, value: tags.length ? tags.join(', ') : 'None', target: 3 },
+                          { label: 'Repos', icon: FolderGit2, value: repoRefs.length ? repoRefs.map((r) => r.name).join(', ') : 'None linked', target: 3 },
+                          { label: 'Zapstore', icon: ShoppingBag, value: zapstoreRefs.length ? zapstoreRefs.map((r) => r.name).join(', ') : 'None linked', target: 3 },
+                        ] as const).map((row) => (
+                          <div key={row.label} className="flex items-center gap-3 px-3 py-2.5 text-sm">
+                            <row.icon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                            <span className="w-20 shrink-0 font-medium">{row.label}</span>
+                            <span className="min-w-0 flex-1 truncate text-muted-foreground">{row.value}</span>
+                            <button
+                              type="button"
+                              onClick={() => goToStep(row.target)}
+                              className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              aria-label={`Edit ${row.label.toLowerCase()}`}
+                            >
+                              <Pencil className="size-3.5" aria-hidden="true" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+
+                      <p className="text-xs text-muted-foreground">
+                        Publishing signs a <span className="font-mono">kind:{APP_HANDLER_KIND}</span> NIP-89 event
+                        with your key and sends it to your relays. You can update or replace it any time.
+                      </p>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Navigation */}
+              <div className="flex items-center justify-between gap-3 pb-4">
+                {step === 0 ? (
+                  <Button type="button" variant="ghost" asChild>
+                    <Link to="/apps">Cancel</Link>
+                  </Button>
+                ) : (
+                  <Button type="button" variant="ghost" onClick={handleBack} className="gap-1.5">
+                    <ArrowLeft className="size-4" aria-hidden="true" /> Back
+                  </Button>
+                )}
+
+                {current.id === 'launch' ? (
+                  <Button
+                    type="button"
+                    onClick={handlePublish}
+                    disabled={isPending}
+                    size="lg"
+                    className="min-w-44 gap-2 bg-gradient-to-r from-primary to-nebula text-white shadow-md transition-all hover:opacity-90 hover:shadow-lg motion-safe:active:scale-95"
+                  >
+                    {isPending
+                      ? <><Loader2 className="size-4 animate-spin" aria-hidden="true" /> Launching…</>
+                      : <><Rocket className="size-4" aria-hidden="true" /> Publish app</>}
+                  </Button>
+                ) : (
+                  <Button type="button" onClick={handleNext} className="min-w-32 gap-1.5">
+                    Continue <ArrowRight className="size-4" aria-hidden="true" />
+                  </Button>
+                )}
               </div>
-              {tags.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {tags.map((t) => (
-                    <Badge key={t} variant="secondary" className="gap-1 pr-1">
-                      {t}
-                      <button type="button" onClick={() => setTags((p) => p.filter((x) => x !== t))}
-                        className="ml-0.5 rounded-sm opacity-70 hover:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" aria-label={`Remove ${t}`}>
-                        <X className="size-3" />
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
-              )}
-              <p className="text-xs text-muted-foreground">Press Enter or comma to add. Common: social, tools, messaging, media, marketplace, communities, zaps.</p>
-            </CardContent>
-          </Card>
-
-          <div className="flex items-center justify-end gap-3 pb-4">
-            <Button type="button" variant="ghost" asChild><Link to="/apps">Cancel</Link></Button>
-            <Button type="submit" disabled={isPending} className="gap-1.5 min-w-32">
-              {isPending ? <>Publishing…</> : <><PlusCircle className="size-4" /> Publish App</>}
-            </Button>
+            </div>
           </div>
-        </form>
-      )}
+        )}
+      </div>
     </Layout>
   );
 }
