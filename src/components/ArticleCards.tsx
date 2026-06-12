@@ -37,7 +37,7 @@ export function ArticleByline({
   );
 }
 
-/** Cover-image block with a gradient fallback when the article has no image. */
+/** Cover-image block; renders nothing when the article has no image. */
 function ArticleImage({
   image,
   title,
@@ -47,19 +47,7 @@ function ArticleImage({
   title: string;
   className?: string;
 }) {
-  if (!image) {
-    return (
-      <div
-        aria-hidden="true"
-        className={cn(
-          'grid place-items-center bg-gradient-to-br from-primary/30 via-nebula/25 to-background',
-          className,
-        )}
-      >
-        <span className="select-none text-6xl drop-shadow-[0_0_18px_hsl(0_80%_62%/0.6)]">⚡</span>
-      </div>
-    );
-  }
+  if (!image) return null;
   return (
     <div className={cn('overflow-hidden', className)}>
       <img
@@ -77,17 +65,23 @@ function ArticleImage({
  * side and headline-scale type on the other.
  */
 export function LeadArticleCard({ article }: { article: ExpertArticle }) {
+  const hasImage = Boolean(article.image);
   return (
     <Card className="group relative overflow-hidden border-primary/25 bg-card/70 py-0 backdrop-blur-sm transition-all duration-300 hover:border-primary/60 hover:shadow-[0_12px_60px_-12px] hover:shadow-primary/40">
       <Link
         to={`/${article.naddr}`}
-        className="grid lg:grid-cols-[1.15fr_1fr] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-xl"
+        className={cn(
+          'grid focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-xl',
+          hasImage && 'lg:grid-cols-[1.15fr_1fr]',
+        )}
       >
-        <ArticleImage
-          image={article.image}
-          title={article.title}
-          className="aspect-video lg:aspect-auto lg:h-full lg:min-h-72"
-        />
+        {hasImage && (
+          <ArticleImage
+            image={article.image}
+            title={article.title}
+            className="aspect-video lg:aspect-auto lg:h-full lg:min-h-72"
+          />
+        )}
 
         <div className="relative flex flex-col gap-4 p-6 sm:p-8">
           <span
