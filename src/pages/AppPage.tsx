@@ -93,6 +93,7 @@ export function AppPage({ pubkey, identifier }: AppPageProps) {
   const authorMeta = author.data?.metadata;
   const authorName = authorMeta?.name || authorMeta?.display_name || shortNpub(pubkey);
   const [nipOpen, setNipOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
 
   useSeoMeta({
     title: app ? `${app.name} | NostrHub` : 'App | NostrHub',
@@ -235,8 +236,30 @@ export function AppPage({ pubkey, identifier }: AppPageProps) {
           </section>
 
           {/* Submit reports */}
-          <section className="space-y-3 border-t border-border/60 pt-6">
-            <AppReviewForm app={app} />
+          <section className="border-t border-border/60 pt-6">
+            <Collapsible open={reportOpen} onOpenChange={setReportOpen}>
+              <CollapsibleTrigger asChild>
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between gap-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  aria-expanded={reportOpen}
+                >
+                  <div className="space-y-1">
+                    <h2 className="text-xl font-semibold tracking-tight">Submit a Report</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Rate how well this app implements each NIP.
+                    </p>
+                  </div>
+                  <ChevronDown
+                    className={cn('size-5 shrink-0 text-muted-foreground transition-transform duration-200', reportOpen && 'rotate-180')}
+                    aria-hidden="true"
+                  />
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-3">
+                <AppReviewForm app={app} />
+              </CollapsibleContent>
+            </Collapsible>
           </section>
 
           {/* Recent reports */}
