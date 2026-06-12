@@ -31,6 +31,7 @@ import {
   aggregateReviews,
   type TierAggregate,
 } from '@/lib/appReviews';
+import { clientTagsForApp } from '@/lib/apps';
 import type { AppInfo, AppNipRef, AppRepoRef, AppZapstoreRef } from '@/lib/apps';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -381,21 +382,9 @@ export function AppPage({ pubkey, identifier }: AppPageProps) {
   const website = sanitizeUrl(app?.website);
 
   // `#client` tag values to count usage by: the app name, its lowercase form,
-  // and the website hostname (sans `www.`). Different clients tag posts with
-  // different conventions, so OR'ing these widens the match. Deduplicated.
-  const clientTags = (() => {
-    const tags = new Set<string>();
-    if (app?.name) {
-      tags.add(app.name);
-      tags.add(app.name.toLowerCase());
-    }
-    if (website) {
-      try {
-        tags.add(new URL(website).hostname.replace(/^www\./, ''));
-      } catch { /* unparseable URL — skip */ }
-    }
-    return [...tags].filter(Boolean);
-  })();
+  // and the website hostname (sans `www.`). Built from the sanitized website
+  // so it stays consistent with the directory cards.
+  const clientTags = app ? clientTagsForApp({ name: app.name, website }) : [];
 
   return (
     <Layout className={app && hasSidebarContent(app) ? 'max-w-6xl' : 'max-w-3xl'}>

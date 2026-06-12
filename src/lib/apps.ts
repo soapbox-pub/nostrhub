@@ -204,6 +204,31 @@ export function parseAppEvent(event: NostrEvent): AppInfo | null {
 }
 
 /**
+ * Derive the `#client` tag values used to count an app's usage. Different
+ * clients tag the posts they publish with different conventions, so we OR
+ * together the app name, its lowercase form, and the website hostname (sans
+ * `www.`) to widen the match. Deduplicated; empty values filtered out.
+ *
+ * Shared by the app detail page metrics and the directory card active-users
+ * count so both attribute usage the same way.
+ */
+export function clientTagsForApp(app: Pick<AppInfo, 'name' | 'website'>): string[] {
+  const tags = new Set<string>();
+  if (app.name) {
+    tags.add(app.name);
+    tags.add(app.name.toLowerCase());
+  }
+  if (app.website) {
+    try {
+      tags.add(new URL(app.website).hostname.replace(/^www\./, ''));
+    } catch {
+      /* unparseable URL — skip */
+    }
+  }
+  return [...tags].filter(Boolean);
+}
+
+/**
  * Whether an app listing carries the full metadata set (name, picture, about,
  * website). Kind 31990 is also used by DVM handlers, bots, and other services;
  * requiring complete metadata filters the directory down to real applications,

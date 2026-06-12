@@ -114,3 +114,37 @@ export function useClientMetrics(clientTags: string[]) {
     staleTime: 5 * 60 * 1000,
   });
 }
+
+/**
+ * Lightweight variant of {@link useClientMetrics} that fetches *only* the
+ * Monthly Active Users headline — a single NIP-45 COUNT query against the
+ * Ditto relay, with no 30-day time series.
+ *
+ * Designed for the apps directory, where dozens of cards each show an
+ * active-users count: firing one COUNT per card (instead of the 31 that the
+ * full metrics hook issues) keeps the grid affordable. Returns `undefined`
+ * (and never throws to the UI) when the relay can't provide the metric.
+ */
+export function useClientActiveUsers(clientTags: string[]) {
+  const { nostr } = useNostr();
+
+  return useQuery({
+    queryKey: ['client-active-users', clientTags],
+    queryFn: async (c): Promise<number> => {
+      const relay = nostr.relay(DITTO_RELAY);
+      if (!relay.count) {
+        throw new Error('Relay does not support NIP-45 COUNT');
+      }
+
+      const now = snapToHour(Math.floor(Date.now() / 1000));
+      const result = await relay.count(
+        [{ '#client': clientTags, search: DISTINCT_AUTHOR, since: now - MONTH, until: now }],
+        { signal: c.signal },
+      );
+
+      return result.count;
+    },
+    enabled: clientTags.length > 0,
+    staleTime: 5 * 60 * 1000,
+  });
+}

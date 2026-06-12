@@ -1,15 +1,24 @@
 import { Link } from 'react-router-dom';
 import { Blocks } from 'lucide-react';
+import { clientTagsForApp } from '@/lib/apps';
 import type { AppInfo } from '@/lib/apps';
 import type { CompatTier } from '@/lib/appReviews';
 import { TierBadge } from '@/components/TierBadge';
 import { useAuthor } from '@/hooks/useAuthor';
+import { useClientActiveUsers } from '@/hooks/useClientMetrics';
 import { UserAvatar } from '@/components/UserAvatar';
 import { shortNpub } from '@/lib/nostr';
 import { sanitizeUrl } from '@/lib/sanitizeUrl';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+
+/** Compact integer formatting for headline-style counts (e.g. 1.2K, 3.4M). */
+function formatCount(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return n.toLocaleString();
+}
 
 interface AppCardProps {
   app: AppInfo;
@@ -28,6 +37,13 @@ export function AppCard({ app, tier }: AppCardProps) {
 
   const icon = sanitizeUrl(app.picture);
   const website = sanitizeUrl(app.website);
+
+  // Monthly active users — distinct authors who posted with this app in the
+  // last 30 days, the same headline shown on the app detail page. One COUNT
+  // query per card (see useClientActiveUsers).
+  const { data: activeUsers } = useClientActiveUsers(
+    clientTagsForApp({ name: app.name, website }),
+  );
 
   return (
     <Card className="group relative h-full overflow-hidden border-border/70 bg-card/60 backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-[0_8px_40px_-8px] hover:shadow-primary/30">
@@ -77,7 +93,16 @@ export function AppCard({ app, tier }: AppCardProps) {
 
           <div className="flex items-center gap-2 border-t border-border/50 pt-3">
             <UserAvatar pubkey={app.pubkey} size="sm" />
-            <span className="truncate text-xs text-muted-foreground">by {authorName}</span>
+            <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">by {authorName}</span>
+            {activeUsers != null && activeUsers > 0 && (
+              <span
+                className="shrink-0 text-base font-bold tracking-tight"
+                title={`${activeUsers.toLocaleString()} active users in the last 30 days`}
+              >
+                {formatCount(activeUsers)}{' '}
+                <span className="text-xs font-medium text-muted-foreground">Active Users</span>
+              </span>
+            )}
           </div>
         </CardContent>
       </Link>
