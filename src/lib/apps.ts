@@ -125,7 +125,7 @@ export function parseAppEvent(event: NostrEvent): AppInfo | null {
  * matching the approach of other Nostr app directories.
  */
 export function hasFullAppMetadata(app: AppInfo): boolean {
-  return Boolean(app.name && app.picture && app.about && app.website);
+  return Boolean(app.name && app.picture && app.about && app.website && app.nip05);
 }
 
 /**
