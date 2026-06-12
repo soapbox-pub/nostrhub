@@ -7,10 +7,12 @@ import { LeadArticleCard, ArticleCard } from '@/components/ArticleCards';
 import { PulseQuoteCard } from '@/components/PulseQuoteCard';
 import { DemoReelCard } from '@/components/DemoReelCard';
 import { AppCard, AppCardSkeleton } from '@/components/AppCard';
+import { ReleaseCard, ReleaseCardSkeleton } from '@/components/ReleaseCard';
 import { UserAvatar } from '@/components/UserAvatar';
 import { useExpertPress } from '@/hooks/useExpertPress';
 import { useNostrSearch } from '@/hooks/useNostrSearch';
 import { useApps } from '@/hooks/useApps';
+import { useReleases } from '@/hooks/useReleases';
 import { customToRanked } from '@/hooks/useRankedNips';
 import { useCommunityAuthors } from '@/hooks/useCommunityAuthors';
 import { useCustomNips } from '@/hooks/useCustomNips';
@@ -114,6 +116,14 @@ const Index = () => {
     enabled: !community.isLoading && hasCommunity,
   });
 
+  // Latest Zapstore software releases (kind 30063) from the community, fetched
+  // from the Zapstore relay alongside the user's read relays.
+  const releasesQuery = useReleases({
+    authors: community.data?.authors,
+    limit: 50,
+    enabled: !community.isLoading && hasCommunity,
+  });
+
   // Hero avatar stack: up to 5 expert avatars, then a "+N" overflow count.
   const shownExperts = experts.slice(0, 5);
   const extraExperts = experts.length - shownExperts.length;
@@ -137,6 +147,8 @@ const Index = () => {
   const latestNips = (latestNipsQuery.data ?? []).slice(0, 6);
   const showroomApps = (communityApps.data ?? []).slice(0, 3);
   const showroomLoading = community.isLoading || (hasCommunity && communityApps.isLoading);
+  const latestReleases = (releasesQuery.data ?? []).slice(0, 6);
+  const releasesLoading = community.isLoading || (hasCommunity && releasesQuery.isLoading);
 
   return (
     <Layout className="max-w-6xl">
@@ -285,6 +297,29 @@ const Index = () => {
                 </>
               ) : (
                 showroomApps.map((app) => <AppCard key={app.address} app={app} />)
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* ── Latest Releases (Zapstore releases from the community) ── */}
+        {hasCommunity && (releasesLoading || latestReleases.length > 0) && (
+          <section className="space-y-5" aria-label="Latest software releases from the community">
+            <Department
+              title="Latest Releases"
+              subtitle="Fresh software shipped to Zapstore by the community."
+            />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {releasesLoading ? (
+                <>
+                  <ReleaseCardSkeleton />
+                  <ReleaseCardSkeleton />
+                  <ReleaseCardSkeleton />
+                </>
+              ) : (
+                latestReleases.map((item) => (
+                  <ReleaseCard key={item.release.address} item={item} />
+                ))
               )}
             </div>
           </section>
