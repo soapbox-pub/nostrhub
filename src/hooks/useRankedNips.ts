@@ -21,6 +21,8 @@ export interface RankedNip {
   expertApprovers: string[];
   /** True when the NIP was authored by one of the configured experts. */
   expertAuthored?: boolean;
+  /** Creation timestamp (custom NIP `created_at`); undefined for official NIPs. */
+  createdAt?: number;
 }
 
 /** Adapt an official NIP into the shape `NipCard` renders (no approval data). */
@@ -51,6 +53,7 @@ export function customToRanked(nip: CustomNip): RankedNip {
     expertCount: 0,
     totalCount: 0,
     expertApprovers: [],
+    createdAt: nip.createdAt,
   };
 }
 

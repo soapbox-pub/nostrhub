@@ -9,77 +9,61 @@ import {
   DiscoverySearch,
   FilterPill,
 } from '@/components/DiscoveryGrid';
-import { useOfficialNips } from '@/hooks/useOfficialNips';
-import { useCustomNips } from '@/hooks/useCustomNips';
-import { useCommunityAuthors } from '@/hooks/useCommunityAuthors';
+import { useDirectoryNips } from '@/hooks/useDirectoryNips';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
-import {
-  officialToRanked,
-  customToRanked,
-  type RankedNip,
-} from '@/hooks/useRankedNips';
+import { type RankedNip } from '@/hooks/useRankedNips';
 import { Button } from '@/components/ui/button';
 
 type Source = 'official' | 'community' | 'mine';
 
-/** Directory of all NIPs: the official index plus community drafts. */
+function matchesSearch(nip: RankedNip, q: string): boolean {
+  if (!q) return true;
+  return (
+    nip.title.toLowerCase().includes(q) ||
+    (nip.number ? `nip-${nip.number}`.toLowerCase().includes(q) : false) ||
+    (nip.number?.toLowerCase().includes(q) ?? false) ||
+    (nip.kinds?.some((kind) => kind === q) ?? false) ||
+    (nip.custom?.identifier.toLowerCase().includes(q) ?? false)
+  );
+}
+
+/**
+ * Directory of NIPs. The default view is curated: NIPs surfaced by community
+ * `nostrhub.approve` labels alongside the latest community drafts, ranked by
+ * approval weight then recency. The full official index is only shown when the
+ * "Official" filter is selected.
+ */
 export function NipsPage() {
   const { user } = useCurrentUser();
   const [search, setSearch] = useState('');
   const [source, setSource] = useState<Source>();
 
-  const officialQuery = useOfficialNips();
-  const community = useCommunityAuthors();
-  const customQuery = useCustomNips({
-    authors: community.data?.authors,
-    limit: 200,
-    enabled: !community.isLoading,
-  });
+  const { ranked, official, isLoading, isOfficialLoading } = useDirectoryNips();
 
   useSeoMeta({
     title: 'NIPs | NostrHub',
     description:
-      'Browse Nostr Implementation Possibilities: the official protocol spec index alongside fresh drafts from the community.',
+      'Browse Nostr Implementation Possibilities: community-curated specs and fresh drafts, ranked by expert approval.',
   });
-
-  // Official NIPs keep their README (index) order; community drafts are
-  // already newest-first and follow after.
-  const all = useMemo<RankedNip[]>(() => {
-    const official = (officialQuery.data ?? []).map(officialToRanked);
-    const custom = (customQuery.data ?? []).map(customToRanked);
-    return [...official, ...custom];
-  }, [officialQuery.data, customQuery.data]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return all.filter((nip) => {
-      if (source === 'official' && nip.custom) return false;
+
+    // "Official" swaps to the full README index; every other view draws from
+    // the curated, label-ranked list.
+    const base = source === 'official' ? official : ranked;
+
+    return base.filter((nip) => {
       if (source === 'community' && !nip.custom) return false;
       if (source === 'mine' && nip.custom?.author !== user?.pubkey) return false;
-      if (!q) return true;
-      return (
-        nip.title.toLowerCase().includes(q) ||
-        (nip.number ? `nip-${nip.number}`.toLowerCase().includes(q) : false) ||
-        (nip.number?.toLowerCase().includes(q) ?? false) ||
-        (nip.kinds?.some((kind) => kind === q) ?? false) ||
-        (nip.custom?.identifier.toLowerCase().includes(q) ?? false)
-      );
+      return matchesSearch(nip, q);
     });
-  }, [all, search, source, user?.pubkey]);
+  }, [ranked, official, search, source, user?.pubkey]);
 
-  const isLoading =
-    source === 'official'
-      ? officialQuery.isLoading
-      : source === 'community' || source === 'mine'
-        ? community.isLoading || customQuery.isLoading
-        : officialQuery.isLoading && (community.isLoading || customQuery.isLoading);
-
-  const hasAnything = all.length > 0;
-
-  return (
+  const hasAnything = (source === 'official' ? official : ranked).length > 0;  return (
     <DiscoveryPage
       title="NIPs"
-      description="Nostr Implementation Possibilities: the official protocol index alongside fresh drafts from the community lab."
+      description="Nostr Implementation Possibilities: community-curated specs and fresh drafts from the lab, ranked by expert approval."
       action={
         user && (
           <Button asChild size="sm" className="gap-1.5 rounded-full shadow-lg shadow-primary/25">
@@ -129,7 +113,7 @@ export function NipsPage() {
     >
       <DiscoveryGrid
         items={filtered}
-        isLoading={isLoading}
+        isLoading={source === 'official' ? isOfficialLoading : isLoading}
         getKey={(nip) => nip.key}
         renderItem={(nip) => <NipCard nip={nip} />}
         renderSkeleton={() => <NipCardSkeleton />}
