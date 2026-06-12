@@ -113,7 +113,7 @@ export function Layout({ children, sidebar, className, fullBleed = false }: Layo
       {fullBleed ? (
         <main className={cn('min-h-0 flex-1', className)}>{children}</main>
       ) : (
-        <main className="container mx-auto flex-1 px-4 py-6 sm:px-6 sm:py-8">
+        <main className="container mx-auto max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
           {sidebar ? (
             <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_320px]">
               <div className={cn('min-w-0', className)}>

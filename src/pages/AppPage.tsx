@@ -247,8 +247,8 @@ function AppSidebar({ app }: { app: AppInfo }) {
   return (
     <>
       {app.zapstoreRefs.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
+        <Card className="gap-2">
+          <CardHeader>
             <SidebarCardTitle icon={<ShoppingBag className="size-4" aria-hidden="true" />}>
               Install
             </SidebarCardTitle>
@@ -259,8 +259,8 @@ function AppSidebar({ app }: { app: AppInfo }) {
         </Card>
       )}
       {app.repoRefs.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
+        <Card className="gap-2">
+          <CardHeader>
             <SidebarCardTitle icon={<FolderGit2 className="size-4" aria-hidden="true" />}>
               Source Code
             </SidebarCardTitle>
@@ -271,8 +271,8 @@ function AppSidebar({ app }: { app: AppInfo }) {
         </Card>
       )}
       {app.nipRefs.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
+        <Card className="gap-2">
+          <CardHeader>
             <SidebarCardTitle icon={<BookOpen className="size-4" aria-hidden="true" />}>
               Implements
             </SidebarCardTitle>
@@ -288,8 +288,8 @@ function AppSidebar({ app }: { app: AppInfo }) {
         </Card>
       )}
       {app.supportedKinds.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
+        <Card className="gap-2">
+          <CardHeader>
             <SidebarCardTitle icon={<Blocks className="size-4" aria-hidden="true" />}>
               Handled Kinds
             </SidebarCardTitle>
@@ -388,9 +388,7 @@ export function AppPage({ pubkey, identifier }: AppPageProps) {
   const website = sanitizeUrl(app?.website);
 
   return (
-    <Layout
-      sidebar={app && hasSidebarContent(app) ? <AppSidebar app={app} /> : undefined}
-    >
+    <Layout className={app && hasSidebarContent(app) ? 'max-w-6xl' : 'max-w-3xl'}>
       <Button variant="ghost" asChild className="-ml-2 mb-4">
         <Link to="/apps">
           <ArrowLeft className="mr-1.5 size-4" /> Back to Apps
@@ -417,93 +415,95 @@ export function AppPage({ pubkey, identifier }: AppPageProps) {
         </Alert>
       ) : (
         <article className="space-y-6">
-          {/* Header */}
-          <header className="space-y-4 px-1 sm:px-2">
-            <div className="flex flex-wrap items-end justify-between gap-4">
-              <span className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-2xl border-4 border-background bg-muted/40 shadow-lg sm:size-24">
-                {icon ? (
-                  <img src={icon} alt="" className="size-full object-cover" />
-                ) : (
-                  <Blocks className="size-8 text-muted-foreground" aria-hidden="true" />
-                )}
-              </span>
-              <div className="flex flex-wrap items-center gap-2">
-                {isOwner && (
-                  <Button asChild variant="outline" className="gap-1.5 rounded-full">
-                    <Link to={`/apps/edit/${app.naddr}`}>
-                      <Pencil className="size-4" aria-hidden="true" />
-                      Edit
-                    </Link>
-                  </Button>
-                )}
-                {website && (
-                  <Button asChild className="gap-1.5 rounded-full">
-                    <a href={website} target="_blank" rel="noopener noreferrer">
-                      Open app
-                      <ExternalLink className="size-4" aria-hidden="true" />
-                    </a>
-                  </Button>
-                )}
-              </div>
-            </div>
+          {/* Header: icon and name side by side, actions on the right */}
+          <header className="flex flex-wrap items-center gap-4">
+            <span className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-2xl border border-border/60 bg-muted/40 shadow-md sm:size-20">
+              {icon ? (
+                <img src={icon} alt="" className="size-full object-cover" />
+              ) : (
+                <Blocks className="size-8 text-muted-foreground" aria-hidden="true" />
+              )}
+            </span>
 
-            <div className="space-y-1.5">
+            <div className="min-w-0 flex-1 space-y-1">
               <div className="flex flex-wrap items-center gap-3">
                 <h1 className="font-display text-3xl font-bold tracking-tight">{app.name}</h1>
                 <TierBadge tier={overall?.tier ?? null} size="lg" />
               </div>
-              {overall && (
+              {overall ? (
                 <p className="text-sm text-muted-foreground">
                   Based on {overall.count} compatibility report{overall.count !== 1 ? 's' : ''}{' '}
                   across {perNip.size} NIP{perNip.size !== 1 ? 's' : ''}.
                 </p>
+              ) : app.nip05 ? (
+                <p className="text-sm text-muted-foreground">{app.nip05}</p>
+              ) : null}
+            </div>
+
+            <div className="flex items-center gap-2">
+              {isOwner && (
+                <Button asChild variant="outline" className="gap-1.5 rounded-full">
+                  <Link to={`/apps/edit/${app.naddr}`}>
+                    <Pencil className="size-4" aria-hidden="true" />
+                    Edit
+                  </Link>
+                </Button>
               )}
-              {app.nip05 && <p className="text-muted-foreground">{app.nip05}</p>}
+              {website && (
+                <Button asChild className="gap-1.5 rounded-full">
+                  <a href={website} target="_blank" rel="noopener noreferrer">
+                    Open app
+                    <ExternalLink className="size-4" aria-hidden="true" />
+                  </a>
+                </Button>
+              )}
             </div>
-
-            {app.about && (
-              <p className="max-w-prose whitespace-pre-wrap break-words leading-relaxed text-foreground/90">
-                {app.about}
-              </p>
-            )}
-
-            <div className="flex flex-wrap items-center gap-3">
-              <Link
-                to={`/${nip19.npubEncode(app.pubkey)}`}
-                className="flex items-center gap-2 hover:text-primary"
-              >
-                <UserAvatar pubkey={app.pubkey} size="sm" />
-                <span className="text-sm font-medium">by {authorName}</span>
-              </Link>
-              <ExpertToggleButton pubkey={app.pubkey} iconOnly />
-            </div>
-
-            {(app.platforms.length > 0 || app.hashtags.length > 0) && (
-              <div className="flex flex-wrap items-center gap-1.5">
-                {app.platforms.map((platform) => (
-                  <Badge key={platform} variant="secondary" className="text-[10px] uppercase tracking-wider">
-                    {platform}
-                  </Badge>
-                ))}
-                {app.hashtags.map((tag) => (
-                  <Badge key={tag} variant="outline" className="text-xs text-muted-foreground">
-                    #{tag}
-                  </Badge>
-                ))}
-              </div>
-            )}
           </header>
 
-          {/* On mobile/tablet the Layout sidebar column doesn't exist, so the
-              sidebar cards stack here under the header, keeping install and
-              source links near the top. Queries are deduped by TanStack. */}
-          {hasSidebarContent(app) && (
-            <div className="space-y-4 lg:hidden">
-              <AppSidebar app={app} />
-            </div>
-          )}
+          {/* Description and details on the left, resource cards on the right —
+              the sidebar starts at description level, below the name row. */}
+          <div
+            className={cn(
+              'space-y-6',
+              hasSidebarContent(app) &&
+                'lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-8 lg:space-y-0',
+            )}
+          >
+            <div className="min-w-0 space-y-6">
+              <div className="space-y-3">
+                {app.about && (
+                  <p className="max-w-prose whitespace-pre-wrap break-words leading-relaxed text-foreground/90">
+                    {app.about}
+                  </p>
+                )}
 
-          <div className="space-y-6">
+                <div className="flex flex-wrap items-center gap-3">
+                  <Link
+                    to={`/${nip19.npubEncode(app.pubkey)}`}
+                    className="flex items-center gap-2 hover:text-primary"
+                  >
+                    <UserAvatar pubkey={app.pubkey} size="sm" />
+                    <span className="text-sm font-medium">by {authorName}</span>
+                  </Link>
+                  <ExpertToggleButton pubkey={app.pubkey} iconOnly />
+                </div>
+
+                {(app.platforms.length > 0 || app.hashtags.length > 0) && (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {app.platforms.map((platform) => (
+                      <Badge key={platform} variant="secondary" className="text-[10px] uppercase tracking-wider">
+                        {platform}
+                      </Badge>
+                    ))}
+                    {app.hashtags.map((tag) => (
+                      <Badge key={tag} variant="outline" className="text-xs text-muted-foreground">
+                        #{tag}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {/* NIP compatibility breakdown */}
               <section className="border-t border-border/60 pt-6">
                 <Collapsible open={nipOpen} onOpenChange={setNipOpen}>
@@ -590,6 +590,13 @@ export function AppPage({ pubkey, identifier }: AppPageProps) {
                 />
               </section>
             </div>
+
+            {hasSidebarContent(app) && (
+              <aside aria-label="App resources" className="space-y-4 lg:sticky lg:top-24">
+                <AppSidebar app={app} />
+              </aside>
+            )}
+          </div>
         </article>
       )}
     </Layout>
