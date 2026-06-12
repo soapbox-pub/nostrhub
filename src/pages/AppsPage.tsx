@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSeoMeta } from '@unhead/react';
-import { HelpCircle, Search, X } from 'lucide-react';
+import { HelpCircle, PlusCircle, Search, X } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { AppListRow, AppListRowSkeleton, type AppRow } from '@/components/AppListRow';
 import { TIER_ICONS } from '@/lib/tierIcons';
@@ -17,6 +17,7 @@ import {
 } from '@/lib/appReviews';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import {
   Select,
   SelectContent,
@@ -37,7 +38,7 @@ const PLATFORM_LABELS: Record<AppPlatform, string> = {
 };
 
 type TierFilter = CompatTier | 'all' | 'unrated';
-type SortBy = 'newest' | 'name' | 'reports' | 'rating';
+type SortBy = 'hot' | 'newest' | 'name' | 'reports' | 'rating';
 
 /** Debounce a string value so search REQs aren't fired on every keystroke. */
 function useDebounced(value: string, delay = 400): string {
@@ -60,7 +61,7 @@ export function AppsPage() {
   const [search, setSearch] = useState('');
   const [platform, setPlatform] = useState<AppPlatform>();
   const [tierFilter, setTierFilter] = useState<TierFilter>('all');
-  const [sortBy, setSortBy] = useState<SortBy>('newest');
+  const [sortBy, setSortBy] = useState<SortBy>('hot');
 
   const query = useDebounced(search).trim();
   const searching = query.length > 0;
@@ -109,7 +110,15 @@ export function AppsPage() {
     // NIP-50 search results keep the relay's relevance ranking unless the
     // user picks an explicit sort.
     const sorted = [...result];
-    if (sortBy === 'name') {
+    if (sortBy === 'hot') {
+      // Hot: apps with reviews sorted by report count × rating score, then newest unrated apps at the bottom.
+      sorted.sort((a, b) => {
+        const aScore = a.overall ? a.overall.count * a.overall.rating : -1;
+        const bScore = b.overall ? b.overall.count * b.overall.rating : -1;
+        if (bScore !== aScore) return bScore - aScore;
+        return b.app.createdAt - a.app.createdAt;
+      });
+    } else if (sortBy === 'name') {
       sorted.sort((a, b) => a.app.name.localeCompare(b.app.name));
     } else if (sortBy === 'reports') {
       sorted.sort((a, b) => (b.overall?.count ?? 0) - (a.overall?.count ?? 0));
@@ -127,9 +136,17 @@ export function AppsPage() {
     <Layout className="max-w-6xl">
       <div className="space-y-8">
         <header className="space-y-3">
-          <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
-            <span className="text-cosmic">Apps</span>
-          </h1>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
+              <span className="text-cosmic">Apps</span>
+            </h1>
+            <Button asChild variant="outline" className="gap-1.5">
+              <a href="https://borkstr.nostr1.com" target="_blank" rel="noopener noreferrer">
+                <PlusCircle className="size-4" aria-hidden="true" />
+                Add an app
+              </a>
+            </Button>
+          </div>
           <p className="max-w-prose text-lg text-muted-foreground">
             Applications announced on Nostr itself — every listing is a NIP-89 handler event, and
             the community rates how well each one implements the NIPs, ProtonDB-style.
@@ -158,6 +175,7 @@ export function AppsPage() {
                 <SelectValue placeholder="Sort" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="hot">Hot</SelectItem>
                 <SelectItem value="newest">{searching ? 'Best Match' : 'Newest'}</SelectItem>
                 <SelectItem value="name">Name</SelectItem>
                 <SelectItem value="reports">Most Reports</SelectItem>

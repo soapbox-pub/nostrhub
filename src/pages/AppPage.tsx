@@ -1,8 +1,8 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSeoMeta } from '@unhead/react';
 import { nip19 } from 'nostr-tools';
-import { AlertCircle, ArrowLeft, Blocks, ExternalLink } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Blocks, ChevronDown, ExternalLink } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { CommentsSection } from '@/components/comments/CommentsSection';
 import { UserAvatar } from '@/components/UserAvatar';
@@ -24,6 +24,7 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
@@ -91,6 +92,7 @@ export function AppPage({ pubkey, identifier }: AppPageProps) {
   const author = useAuthor(pubkey);
   const authorMeta = author.data?.metadata;
   const authorName = authorMeta?.name || authorMeta?.display_name || shortNpub(pubkey);
+  const [nipOpen, setNipOpen] = useState(false);
 
   useSeoMeta({
     title: app ? `${app.name} | NostrHub` : 'App | NostrHub',
@@ -201,17 +203,35 @@ export function AppPage({ pubkey, identifier }: AppPageProps) {
           </header>
 
           {/* NIP compatibility breakdown */}
-          <section className="space-y-3 border-t border-border/60 pt-6">
-            <h2 className="text-xl font-semibold tracking-tight">NIP Compatibility</h2>
-            <p className="text-sm text-muted-foreground">
-              Community-reported compatibility per NIP — the median of all reports decides each
-              tier, ProtonDB-style.
-            </p>
-            {reviews.isLoading ? (
-              <Skeleton className="h-64 w-full rounded-xl" />
-            ) : (
-              <NipBreakdown perNip={perNip} />
-            )}
+          <section className="border-t border-border/60 pt-6">
+            <Collapsible open={nipOpen} onOpenChange={setNipOpen}>
+              <CollapsibleTrigger asChild>
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between gap-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  aria-expanded={nipOpen}
+                >
+                  <div className="space-y-1">
+                    <h2 className="text-xl font-semibold tracking-tight">NIP Compatibility</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Community-reported compatibility per NIP — the median of all reports decides each
+                      tier, ProtonDB-style.
+                    </p>
+                  </div>
+                  <ChevronDown
+                    className={cn('size-5 shrink-0 text-muted-foreground transition-transform duration-200', nipOpen && 'rotate-180')}
+                    aria-hidden="true"
+                  />
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-3">
+                {reviews.isLoading ? (
+                  <Skeleton className="h-64 w-full rounded-xl" />
+                ) : (
+                  <NipBreakdown perNip={perNip} />
+                )}
+              </CollapsibleContent>
+            </Collapsible>
           </section>
 
           {/* Submit reports */}
