@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useSeoMeta } from '@unhead/react';
 import { Eye, HelpCircle, PlusCircle, Search, X } from 'lucide-react';
 import { Layout } from '@/components/Layout';
@@ -154,10 +155,10 @@ export function AppsPage() {
               <span className="text-cosmic">Apps</span>
             </h1>
             <Button asChild variant="outline" className="gap-1.5">
-              <a href="https://borkstr.nostr1.com" target="_blank" rel="noopener noreferrer">
+              <Link to="/apps/submit">
                 <PlusCircle className="size-4" aria-hidden="true" />
                 Add an app
-              </a>
+              </Link>
             </Button>
           </div>
           <p className="max-w-prose text-lg text-muted-foreground">

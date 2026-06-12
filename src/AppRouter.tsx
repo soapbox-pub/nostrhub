@@ -13,6 +13,7 @@ import ExpertsPage from "./pages/ExpertsPage";
 import CommunityPage from "./pages/CommunityPage";
 import GitReposPage from "./pages/GitReposPage";
 import AppsPage from "./pages/AppsPage";
+import SubmitAppPage from "./pages/SubmitAppPage";
 import { DEFAULT_TOPIC } from "./lib/chat";
 
 export function AppRouter() {
@@ -23,6 +24,7 @@ export function AppRouter() {
         <Route path="/" element={<Index />} />
         <Route path="/repos" element={<GitReposPage />} />
         <Route path="/apps" element={<AppsPage />} />
+        <Route path="/apps/submit" element={<SubmitAppPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/stats" element={<StatsPage />} />
         <Route path="/experts" element={<ExpertsPage />} />
