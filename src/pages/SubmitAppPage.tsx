@@ -7,6 +7,7 @@ import {
   PlusCircle, Rocket, Search, ShoppingBag, Sparkles, Tags, Upload, X,
 } from 'lucide-react';
 import { nip19 } from 'nostr-tools';
+import { useQueryClient } from '@tanstack/react-query';
 import { Layout } from '@/components/Layout';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useNostrPublish } from '@/hooks/useNostrPublish';
@@ -34,7 +35,7 @@ import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
-import { APP_PLATFORMS, APP_HANDLER_KIND, nipGithubUrl, type AppPlatform } from '@/lib/apps';
+import { APP_PLATFORMS, APP_HANDLER_KIND, nipGithubUrl, parseAppEvent, type AppPlatform } from '@/lib/apps';
 import type { CustomNip } from '@/lib/nips';
 import type { GitRepoAnnouncement } from '@/lib/git';
 import type { ZapstoreApp } from '@/hooks/useZapstoreSearch';
@@ -820,6 +821,7 @@ export function SubmitAppPage() {
   const { mutateAsync: publish, isPending } = useNostrPublish();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const officialNips = useOfficialNips();
 
   // --- wizard state ---
@@ -1156,6 +1158,13 @@ export function SubmitAppPage() {
         pubkey: event.pubkey,
         identifier: event.tags.find(([n]) => n === 'd')?.[1] ?? '',
       });
+      // Seed the detail-page cache with the freshly signed event so navigation
+      // is optimistic — relays may not index the listing for a few seconds,
+      // and an empty relay response would otherwise render "app not found".
+      const app = parseAppEvent(event);
+      if (app) {
+        queryClient.setQueryData(['app', app.pubkey, app.identifier], app);
+      }
       toast({ title: '🚀 Your app is live!', description: 'Welcome to the directory.' });
       navigate(`/${naddr}`);
     } catch (err) {
