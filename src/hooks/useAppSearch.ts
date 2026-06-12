@@ -62,12 +62,11 @@ export function useAppSearch(query: string) {
         if (!order.has(key)) order.set(key, i);
       }
 
-      const hotResults = dedupeAppEvents(searchEvents).filter(hasFullAppMetadata);
+      const hotResults = dedupeAppEvents(searchEvents);
       const hotAddresses = new Set(hotResults.map((a) => a.address));
 
-      if (isBrowse && hotResults.length < 50) {
+      if (isBrowse && hotResults.filter(hasFullAppMetadata).length < 50) {
         const recent = dedupeAppEvents(backfillEvents)
-          .filter(hasFullAppMetadata)
           .filter((a) => !hotAddresses.has(a.address))
           .sort((a, b) => b.createdAt - a.createdAt);
 

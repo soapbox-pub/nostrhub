@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSeoMeta } from '@unhead/react';
-import { HelpCircle, PlusCircle, Search, X } from 'lucide-react';
+import { Eye, HelpCircle, PlusCircle, Search, X } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { AppListRow, AppListRowSkeleton, type AppRow } from '@/components/AppListRow';
 import { TIER_ICONS } from '@/lib/tierIcons';
 import { useAppSearch } from '@/hooks/useAppSearch';
 import { useAllAppReviews } from '@/hooks/useAppReviews';
-import { APP_PLATFORMS, type AppPlatform } from '@/lib/apps';
+import { APP_PLATFORMS, hasFullAppMetadata, type AppPlatform } from '@/lib/apps';
 import {
   TIERS,
   TIER_ORDER,
@@ -61,6 +61,7 @@ export function AppsPage() {
   const [platform, setPlatform] = useState<AppPlatform>();
   const [tierFilter, setTierFilter] = useState<TierFilter>('all');
   const [sortBy, setSortBy] = useState<SortBy>('hot');
+  const [showHidden, setShowHidden] = useState(false);
 
   const query = useDebounced(search).trim();
   const searching = query.length > 0;
@@ -95,8 +96,18 @@ export function AppsPage() {
     });
   }, [active.data, reviewsByApp]);
 
+  const { visibleRows, hiddenRows } = useMemo(() => {
+    const visible: AppRow[] = [];
+    const hidden: AppRow[] = [];
+    for (const row of rows) {
+      if (hasFullAppMetadata(row.app)) visible.push(row);
+      else hidden.push(row);
+    }
+    return { visibleRows: visible, hiddenRows: hidden };
+  }, [rows]);
+
   const filtered = useMemo(() => {
-    let result = rows;
+    let result = showHidden ? [...visibleRows, ...hiddenRows] : visibleRows;
     if (platform) {
       result = result.filter((r) => r.app.platforms.includes(platform));
     }
@@ -130,7 +141,7 @@ export function AppsPage() {
       sorted.sort((a, b) => b.app.createdAt - a.app.createdAt);
     }
     return sorted;
-  }, [rows, platform, tierFilter, sortBy, searching]);
+  }, [visibleRows, hiddenRows, platform, tierFilter, sortBy, searching, showHidden]);
 
   const isLoading = active.isLoading || reviews.isLoading || (searching && search.trim() !== query);
 
@@ -266,10 +277,28 @@ export function AppsPage() {
           </div>
 
           {!isLoading && (
-            <p className="text-sm text-muted-foreground" role="status">
-              {filtered.length} {filtered.length === 1 ? 'app' : 'apps'}
-              {searching && <> matching “{query}” via the search relays</>}
-            </p>
+            <div className="flex flex-wrap items-center gap-3">
+              <p className="text-sm text-muted-foreground" role="status">
+                {filtered.length} {filtered.length === 1 ? 'app' : 'apps'}
+                {searching && <> matching "{query}" via the search relays</>}
+              </p>
+              {hiddenRows.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowHidden((v) => !v)}
+                  className={cn(
+                    'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium transition-colors',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                    showHidden
+                      ? 'bg-muted-foreground/20 text-foreground'
+                      : 'bg-muted/50 text-muted-foreground hover:bg-muted',
+                  )}
+                >
+                  <Eye className="size-3" aria-hidden="true" />
+                  {showHidden ? 'Hide incomplete' : `Show ${hiddenRows.length} hidden`}
+                </button>
+              )}
+            </div>
           )}
         </div>
 
