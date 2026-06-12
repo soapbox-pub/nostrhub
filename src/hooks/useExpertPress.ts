@@ -82,6 +82,21 @@ function collectArticles(events: NostrEvent[]): ExpertArticle[] {
 }
 
 /**
+ * Collapse a newest-first article list to a single entry per author — each
+ * expert's most recent piece — preserving the input ordering.
+ */
+function latestPerAuthor(articles: ExpertArticle[]): ExpertArticle[] {
+  const seen = new Set<string>();
+  const out: ExpertArticle[] = [];
+  for (const article of articles) {
+    if (seen.has(article.author)) continue;
+    seen.add(article.author);
+    out.push(article);
+  }
+  return out;
+}
+
+/**
  * Recent long-form articles (kind 30023) from the panel of experts, deduped to
  * the latest revision per address and ordered newest-first by publish date.
  * Scoped to expert authors. The `/articles` directory uses this only to pick a
@@ -151,15 +166,18 @@ export function useExpertPress() {
       const opts = { signal: AbortSignal.any([signal, AbortSignal.timeout(8000)]) };
 
       const [articleEvents, noteEvents] = await Promise.all([
-        nostr.query([{ kinds: [ARTICLE_KIND], authors: experts, limit: 50 }], opts),
+        // Overfetch a touch so each expert is represented even when a few
+        // prolific authors would otherwise dominate the newest-first window.
+        nostr.query([{ kinds: [ARTICLE_KIND], authors: experts, limit: 100 }], opts),
         nostr
           .group(SEARCH_RELAYS)
           .query([{ kinds: [1], authors: experts, search: 'sort:hot', since: noteSince, limit: 48 }], opts),
       ]);
 
       // Articles: keep only the latest event per (author, d) address,
-      // newest-first by publish date.
-      const articles = collectArticles(articleEvents);
+      // newest-first by publish date, then collapse to a single feature per
+      // expert — their most recent piece — so no one author floods the well.
+      const articles = latestPerAuthor(collectArticles(articleEvents));
 
       // Notes: top-level posts only (no `e` tags), in hot order.
       const seen = new Set<string>();
