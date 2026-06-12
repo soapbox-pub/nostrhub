@@ -4,7 +4,6 @@ import { HelpCircle, PlusCircle, Search, X } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { AppListRow, AppListRowSkeleton, type AppRow } from '@/components/AppListRow';
 import { TIER_ICONS } from '@/lib/tierIcons';
-import { useApps } from '@/hooks/useApps';
 import { useAppSearch } from '@/hooks/useAppSearch';
 import { useAllAppReviews } from '@/hooks/useAppReviews';
 import { APP_PLATFORMS, type AppPlatform } from '@/lib/apps';
@@ -66,7 +65,7 @@ export function AppsPage() {
   const query = useDebounced(search).trim();
   const searching = query.length > 0;
 
-  const browse = useApps({ enabled: !searching });
+  const browse = useAppSearch('sort:hot');
   const results = useAppSearch(query);
   const reviews = useAllAppReviews();
 
@@ -124,7 +123,7 @@ export function AppsPage() {
       sorted.sort((a, b) => (b.overall?.count ?? 0) - (a.overall?.count ?? 0));
     } else if (sortBy === 'rating') {
       sorted.sort((a, b) => (b.overall?.rating ?? -1) - (a.overall?.rating ?? -1));
-    } else if (sortBy === 'newest' && !searching) {
+    } else if (sortBy === 'newest') {
       sorted.sort((a, b) => b.app.createdAt - a.app.createdAt);
     }
     return sorted;
