@@ -30,6 +30,7 @@ import type { AppInfo, AppNipRef, AppRepoRef, AppZapstoreRef } from '@/lib/apps'
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
@@ -55,11 +56,11 @@ function RefRow({
 }) {
   const body = (
     <>
-      <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-lg border border-border/60 bg-muted/40 text-muted-foreground">
+      <span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-muted text-muted-foreground">
         {icon}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-semibold leading-snug tracking-tight">
+        <span className="block truncate text-sm font-medium leading-snug">
           {title}
         </span>
         {sublabel && (
@@ -81,8 +82,8 @@ function RefRow({
   );
 
   const className = cn(
-    'group flex w-full items-center gap-3 rounded-xl border border-border/70 bg-card/60 px-3 py-2.5 backdrop-blur-sm',
-    (to || href) && 'transition-colors hover:border-primary/50 hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+    'group flex w-full items-center gap-2.5 rounded-lg border border-border/60 bg-muted/20 px-3 py-2',
+    (to || href) && 'transition-colors hover:border-primary/40 hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
   );
 
   if (to) return <Link to={to} className={className}>{body}</Link>;
@@ -93,11 +94,11 @@ function RefRow({
 /** Loading placeholder matching RefRow's layout. */
 function RefRowSkeleton() {
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-card/60 px-3 py-2.5">
-      <Skeleton className="size-10 shrink-0 rounded-lg" />
+    <div className="flex items-center gap-2.5 rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
+      <Skeleton className="size-9 shrink-0 rounded-lg" />
       <div className="flex-1 space-y-1.5">
-        <Skeleton className="h-4 w-40 max-w-full" />
-        <Skeleton className="h-3 w-64 max-w-full" />
+        <Skeleton className="h-4 w-32 max-w-full" />
+        <Skeleton className="h-3 w-44 max-w-full" />
       </div>
     </div>
   );
@@ -221,12 +222,13 @@ function ZapstoreRefRow({ zapRef }: { zapRef: AppZapstoreRef }) {
   );
 }
 
-/** Compact heading for a sidebar section. */
-function SidebarHeading({ children }: { children: React.ReactNode }) {
+/** Repo-style sidebar card heading: icon + uppercase muted title. */
+function SidebarCardTitle({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
   return (
-    <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+    <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+      {icon}
       {children}
-    </h2>
+    </CardTitle>
   );
 }
 
@@ -240,60 +242,73 @@ function hasSidebarContent(app: AppInfo): boolean {
   );
 }
 
-/** Sidebar: install builds, source repos, implemented NIPs, handled kinds. */
+/** Sidebar cards: install builds, source repos, implemented NIPs, handled kinds. */
 function AppSidebar({ app }: { app: AppInfo }) {
-  if (!hasSidebarContent(app)) return null;
-
   return (
-    <aside
-      aria-label="App resources"
-      className="space-y-6 border-t border-border/60 pt-6 lg:col-start-2 lg:row-start-1 lg:border-t-0 lg:pt-0"
-    >
+    <>
       {app.zapstoreRefs.length > 0 && (
-        <section className="space-y-2">
-          <SidebarHeading>Install</SidebarHeading>
-          <div className="space-y-2">
+        <Card>
+          <CardHeader className="pb-3">
+            <SidebarCardTitle icon={<ShoppingBag className="size-4" aria-hidden="true" />}>
+              Install
+            </SidebarCardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1.5">
             {app.zapstoreRefs.map((zapRef) => <ZapstoreRefRow key={zapRef.address} zapRef={zapRef} />)}
-          </div>
-        </section>
+          </CardContent>
+        </Card>
       )}
       {app.repoRefs.length > 0 && (
-        <section className="space-y-2">
-          <SidebarHeading>Source Code</SidebarHeading>
-          <div className="space-y-2">
+        <Card>
+          <CardHeader className="pb-3">
+            <SidebarCardTitle icon={<FolderGit2 className="size-4" aria-hidden="true" />}>
+              Source Code
+            </SidebarCardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1.5">
             {app.repoRefs.map((repoRef) => <RepoRefRow key={repoRef.address} repoRef={repoRef} />)}
-          </div>
-        </section>
+          </CardContent>
+        </Card>
       )}
       {app.nipRefs.length > 0 && (
-        <section className="space-y-2">
-          <SidebarHeading>Implements</SidebarHeading>
-          <div className="space-y-2">
+        <Card>
+          <CardHeader className="pb-3">
+            <SidebarCardTitle icon={<BookOpen className="size-4" aria-hidden="true" />}>
+              Implements
+            </SidebarCardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1.5">
             {app.nipRefs.map((nipRef) => (
               <NipRefRow
                 key={nipRef.type === 'official' ? `nip-${nipRef.number}` : nipRef.address}
                 nipRef={nipRef}
               />
             ))}
-          </div>
-        </section>
+          </CardContent>
+        </Card>
       )}
       {app.supportedKinds.length > 0 && (
-        <section className="space-y-2">
-          <SidebarHeading>Handled Kinds</SidebarHeading>
-          <p className="text-xs text-muted-foreground">
-            Event kinds this app announces it can display or handle (NIP-89).
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            {app.supportedKinds.map((kind) => (
-              <Badge key={kind} variant="outline" className="font-mono text-xs">
-                kind {kind}
-              </Badge>
-            ))}
-          </div>
-        </section>
+        <Card>
+          <CardHeader className="pb-3">
+            <SidebarCardTitle icon={<Blocks className="size-4" aria-hidden="true" />}>
+              Handled Kinds
+            </SidebarCardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-1.5">
+              {app.supportedKinds.map((kind) => (
+                <Badge key={kind} variant="outline" className="font-mono text-xs">
+                  kind {kind}
+                </Badge>
+              ))}
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground/80">
+              Event kinds this app announces it can display or handle (NIP-89).
+            </p>
+          </CardContent>
+        </Card>
       )}
-    </aside>
+    </>
   );
 }
 
@@ -373,7 +388,10 @@ export function AppPage({ pubkey, identifier }: AppPageProps) {
   const website = sanitizeUrl(app?.website);
 
   return (
-    <Layout className="max-w-5xl">
+    <Layout
+      className="max-w-5xl"
+      sidebar={app && hasSidebarContent(app) ? <AppSidebar app={app} /> : undefined}
+    >
       <Button variant="ghost" asChild className="-ml-2 mb-4">
         <Link to="/apps">
           <ArrowLeft className="mr-1.5 size-4" /> Back to Apps
@@ -477,19 +495,16 @@ export function AppPage({ pubkey, identifier }: AppPageProps) {
             )}
           </header>
 
-          {/* Sidebar (install, source, NIPs, kinds) + main column. On mobile the
-              sidebar stacks directly under the header so install links stay
-              near the top; on desktop it moves into the right-hand column. */}
-          <div
-            className={cn(
-              'space-y-6',
-              hasSidebarContent(app) &&
-                'lg:grid lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start lg:gap-x-10 lg:space-y-0',
-            )}
-          >
-            <AppSidebar app={app} />
+          {/* On mobile/tablet the Layout sidebar column doesn't exist, so the
+              sidebar cards stack here under the header, keeping install and
+              source links near the top. Queries are deduped by TanStack. */}
+          {hasSidebarContent(app) && (
+            <div className="space-y-4 lg:hidden">
+              <AppSidebar app={app} />
+            </div>
+          )}
 
-            <div className="space-y-6 lg:col-start-1 lg:row-start-1">
+          <div className="space-y-6">
               {/* NIP compatibility breakdown */}
               <section className="border-t border-border/60 pt-6">
                 <Collapsible open={nipOpen} onOpenChange={setNipOpen}>
@@ -576,7 +591,6 @@ export function AppPage({ pubkey, identifier }: AppPageProps) {
                 />
               </section>
             </div>
-          </div>
         </article>
       )}
     </Layout>
