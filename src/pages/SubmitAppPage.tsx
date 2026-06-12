@@ -98,7 +98,7 @@ const STEPS: StepDef[] = [
   {
     id: 'platforms', label: 'Platforms', icon: MonitorSmartphone,
     title: 'Where does it run?',
-    blurb: 'Tap the platforms you ship on and drop in a link for each. Skip any you like.',
+    blurb: 'Tap the platforms you ship on. We\u2019ll point each one at your website automatically.',
   },
   {
     id: 'protocol', label: 'Protocol', icon: Blocks,
@@ -839,6 +839,8 @@ export function SubmitAppPage() {
   const [repoRefs, setRepoRefs] = useState<RepoRefEntry[]>([]);
   const [zapstoreRefs, setZapstoreRefs] = useState<ZapstoreRefEntry[]>([]);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  /** Platforms whose URL the user chose to edit by hand. */
+  const [editingPlatforms, setEditingPlatforms] = useState<Set<AppPlatform>>(new Set());
   /** Address of the Zapstore listing the form was prefilled from, if any. */
   const [appliedZapstore, setAppliedZapstore] = useState<string | null>(null);
 
@@ -927,14 +929,24 @@ export function SubmitAppPage() {
       ]
     : [];
 
+  /** The URI we assume for a platform: web deep-links at the root, everything else lands on the website. */
+  const defaultPlatformUrl = (pl: AppPlatform, base: string | null = websiteBase): string => {
+    if (!base) return '';
+    return pl === 'web' ? `${base}/<bech32>` : base;
+  };
+
   const togglePlatform = (pl: AppPlatform) => {
     setPlatforms((prev) => {
       const existing = prev.find((p) => p.platform === pl);
       if (existing) return prev.filter((p) => p.platform !== pl);
-      // Assume the common case for web: root-level NIP-19 deep links on the
-      // app's own domain. It's just a prefill, so diverging is one edit away.
-      const url = pl === 'web' && websiteBase ? `${websiteBase}/<bech32>` : '';
-      return [...prev, { platform: pl, url, hint: '' }];
+      // Assume, don't ask: prefill every platform with a sensible URI. Diverging
+      // is one tap on the edit pencil.
+      return [...prev, { platform: pl, url: defaultPlatformUrl(pl), hint: '' }];
+    });
+    setEditingPlatforms((prev) => {
+      const next = new Set(prev);
+      next.delete(pl);
+      return next;
     });
     clearError(`platform-${pl}`);
   };
@@ -986,6 +998,7 @@ export function SubmitAppPage() {
 
     const url = tag('url') ?? tag('website');
     if (url && isValidUrl(url)) setWebsite(url.trim());
+    const listingBase = url && isValidUrl(url.trim()) ? url.trim().replace(/\/+$/, '') : websiteBase;
 
     const listingTags = tagValues('t')
       .map((t) => t.trim().toLowerCase().replace(/\s+/g, '-'))
@@ -1001,7 +1014,9 @@ export function SubmitAppPage() {
       setPlatforms((prev) => {
         const next = [...prev];
         for (const pl of listingPlatforms) {
-          if (!next.some((p) => p.platform === pl)) next.push({ platform: pl, url: '', hint: '' });
+          if (!next.some((p) => p.platform === pl)) {
+            next.push({ platform: pl, url: defaultPlatformUrl(pl, listingBase), hint: '' });
+          }
         }
         return next;
       });
@@ -1284,53 +1299,83 @@ export function SubmitAppPage() {
                           Nothing selected, and that's fine! You can add platform links later by editing your listing.
                         </p>
                       ) : (
-                        <div className="space-y-3">
-                          {platforms.map((p) => (
-                            <div
-                              key={p.platform}
-                              className="space-y-2 rounded-lg border border-border/60 bg-muted/30 p-3 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-top-1"
-                            >
-                              <Label htmlFor={`platform-url-${p.platform}`} className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                                {PLATFORM_LABELS[p.platform]}
-                              </Label>
-                              <Input
-                                id={`platform-url-${p.platform}`}
-                                value={p.url}
-                                onChange={(e) => updatePlatform(p.platform, { url: e.target.value })}
-                                placeholder={PLATFORM_PLACEHOLDERS[p.platform]}
-                                aria-invalid={!!errors[`platform-${p.platform}`]}
-                                className="font-mono text-xs"
-                              />
-                              {p.platform === 'web' && webUrlPatterns.length > 0 && (
-                                <div className="flex flex-wrap items-center gap-1.5">
-                                  <span className="text-xs text-muted-foreground">Common patterns:</span>
-                                  {webUrlPatterns.map(({ label, url }) => (
-                                    <button
-                                      key={label}
-                                      type="button"
-                                      onClick={() => updatePlatform('web', { url })}
-                                      aria-pressed={p.url === url}
-                                      className={cn(
-                                        'rounded-full px-2 py-0.5 font-mono text-[11px] font-medium transition-all motion-safe:active:scale-95',
-                                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                                        p.url === url
-                                          ? 'bg-primary/15 text-primary ring-1 ring-primary/30'
-                                          : 'bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary',
-                                      )}
-                                    >
-                                      {label}
-                                    </button>
-                                  ))}
+                        <div className="overflow-hidden rounded-lg border border-border/60">
+                          {platforms.map((p, i) => {
+                            const isEditing = editingPlatforms.has(p.platform) || !!errors[`platform-${p.platform}`] || !p.url;
+                            return (
+                              <div
+                                key={p.platform}
+                                className={cn(
+                                  'space-y-2 px-3 py-2.5 motion-safe:animate-in motion-safe:fade-in',
+                                  i > 0 && 'border-t border-border/40',
+                                )}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <span className="w-20 shrink-0 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                    {PLATFORM_LABELS[p.platform]}
+                                  </span>
+                                  {isEditing ? (
+                                    <Input
+                                      id={`platform-url-${p.platform}`}
+                                      value={p.url}
+                                      onChange={(e) => updatePlatform(p.platform, { url: e.target.value })}
+                                      placeholder={PLATFORM_PLACEHOLDERS[p.platform]}
+                                      aria-invalid={!!errors[`platform-${p.platform}`]}
+                                      aria-label={`${PLATFORM_LABELS[p.platform]} URL`}
+                                      className="h-8 flex-1 font-mono text-xs"
+                                      autoFocus={editingPlatforms.has(p.platform)}
+                                    />
+                                  ) : (
+                                    <span className="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground">
+                                      {p.url}
+                                    </span>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingPlatforms((prev) => {
+                                      const next = new Set(prev);
+                                      if (next.has(p.platform)) next.delete(p.platform);
+                                      else next.add(p.platform);
+                                      return next;
+                                    })}
+                                    className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                    aria-label={isEditing ? `Done editing ${PLATFORM_LABELS[p.platform]} URL` : `Edit ${PLATFORM_LABELS[p.platform]} URL`}
+                                  >
+                                    {isEditing ? <Check className="size-3.5" aria-hidden="true" /> : <Pencil className="size-3.5" aria-hidden="true" />}
+                                  </button>
                                 </div>
-                              )}
-                              <FieldError message={errors[`platform-${p.platform}`]} />
-                            </div>
-                          ))}
-                          <p className="text-xs text-muted-foreground">
-                            Tip: include <code className="rounded bg-muted px-1">&lt;bech32&gt;</code> in a URL and
-                            clients will swap in the event identifier when deep-linking to your app.
-                          </p>
+                                {isEditing && p.platform === 'web' && webUrlPatterns.length > 0 && (
+                                  <div className="flex flex-wrap items-center gap-1.5 pl-23">
+                                    {webUrlPatterns.map(({ label, url }) => (
+                                      <button
+                                        key={label}
+                                        type="button"
+                                        onClick={() => updatePlatform('web', { url })}
+                                        aria-pressed={p.url === url}
+                                        className={cn(
+                                          'rounded-full px-2 py-0.5 font-mono text-[11px] font-medium transition-all motion-safe:active:scale-95',
+                                          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                                          p.url === url
+                                            ? 'bg-primary/15 text-primary ring-1 ring-primary/30'
+                                            : 'bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary',
+                                        )}
+                                      >
+                                        {label}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                                <FieldError message={errors[`platform-${p.platform}`]} />
+                              </div>
+                            );
+                          })}
                         </div>
+                      )}
+                      {platforms.length > 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          We point these at your website automatically. <code className="rounded bg-muted px-1">&lt;bech32&gt;</code> is
+                          where clients drop the event identifier when deep-linking. Tap the pencil if yours works differently.
+                        </p>
                       )}
                     </>
                   )}
