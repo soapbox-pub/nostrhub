@@ -421,6 +421,7 @@ export function AppPage({ pubkey, identifier }: AppPageProps) {
                 app.nip05 ?? undefined
               )
             }
+            metrics={app.name ? <ClientMetrics clientTags={[app.name]} /> : undefined}
             primaryAction={
               website ? (
                 <Button asChild className="gap-1.5">
@@ -487,14 +488,6 @@ export function AppPage({ pubkey, identifier }: AppPageProps) {
                   </div>
                 )}
               </div>
-
-              {/* Usage metrics: active users + 30-day time series, keyed on the
-                  app's name as the NIP-89 `#client` tag value. */}
-              {app.name && (
-                <section className="border-t border-border/60 pt-6">
-                  <ClientMetrics clientTags={[app.name]} />
-                </section>
-              )}
 
               {/* NIP compatibility breakdown */}
               <section className="border-t border-border/60 pt-6">

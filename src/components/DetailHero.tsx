@@ -83,6 +83,8 @@ interface DetailHeroProps {
   titleAside?: ReactNode;
   /** Muted line under the title (identifier, report summary, …). */
   subtitle?: ReactNode;
+  /** Wide content rendered across from the brand tile (e.g. a usage chart). */
+  metrics?: ReactNode;
   /** Badge row. */
   badges?: ReactNode;
   /** Lead paragraph. */
@@ -106,6 +108,7 @@ export function DetailHero({
   title,
   titleAside,
   subtitle,
+  metrics,
   badges,
   description,
   meta,
@@ -118,16 +121,19 @@ export function DetailHero({
 
   return (
     <header className={cn('space-y-4 border-b border-border/60 pb-6', className)}>
-      <div className={cn(hasTile && 'flex items-start gap-4')}>
-        {hasTile && <HeroTile icon={icon} image={image} />}
-        <div className="min-w-0 flex-1 space-y-1">
-          {kicker && <p className="font-mono text-sm text-primary">{kicker}</p>}
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">{title}</h1>
-            {titleAside}
+      <div className={cn((hasTile || metrics) && 'flex flex-col gap-4 lg:flex-row lg:items-start')}>
+        <div className={cn('min-w-0 flex-1', hasTile && 'flex items-start gap-4')}>
+          {hasTile && <HeroTile icon={icon} image={image} />}
+          <div className="min-w-0 flex-1 space-y-1">
+            {kicker && <p className="font-mono text-sm text-primary">{kicker}</p>}
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">{title}</h1>
+              {titleAside}
+            </div>
+            {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
           </div>
-          {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
         </div>
+        {metrics && <div className="w-full shrink-0 lg:max-w-sm">{metrics}</div>}
       </div>
 
       {badges && <div className="flex flex-wrap items-center gap-1.5">{badges}</div>}
