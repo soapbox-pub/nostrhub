@@ -107,6 +107,31 @@ export function useExpertArticles() {
 }
 
 /**
+ * Long-form articles (kind 30023) from a broader author set — typically the
+ * whole community web-of-trust (see {@link useCommunityAuthors}). Deduped to
+ * the latest revision per address and ordered newest-first by publish date.
+ * Used to backfill the `/articles` directory beyond the experts' own pieces.
+ */
+export function useCommunityArticles(authors: string[] | undefined) {
+  const { nostr } = useNostr();
+  const list = authors ?? [];
+
+  return useQuery<ExpertArticle[]>({
+    queryKey: ['community-articles', [...list].sort()],
+    queryFn: async ({ signal }) => {
+      const opts = { signal: AbortSignal.any([signal, AbortSignal.timeout(8000)]) };
+      const events = await nostr.query(
+        [{ kinds: [ARTICLE_KIND], authors: list, limit: 200 }],
+        opts,
+      );
+      return collectArticles(events);
+    },
+    enabled: list.length > 0,
+    staleTime: 60 * 1000,
+  });
+}
+
+/**
  * The experts' own publishing output. Long-form articles (kind 30023) come
  * from the app's relay pool via a normal REQ — no NIP-50 — and are simply
  * ordered newest-first by publish date. Top-level notes (kind 1) for the

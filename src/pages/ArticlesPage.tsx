@@ -12,9 +12,17 @@ import {
   DiscoveryPage,
   DiscoverySearch,
 } from '@/components/DiscoveryGrid';
-import { useExpertArticles, type ExpertArticle } from '@/hooks/useExpertPress';
+import {
+  useExpertArticles,
+  useCommunityArticles,
+  type ExpertArticle,
+} from '@/hooks/useExpertPress';
 import { useExperts } from '@/hooks/useExperts';
+import { useCommunityAuthors } from '@/hooks/useCommunityAuthors';
 import { Button } from '@/components/ui/button';
+
+/** Expert articles lead the page; everything after this is community backfill. */
+const EXPERT_LEAD_COUNT = 4;
 
 function matchesSearch(article: ExpertArticle, q: string): boolean {
   if (!q) return true;
@@ -25,14 +33,22 @@ function matchesSearch(article: ExpertArticle, q: string): boolean {
 }
 
 /**
- * Directory of long-form articles (NIP-23, kind 30023) published by the panel
- * of experts. The newest piece anchors the page as a lead feature; the rest
- * fill a responsive grid. Searchable by title and summary.
+ * Directory of long-form articles (NIP-23, kind 30023). The freshest pieces
+ * from the panel of experts lead the page; the feed then backfills from the
+ * broader community web-of-trust. The newest article anchors the page as a
+ * lead feature and the rest fill a responsive grid. Searchable by title and
+ * summary.
  */
 export function ArticlesPage() {
   const { experts } = useExperts();
   const [search, setSearch] = useState('');
-  const { data: articles, isLoading } = useExpertArticles();
+  const { data: expertArticles, isLoading: expertsLoading } = useExpertArticles();
+
+  // Broaden beyond the panel: backfill with the whole community web-of-trust.
+  const community = useCommunityAuthors();
+  const { data: communityArticles, isLoading: communityLoading } = useCommunityArticles(
+    community.data?.authors,
+  );
 
   useSeoMeta({
     title: 'Articles | NostrHub',
@@ -40,13 +56,32 @@ export function ArticlesPage() {
       'Long-form dispatches from the panel: in-depth articles and essays on building the Nostr protocol.',
   });
 
+  // The freshest expert pieces lead the page; the rest of the feed is filled
+  // from the broader community, deduped against the expert articles by address
+  // and ordered newest-first.
+  const combined = useMemo(() => {
+    const lead = (expertArticles ?? []).slice(0, EXPERT_LEAD_COUNT);
+    const seen = new Set(lead.map((a) => a.naddr));
+
+    const rest = [...(expertArticles ?? []).slice(EXPERT_LEAD_COUNT), ...(communityArticles ?? [])]
+      .filter((a) => {
+        if (seen.has(a.naddr)) return false;
+        seen.add(a.naddr);
+        return true;
+      })
+      .sort((a, b) => b.publishedAt - a.publishedAt);
+
+    return [...lead, ...rest];
+  }, [expertArticles, communityArticles]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return (articles ?? []).filter((article) => matchesSearch(article, q));
-  }, [articles, search]);
+    return combined.filter((article) => matchesSearch(article, q));
+  }, [combined, search]);
 
   const hasExperts = experts.length > 0;
-  const hasAnything = (articles ?? []).length > 0;
+  const hasAnything = combined.length > 0;
+  const isLoading = expertsLoading || community.isLoading || communityLoading;
 
   // The newest article anchors the page; the rest flow into the grid below.
   const [lead, ...rest] = filtered;
