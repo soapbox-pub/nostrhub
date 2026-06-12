@@ -254,7 +254,7 @@
       radial-gradient(1.5px 1.5px at 250px 160px, hsl(270 65% 78% / 0.7), transparent),
       radial-gradient(1px 1px at 60px 120px, hsl(40 30% 96% / 0.6), transparent),
       /* The forest-floor band, anchored to the bottom edge, spanning full width. */
-      image-set(url('/forest-floor.png') 1x);
+      image-set(url('/forest-floor.webp') type('image/webp') 1x);
     background-repeat:
       repeat, repeat, repeat, repeat, repeat, repeat,
       no-repeat;
