@@ -48,6 +48,17 @@ const PLATFORM_LABELS: Record<AppPlatform, string> = {
   linux: 'Linux', macos: 'macOS', windows: 'Windows',
 };
 
+/** Placeholder examples reflecting how each platform tag is used in the wild. */
+const PLATFORM_PLACEHOLDERS: Record<AppPlatform, string> = {
+  web: 'https://example.com/<bech32>',
+  ios: 'myapp://<bech32> or App Store link',
+  android: 'myapp://<bech32> or intent://… or Play Store link',
+  desktop: 'https://example.com/download',
+  linux: 'https://example.com/download',
+  macos: 'https://example.com/download',
+  windows: 'https://example.com/download',
+};
+
 /** Well-known event kinds people can toggle on with one tap. */
 const COMMON_KINDS: Array<{ kind: number; label: string }> = [
   { kind: 1, label: 'Notes' },
@@ -153,6 +164,16 @@ function isValidUrl(value: string): boolean {
 
 function isValidWsUrl(value: string): boolean {
   try { const u = new URL(value); return u.protocol === 'ws:' || u.protocol === 'wss:'; }
+  catch { return false; }
+}
+
+/**
+ * Native platform handlers conventionally use custom schemes
+ * ("myapp://<bech32>") or Android intent URLs ("intent://...#Intent;...;end"),
+ * so any parseable URI with a scheme is acceptable.
+ */
+function isValidUri(value: string): boolean {
+  try { new URL(value); return true; }
   catch { return false; }
 }
 
@@ -943,8 +964,13 @@ export function SubmitAppPage() {
     } else if (STEPS[i].id === 'platforms') {
       for (const p of platforms) {
         const url = p.url.trim();
-        if (url && !isValidUrl(url) && !isValidWsUrl(url)) {
-          next[`platform-${p.platform}`] = 'Needs to start with http://, https://, ws://, or wss://';
+        if (!url) continue;
+        if (p.platform === 'web') {
+          if (!isValidUrl(url) && !isValidWsUrl(url)) {
+            next[`platform-${p.platform}`] = 'Needs to start with http://, https://, ws://, or wss://';
+          }
+        } else if (!isValidUri(url)) {
+          next[`platform-${p.platform}`] = 'Needs to be a URL or URI with a scheme, like https://… or myapp://…';
         }
       }
     } else if (STEPS[i].id === 'protocol') {
@@ -1169,7 +1195,7 @@ export function SubmitAppPage() {
                                 id={`platform-url-${p.platform}`}
                                 value={p.url}
                                 onChange={(e) => updatePlatform(p.platform, { url: e.target.value })}
-                                placeholder={`https://example.com/${p.platform === 'web' ? 'a/<bech32>' : 'app'}`}
+                                placeholder={PLATFORM_PLACEHOLDERS[p.platform]}
                                 aria-invalid={!!errors[`platform-${p.platform}`]}
                                 className="font-mono text-xs"
                               />
