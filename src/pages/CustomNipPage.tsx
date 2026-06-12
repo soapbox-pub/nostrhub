@@ -1,44 +1,27 @@
 import { Link } from 'react-router-dom';
 import { useSeoMeta } from '@unhead/react';
 import { nip19 } from 'nostr-tools';
-import { ArrowLeft, Blocks, GitFork, AlertCircle, Pencil } from 'lucide-react';
+import { ArrowLeft, GitFork, AlertCircle, Pencil } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { MarkdownContent } from '@/components/MarkdownContent';
 import { ApproveButton } from '@/components/ApproveButton';
 import { CommentsSection } from '@/components/comments/CommentsSection';
 import { UserAvatar } from '@/components/UserAvatar';
 import { ExpertToggleButton } from '@/components/ExpertToggleButton';
+import { RelatedReposCard, UsedByAppsCard } from '@/components/CrossRefCards';
 import { useCustomNip } from '@/hooks/useCustomNips';
 import { useAuthor } from '@/hooks/useAuthor';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useAppsForCustomNip } from '@/hooks/useAppsForNip';
 import { shortNpub } from '@/lib/nostr';
-import { sanitizeUrl } from '@/lib/sanitizeUrl';
+import { uniqueRepoRefs } from '@/lib/apps';
+import { cn } from '@/lib/utils';
 import type { NipTarget } from '@/hooks/useNipApprovals';
-import type { AppInfo } from '@/lib/apps';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-
-/** A compact app card for the cross-reference list. */
-function AppChip({ app }: { app: AppInfo }) {
-  const icon = sanitizeUrl(app.picture);
-  return (
-    <Link
-      to={`/${app.naddr}`}
-      className="flex items-center gap-2.5 rounded-lg border border-border/60 bg-muted/20 px-3 py-2 transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-    >
-      <span className="grid size-7 shrink-0 place-items-center overflow-hidden rounded-lg bg-muted">
-        {icon
-          ? <img src={icon} alt="" className="size-full object-cover" />
-          : <Blocks className="size-4 text-muted-foreground" aria-hidden="true" />}
-      </span>
-      <span className="min-w-0 flex-1 truncate text-sm font-medium">{app.name}</span>
-    </Link>
-  );
-}
 
 /** Detail view for a community-authored NIP (kind 30817), routed via its naddr. */
 export function CustomNipPage({ naddr }: { naddr: string }) {
@@ -49,6 +32,11 @@ export function CustomNipPage({ naddr }: { naddr: string }) {
     author.data?.metadata?.name || author.data?.metadata?.display_name || (nip ? shortNpub(nip.author) : '');
   const appsForNip = useAppsForCustomNip(nip?.address);
 
+  // The NIP-89 listing is the nexus: apps point at both this NIP and the
+  // repos implementing it, giving us related repos by association.
+  const apps = appsForNip.data ?? [];
+  const repoRefs = uniqueRepoRefs(apps);
+
   useSeoMeta({
     title: nip ? `${nip.title} | NostrHub` : 'NIP | NostrHub',
     description: nip ? `${nip.title} — a community NIP on NostrHub.` : undefined,
@@ -58,7 +46,7 @@ export function CustomNipPage({ naddr }: { naddr: string }) {
   const isOwner = !!user && !!nip && user.pubkey === nip.author;
 
   return (
-    <Layout>
+    <Layout className={apps.length > 0 ? 'max-w-6xl' : undefined}>
       <Button variant="ghost" asChild className="mb-4 -ml-2">
         <Link to="/">
           <ArrowLeft className="mr-1.5 size-4" /> Back to NIPs
@@ -131,34 +119,39 @@ export function CustomNipPage({ naddr }: { naddr: string }) {
             </div>
           </header>
 
-          <Card className="mt-6">
-            <CardContent className="p-6">
-              <MarkdownContent content={nip.content} />
-            </CardContent>
-          </Card>
+          {/* Below the hero: NIP text + discussion on the left, cross-references
+              from NIP-89 app listings on the right. */}
+          <div
+            className={cn(
+              'mt-6 space-y-6',
+              apps.length > 0 &&
+                'lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-8 lg:space-y-0',
+            )}
+          >
+            <div className="min-w-0">
+              <Card>
+                <CardContent className="p-6">
+                  <MarkdownContent content={nip.content} />
+                </CardContent>
+              </Card>
 
-          {(appsForNip.data?.length ?? 0) > 0 && (
-            <section className="mt-8 space-y-3">
-              <h2 className="text-xl font-semibold tracking-tight">Used by apps</h2>
-              <p className="text-sm text-muted-foreground">
-                Nostr apps that declare they implement this NIP.
-              </p>
-              <div className="grid gap-1.5 sm:grid-cols-2">
-                {appsForNip.data!.map((app) => (
-                  <AppChip key={app.address} app={app} />
-                ))}
-              </div>
-            </section>
-          )}
+              <section className="mt-10 space-y-4">
+                <h2 className="text-xl font-semibold tracking-tight">Discussion</h2>
+                <CommentsSection
+                  root={nip.event}
+                  emptyStateMessage="No discussion yet"
+                  emptyStateSubtitle="Share feedback on this NIP with the community."
+                />
+              </section>
+            </div>
 
-          <section className="mt-10 space-y-4">
-            <h2 className="text-xl font-semibold tracking-tight">Discussion</h2>
-            <CommentsSection
-              root={nip.event}
-              emptyStateMessage="No discussion yet"
-              emptyStateSubtitle="Share feedback on this NIP with the community."
-            />
-          </section>
+            {apps.length > 0 && (
+              <aside aria-label="NIP cross-references" className="space-y-4 lg:sticky lg:top-24">
+                <UsedByAppsCard apps={apps} />
+                <RelatedReposCard repoRefs={repoRefs} />
+              </aside>
+            )}
+          </div>
         </article>
       )}
     </Layout>

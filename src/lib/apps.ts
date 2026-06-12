@@ -214,6 +214,35 @@ export function hasFullAppMetadata(app: AppInfo): boolean {
 }
 
 /**
+ * Collect the unique repo references across a set of app listings — the
+ * NIP-89 event is the nexus linking NIPs to the repos that implement them.
+ */
+export function uniqueRepoRefs(apps: AppInfo[]): AppRepoRef[] {
+  const map = new Map<string, AppRepoRef>();
+  for (const app of apps) {
+    for (const ref of app.repoRefs) {
+      if (!map.has(ref.address)) map.set(ref.address, ref);
+    }
+  }
+  return Array.from(map.values());
+}
+
+/** Collect the unique NIP references across a set of app listings. */
+export function uniqueNipRefs(apps: AppInfo[]): AppNipRef[] {
+  const seen = new Set<string>();
+  const refs: AppNipRef[] = [];
+  for (const app of apps) {
+    for (const ref of app.nipRefs) {
+      const key = ref.type === 'official' ? `official:${ref.number}` : `custom:${ref.address}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      refs.push(ref);
+    }
+  }
+  return refs;
+}
+
+/**
  * Reduce kind 31990 events to the latest revision per (pubkey, d) address,
  * parsed into AppInfo and sorted newest first.
  */

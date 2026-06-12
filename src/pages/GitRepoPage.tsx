@@ -4,7 +4,6 @@ import { nip19 } from 'nostr-tools';
 import { formatDistanceToNow } from 'date-fns';
 import {
   AlertCircle,
-  Blocks,
   Crown,
   ExternalLink,
   Fingerprint,
@@ -18,36 +17,18 @@ import { UserAvatar } from '@/components/UserAvatar';
 import { CopyButton } from '@/components/git/CopyButton';
 import { RepoFileBrowser } from '@/components/git/RepoFileBrowser';
 import { CommentsSection } from '@/components/comments/CommentsSection';
+import { UsedByAppsCard, RelatedNipsCard } from '@/components/CrossRefCards';
 import { useGitRepo } from '@/hooks/useGitRepo';
 import { useAuthor } from '@/hooks/useAuthor';
 import { useAppsForRepo } from '@/hooks/useAppsForRepo';
 import { shortNpub } from '@/lib/nostr';
-import { sanitizeUrl } from '@/lib/sanitizeUrl';
 import { GIT_REPO_KIND, type GitRepoAnnouncement } from '@/lib/git';
-import type { AppInfo } from '@/lib/apps';
+import { uniqueNipRefs } from '@/lib/apps';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-
-/** A compact app card for the cross-reference list. */
-function AppChip({ app }: { app: AppInfo }) {
-  const icon = sanitizeUrl(app.picture);
-  return (
-    <Link
-      to={`/${app.naddr}`}
-      className="flex items-center gap-2.5 rounded-lg border border-border/60 bg-muted/20 px-3 py-2 transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-    >
-      <span className="grid size-7 shrink-0 place-items-center overflow-hidden rounded-lg bg-muted">
-        {icon
-          ? <img src={icon} alt="" className="size-full object-cover" />
-          : <Blocks className="size-4 text-muted-foreground" aria-hidden="true" />}
-      </span>
-      <span className="min-w-0 flex-1 truncate text-sm font-medium">{app.name}</span>
-    </Link>
-  );
-}
 
 interface GitRepoPageProps {
   /** Repository owner (hex pubkey). */
@@ -100,8 +81,8 @@ function RepoSkeleton() {
 function RepoSidebar({ repo }: { repo: GitRepoAnnouncement }) {
   return (
     <>
-      <Card>
-        <CardHeader className="pb-3">
+      <Card className="gap-2">
+        <CardHeader>
           <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             <Users className="size-4" aria-hidden="true" /> Maintainers
           </CardTitle>
@@ -115,8 +96,8 @@ function RepoSidebar({ repo }: { repo: GitRepoAnnouncement }) {
       </Card>
 
       {repo.relays.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
+        <Card className="gap-2">
+          <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               <Radio className="size-4" aria-hidden="true" /> Repository relays
             </CardTitle>
@@ -134,8 +115,8 @@ function RepoSidebar({ repo }: { repo: GitRepoAnnouncement }) {
       )}
 
       {repo.earliestCommit && (
-        <Card>
-          <CardHeader className="pb-3">
+        <Card className="gap-2">
+          <CardHeader>
             <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               <Fingerprint className="size-4" aria-hidden="true" /> Repository fingerprint
             </CardTitle>
@@ -172,6 +153,10 @@ export function GitRepoPage({ pubkey, identifier, relays }: GitRepoPageProps) {
   const repoAddress = `${GIT_REPO_KIND}:${pubkey}:${identifier}`;
   const appsForRepo = useAppsForRepo(repoAddress);
 
+  // Apps referencing this repo in their NIP-89 listing also declare the NIPs
+  // they implement — the listing is the nexus tying repos to NIPs.
+  const nipRefs = uniqueNipRefs(appsForRepo.data ?? []);
+
   const authorName =
     author.data?.metadata?.name || author.data?.metadata?.display_name || shortNpub(pubkey);
 
@@ -186,7 +171,15 @@ export function GitRepoPage({ pubkey, identifier, relays }: GitRepoPageProps) {
     : state?.createdAt;
 
   return (
-    <Layout sidebar={repo ? <RepoSidebar repo={repo} /> : undefined}>
+    <Layout
+      sidebar={repo ? (
+        <>
+          <UsedByAppsCard apps={appsForRepo.data ?? []} />
+          <RelatedNipsCard nipRefs={nipRefs} />
+          <RepoSidebar repo={repo} />
+        </>
+      ) : undefined}
+    >
       {isLoading ? (
         <RepoSkeleton />
       ) : isError || !repo ? (
@@ -263,21 +256,6 @@ export function GitRepoPage({ pubkey, identifier, relays }: GitRepoPageProps) {
 
           {/* ——— Files (clone, branches, and tags live in its header) ——— */}
           <RepoFileBrowser repo={repo} state={state} />
-
-          {/* ——— Apps using this repo ——— */}
-          {(appsForRepo.data?.length ?? 0) > 0 && (
-            <section className="space-y-3">
-              <h2 className="font-display text-xl font-semibold tracking-tight">Used by apps</h2>
-              <p className="text-sm text-muted-foreground">
-                Nostr apps that link to this repository in their NIP-89 listing.
-              </p>
-              <div className="grid gap-1.5 sm:grid-cols-2">
-                {appsForRepo.data!.map((app) => (
-                  <AppChip key={app.address} app={app} />
-                ))}
-              </div>
-            </section>
-          )}
 
           {/* ——— Discussion ——— */}
           <section className="space-y-4">

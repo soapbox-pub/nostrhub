@@ -6,7 +6,11 @@ import { Layout } from '@/components/Layout';
 import { MarkdownContent } from '@/components/MarkdownContent';
 import { ApproveButton } from '@/components/ApproveButton';
 import { CommentsSection } from '@/components/comments/CommentsSection';
+import { RelatedReposCard, UsedByAppsCard } from '@/components/CrossRefCards';
 import { useOfficialNip } from '@/hooks/useOfficialNips';
+import { useAppsForOfficialNip } from '@/hooks/useAppsForNip';
+import { uniqueRepoRefs } from '@/lib/apps';
+import { cn } from '@/lib/utils';
 import type { NipTarget } from '@/hooks/useNipApprovals';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -25,6 +29,12 @@ const OfficialNipPage = () => {
   const code = (number ?? '').toUpperCase();
   const { data, isLoading, isError } = useOfficialNip(code);
 
+  // NIP-89 listings referencing this NIP — the nexus of discoverability —
+  // also surface the repos those apps are built from.
+  const appsForNip = useAppsForOfficialNip(code || undefined);
+  const apps = appsForNip.data ?? [];
+  const repoRefs = uniqueRepoRefs(apps);
+
   const title = useMemo(
     () => (data ? extractTitle(data.content, `NIP-${code}`) : `NIP-${code}`),
     [data, code],
@@ -38,7 +48,7 @@ const OfficialNipPage = () => {
   const target: NipTarget = { type: 'official', number: code };
 
   return (
-    <Layout>
+    <Layout className={apps.length > 0 ? 'max-w-6xl' : undefined}>
       <Button variant="ghost" asChild className="mb-4 -ml-2">
         <Link to="/">
           <ArrowLeft className="mr-1.5 size-4" /> Back to NIPs
@@ -80,20 +90,39 @@ const OfficialNipPage = () => {
             </div>
           </header>
 
-          <Card className="mt-6">
-            <CardContent className="p-6">
-              <MarkdownContent content={data.content} />
-            </CardContent>
-          </Card>
+          {/* Below the hero: NIP text + discussion on the left, cross-references
+              from NIP-89 app listings on the right. */}
+          <div
+            className={cn(
+              'mt-6 space-y-6',
+              apps.length > 0 &&
+                'lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-8 lg:space-y-0',
+            )}
+          >
+            <div className="min-w-0">
+              <Card>
+                <CardContent className="p-6">
+                  <MarkdownContent content={data.content} />
+                </CardContent>
+              </Card>
 
-          <section className="mt-10 space-y-4">
-            <h2 className="text-xl font-semibold tracking-tight">Discussion</h2>
-            <CommentsSection
-              root={new URL(`${GITHUB_BASE}/${code}.md`)}
-              emptyStateMessage="No discussion yet"
-              emptyStateSubtitle="Share feedback on this NIP with the community."
-            />
-          </section>
+              <section className="mt-10 space-y-4">
+                <h2 className="text-xl font-semibold tracking-tight">Discussion</h2>
+                <CommentsSection
+                  root={new URL(`${GITHUB_BASE}/${code}.md`)}
+                  emptyStateMessage="No discussion yet"
+                  emptyStateSubtitle="Share feedback on this NIP with the community."
+                />
+              </section>
+            </div>
+
+            {apps.length > 0 && (
+              <aside aria-label="NIP cross-references" className="space-y-4 lg:sticky lg:top-24">
+                <UsedByAppsCard apps={apps} />
+                <RelatedReposCard repoRefs={repoRefs} />
+              </aside>
+            )}
+          </div>
         </article>
       )}
     </Layout>

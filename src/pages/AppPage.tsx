@@ -10,6 +10,7 @@ import { ExpertToggleButton } from '@/components/ExpertToggleButton';
 import { TierBadge } from '@/components/TierBadge';
 import { AppReviewForm } from '@/components/AppReviewForm';
 import { AppReviewCard } from '@/components/AppReviewCard';
+import { SidebarCardTitle } from '@/components/CrossRefCards';
 import { useApp } from '@/hooks/useApps';
 import { useAppReviews } from '@/hooks/useAppReviews';
 import { useAuthor } from '@/hooks/useAuthor';
@@ -30,7 +31,7 @@ import type { AppInfo, AppNipRef, AppRepoRef, AppZapstoreRef } from '@/lib/apps'
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
@@ -219,16 +220,6 @@ function ZapstoreRefRow({ zapRef }: { zapRef: AppZapstoreRef }) {
       title={app?.name ?? zapRef.identifier}
       sublabel={app?.summary || `Zapstore · ${zapRef.identifier}`}
     />
-  );
-}
-
-/** Repo-style sidebar card heading: icon + uppercase muted title. */
-function SidebarCardTitle({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-      {icon}
-      {children}
-    </CardTitle>
   );
 }
 
