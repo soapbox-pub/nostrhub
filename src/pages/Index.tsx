@@ -144,7 +144,7 @@ const Index = () => {
         .slice(0, 6),
     [demoSearch.data],
   );
-  const latestNips = (latestNipsQuery.data ?? []).slice(0, 6);
+  const latestNips = (latestNipsQuery.data ?? []).slice(0, 9);
   const showroomApps = (communityApps.data ?? []).slice(0, 3);
   const showroomLoading = community.isLoading || (hasCommunity && communityApps.isLoading);
   const latestReleases = (releasesQuery.data ?? []).slice(0, 6);
