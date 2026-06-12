@@ -141,48 +141,40 @@ export function parseAppEvent(event: NostrEvent): AppInfo | null {
     ),
   );
 
-  // NIP references: `a` tags with marker "nip" (custom NIPs, kind 30817)
-  // and `i` tags with marker "nip" (official NIPs by number, e.g. "nip-01").
+  // References carried by the event:
+  // - `i` tags: official NIPs, either marker form (["i", "nip-01", "nip"]) or a
+  //   NIP-73 GitHub blob URL (["i", "https://github.com/.../01.md"]).
+  // - `a` tags: addressable refs, either marker form (["a", addr, hint, "nip" |
+  //   "repo" | "zapstore"]) or plain — in which case the kind prefix of the
+  //   address ("30817:", "30617:", "32267:") is unambiguous.
   const nipRefs: AppNipRef[] = [];
-  for (const tag of event.tags) {
-    if (tag[0] === 'a' && tag[3] === 'nip' && tag[1]) {
-      nipRefs.push({ type: 'custom', address: tag[1], relayHint: tag[2] || undefined });
-    } else if (tag[0] === 'i' && tag[2] === 'nip' && tag[1]) {
-      // value like "nip-01" → number "01"
-      const num = tag[1].replace(/^nip-/i, '').padStart(2, '0');
-      nipRefs.push({ type: 'official', number: num });
-    }
-  }
-
-  // Git repo references: `a` tags with marker "repo" (kind 30617)
   const repoRefs: AppRepoRef[] = [];
-  for (const tag of event.tags) {
-    if (tag[0] === 'a' && tag[3] === 'repo' && tag[1]) {
-      const parts = tag[1].split(':');
-      if (parts.length === 3 && parts[0] === '30617') {
-        repoRefs.push({
-          address: tag[1],
-          pubkey: parts[1],
-          identifier: parts[2],
-          relayHint: tag[2] || undefined,
-        });
-      }
-    }
-  }
-
-  // Zapstore listing references: `a` tags with marker "zapstore" (kind 32267)
   const zapstoreRefs: AppZapstoreRef[] = [];
   for (const tag of event.tags) {
-    if (tag[0] === 'a' && tag[3] === 'zapstore' && tag[1]) {
-      const parts = tag[1].split(':');
-      if (parts.length === 3 && parts[0] === '32267') {
-        zapstoreRefs.push({
-          address: tag[1],
-          pubkey: parts[1],
-          identifier: parts[2],
-          relayHint: tag[2] || undefined,
-        });
+    if (tag[0] === 'i' && tag[1]) {
+      if (tag[2] === 'nip') {
+        // value like "nip-01" → number "01"
+        const num = tag[1].replace(/^nip-/i, '').padStart(2, '0');
+        nipRefs.push({ type: 'official', number: num });
+      } else {
+        const num = nipNumberFromUrl(tag[1]);
+        if (num) nipRefs.push({ type: 'official', number: num });
       }
+      continue;
+    }
+
+    if (tag[0] !== 'a' || !tag[1]) continue;
+    const parts = tag[1].split(':');
+    const kindPrefix = parts[0];
+    const marker = tag[3];
+    const relayHint = tag[2] || undefined;
+
+    if (marker === 'nip' || (!marker && kindPrefix === '30817')) {
+      nipRefs.push({ type: 'custom', address: tag[1], relayHint });
+    } else if (kindPrefix === '30617' && parts.length === 3 && (marker === 'repo' || !marker)) {
+      repoRefs.push({ address: tag[1], pubkey: parts[1], identifier: parts[2], relayHint });
+    } else if (kindPrefix === '32267' && parts.length === 3 && (marker === 'zapstore' || !marker)) {
+      zapstoreRefs.push({ address: tag[1], pubkey: parts[1], identifier: parts[2], relayHint });
     }
   }
 

@@ -25,6 +25,7 @@ export function AppRouter() {
         <Route path="/repos" element={<GitReposPage />} />
         <Route path="/apps" element={<AppsPage />} />
         <Route path="/apps/submit" element={<SubmitAppPage />} />
+        <Route path="/apps/edit/:naddr" element={<SubmitAppPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/stats" element={<StatsPage />} />
         <Route path="/experts" element={<ExpertsPage />} />

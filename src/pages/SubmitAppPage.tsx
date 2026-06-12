@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useSeoMeta } from '@unhead/react';
 import {
   ArrowLeft, ArrowRight, AlertCircle, Blocks, BookOpen, Check, ChevronDown,
   ExternalLink, FolderGit2, ImagePlus, Loader2, MonitorSmartphone, Pencil,
-  PlusCircle, Rocket, Search, ShoppingBag, Sparkles, Tags, Upload, X,
+  PlusCircle, Rocket, Save, Search, ShoppingBag, Sparkles, Tags, Upload, X,
 } from 'lucide-react';
 import { nip19 } from 'nostr-tools';
 import { useQueryClient } from '@tanstack/react-query';
@@ -18,6 +18,7 @@ import { useNipSearch } from '@/hooks/useNipSearch';
 import { useGitRepos } from '@/hooks/useGitRepos';
 import { useGitRepoSearch } from '@/hooks/useGitRepoSearch';
 import { useMyZapstoreApps, useZapstoreSearch } from '@/hooks/useZapstoreSearch';
+import { useApp } from '@/hooks/useApps';
 import { useToast } from '@/hooks/useToast';
 import { LoginArea } from '@/components/auth/LoginArea';
 import { Button } from '@/components/ui/button';
@@ -824,6 +825,24 @@ export function SubmitAppPage() {
   const queryClient = useQueryClient();
   const officialNips = useOfficialNips();
 
+  // --- edit mode (route: /apps/edit/:naddr) ---
+  const { naddr: editNaddr } = useParams<{ naddr: string }>();
+  const isEditMode = Boolean(editNaddr);
+
+  /** Decoded pubkey + d-tag of the listing being edited, or null if invalid. */
+  const editTarget = useMemo(() => {
+    if (!editNaddr) return null;
+    try {
+      const decoded = nip19.decode(editNaddr);
+      if (decoded.type !== 'naddr' || decoded.data.kind !== APP_HANDLER_KIND) return null;
+      return { pubkey: decoded.data.pubkey, identifier: decoded.data.identifier };
+    } catch {
+      return null;
+    }
+  }, [editNaddr]);
+
+  const existingApp = useApp(editTarget?.pubkey, editTarget?.identifier);
+
   // --- wizard state ---
   const [step, setStep] = useState(0);
   const [maxVisited, setMaxVisited] = useState(0);
@@ -852,8 +871,52 @@ export function SubmitAppPage() {
 
   const myZapstoreApps = useMyZapstoreApps(user?.pubkey);
 
+  // Prefill the form from the existing listing when editing, via the
+  // "adjust state during render" pattern (https://react.dev/learn/you-might-not-need-an-effect).
+  // Keyed to the loaded revision id so user edits aren't clobbered by refetches.
+  const [prefilledFrom, setPrefilledFrom] = useState<string | null>(null);
+  const prefillSource = existingApp.data;
+  if (isEditMode && prefillSource && prefilledFrom !== prefillSource.event.id) {
+    setPrefilledFrom(prefillSource.event.id);
+
+    setName(prefillSource.name);
+    setAbout(prefillSource.about ?? '');
+    setPicture(prefillSource.picture ?? '');
+    setWebsite(prefillSource.website ?? '');
+    setNip05(prefillSource.nip05 ?? '');
+    setKinds(prefillSource.supportedKinds);
+    setTags(prefillSource.hashtags);
+
+    // Platform URLs and hints come straight from the event tags.
+    const platformEntries: PlatformEntry[] = [];
+    for (const [tagName, url, hint] of prefillSource.event.tags) {
+      if (
+        (APP_PLATFORMS as readonly string[]).includes(tagName) &&
+        !platformEntries.some((p) => p.platform === tagName)
+      ) {
+        platformEntries.push({ platform: tagName as AppPlatform, url: url ?? '', hint: hint ?? '' });
+      }
+    }
+    setPlatforms(platformEntries);
+
+    setNipRefs(prefillSource.nipRefs.map((r): NipRefEntry =>
+      r.type === 'official'
+        ? { type: 'official', number: r.number, address: '', relayHint: '' }
+        : { type: 'custom', number: '', address: r.address, relayHint: r.relayHint ?? '' },
+    ));
+    setRepoRefs(prefillSource.repoRefs.map((r): RepoRefEntry => ({
+      address: r.address, relayHint: r.relayHint ?? '', name: r.identifier,
+    })));
+    setZapstoreRefs(prefillSource.zapstoreRefs.map((r): ZapstoreRefEntry => ({
+      address: r.address, relayHint: r.relayHint ?? '', name: r.identifier,
+    })));
+
+    // Everything is already filled in, so let the user jump to any step.
+    setMaxVisited(STEPS.length - 1);
+  }
+
   useSeoMeta({
-    title: 'Submit an App | NostrHub',
+    title: isEditMode ? 'Edit App | NostrHub' : 'Submit an App | NostrHub',
     description: 'Announce your Nostr application as a NIP-89 handler event so the community can discover it.',
   });
 
@@ -1127,8 +1190,11 @@ export function SubmitAppPage() {
     const metadata: Record<string, string> = { name: name.trim(), about: about.trim(), picture: picture.trim(), website: website.trim() };
     if (nip05.trim()) metadata.nip05 = nip05.trim();
 
+    // Editing republishes the same (pubkey, d) address so relays replace the
+    // old revision; submitting mints a fresh identifier.
+    const dTag = editTarget?.identifier ?? generateDTag();
     const eventTags: string[][] = [
-      ['d', generateDTag()],
+      ['d', dTag],
       ['alt', `NIP-89 handler: ${name.trim()}`],
     ];
 
@@ -1165,7 +1231,13 @@ export function SubmitAppPage() {
       if (app) {
         queryClient.setQueryData(['app', app.pubkey, app.identifier], app);
       }
-      toast({ title: '🚀 Your app is live!', description: 'Welcome to the directory.' });
+      // Directory listings cache the old revision; refetch on next view.
+      queryClient.invalidateQueries({ queryKey: ['apps'] });
+      toast(
+        isEditMode
+          ? { title: 'Changes saved', description: 'Your listing has been updated.' }
+          : { title: '🚀 Your app is live!', description: 'Welcome to the directory.' },
+      );
       navigate(`/${naddr}`);
     } catch (err) {
       toast({ title: 'Failed to publish', description: err instanceof Error ? err.message : 'Unknown error', variant: 'destructive' });
@@ -1175,30 +1247,77 @@ export function SubmitAppPage() {
   const current = STEPS[step];
   const validLogo = picture && isValidUrl(picture);
 
+  /** Why the edit wizard can't be shown yet (or at all), if anything. */
+  const editGuard: 'invalid' | 'loading' | 'missing' | 'forbidden' | null = !isEditMode
+    ? null
+    : !editTarget
+      ? 'invalid'
+      : user && user.pubkey !== editTarget.pubkey
+        ? 'forbidden'
+        : existingApp.isLoading
+          ? 'loading'
+          : !existingApp.data
+            ? 'missing'
+            : null;
+
+  const backTo = isEditMode && editTarget ? `/${editNaddr}` : '/apps';
+  const backLabel = isEditMode && editTarget ? 'Back to app' : 'Back to Apps';
+
   return (
     <Layout>
       <div className="mx-auto max-w-2xl">
         <Button variant="ghost" asChild className="mb-4 -ml-2">
-          <Link to="/apps"><ArrowLeft className="mr-1.5 size-4" /> Back to Apps</Link>
+          <Link to={backTo}><ArrowLeft className="mr-1.5 size-4" /> {backLabel}</Link>
         </Button>
 
         <div ref={stepTopRef} className="scroll-mt-24 space-y-2 mb-6">
-          <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
-            Submit <span className="text-cosmic">your app</span>
-          </h1>
-          <p className="max-w-prose text-muted-foreground">
-            Five quick steps and your app joins the directory, published to Nostr itself as a{' '}
-            <span className="font-mono text-sm">kind:{APP_HANDLER_KIND}</span> event.
-          </p>
+          {isEditMode ? (
+            <>
+              <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
+                Edit <span className="text-cosmic">your app</span>
+              </h1>
+              <p className="max-w-prose text-muted-foreground">
+                Update your listing and save — relays replace the old revision of your{' '}
+                <span className="font-mono text-sm">kind:{APP_HANDLER_KIND}</span> event.
+              </p>
+            </>
+          ) : (
+            <>
+              <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
+                Submit <span className="text-cosmic">your app</span>
+              </h1>
+              <p className="max-w-prose text-muted-foreground">
+                Five quick steps and your app joins the directory, published to Nostr itself as a{' '}
+                <span className="font-mono text-sm">kind:{APP_HANDLER_KIND}</span> event.
+              </p>
+            </>
+          )}
         </div>
 
         {!user ? (
           <Card>
             <CardContent className="space-y-4 pt-6">
-              <Alert><AlertCircle className="size-4" /><AlertDescription>You must be logged in to submit an app.</AlertDescription></Alert>
+              <Alert><AlertCircle className="size-4" /><AlertDescription>You must be logged in to {isEditMode ? 'edit' : 'submit'} an app.</AlertDescription></Alert>
               <LoginArea className="max-w-60" />
             </CardContent>
           </Card>
+        ) : editGuard === 'loading' ? (
+          <div className="space-y-4">
+            <Skeleton className="h-2 w-full rounded-full" />
+            <Skeleton className="h-8 w-64" />
+            <Skeleton className="h-96 w-full rounded-xl" />
+          </div>
+        ) : editGuard ? (
+          <Alert variant="destructive">
+            <AlertCircle className="size-4" />
+            <AlertDescription>
+              {editGuard === 'invalid'
+                ? 'That link doesn\u2019t point to an app listing.'
+                : editGuard === 'forbidden'
+                  ? 'Only the account that published this listing can edit it.'
+                  : 'Could not load this app listing. It may not exist on your relays.'}
+            </AlertDescription>
+          </Alert>
         ) : (
           <div className="space-y-6">
             <WizardProgress step={step} maxVisited={maxVisited} onJump={goToStep} />
@@ -1232,7 +1351,7 @@ export function SubmitAppPage() {
                   {/* ─────────────────── Step 1: Basics ─────────────────── */}
                   {current.id === 'basics' && (
                     <>
-                      {(myZapstoreApps.data?.length ?? 0) > 0 && (
+                      {!isEditMode && (myZapstoreApps.data?.length ?? 0) > 0 && (
                         <div className="space-y-2 rounded-lg border border-nebula/30 bg-nebula/5 p-3 motion-safe:animate-in motion-safe:fade-in">
                           <p className="text-xs font-medium">
                             <ShoppingBag className="mr-1 inline size-3.5 text-nebula" aria-hidden="true" />
@@ -1675,7 +1794,7 @@ export function SubmitAppPage() {
               <div className="flex items-center justify-between gap-3 pb-4">
                 {step === 0 ? (
                   <Button type="button" variant="ghost" asChild>
-                    <Link to="/apps">Cancel</Link>
+                    <Link to={backTo}>Cancel</Link>
                   </Button>
                 ) : (
                   <Button type="button" variant="ghost" onClick={handleBack} className="gap-1.5">
@@ -1691,8 +1810,10 @@ export function SubmitAppPage() {
                     className="min-w-44 gap-2 bg-gradient-to-r from-primary to-nebula text-white shadow-md transition-all hover:opacity-90 hover:shadow-lg motion-safe:active:scale-95"
                   >
                     {isPending
-                      ? <><Loader2 className="size-4 animate-spin" aria-hidden="true" /> Launching…</>
-                      : <><Rocket className="size-4" aria-hidden="true" /> Publish app</>}
+                      ? <><Loader2 className="size-4 animate-spin" aria-hidden="true" /> {isEditMode ? 'Saving…' : 'Launching…'}</>
+                      : isEditMode
+                        ? <><Save className="size-4" aria-hidden="true" /> Save changes</>
+                        : <><Rocket className="size-4" aria-hidden="true" /> Publish app</>}
                   </Button>
                 ) : (
                   <Button type="submit" className="min-w-32 gap-1.5">

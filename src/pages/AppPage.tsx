@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSeoMeta } from '@unhead/react';
 import { nip19 } from 'nostr-tools';
-import { AlertCircle, ArrowLeft, Blocks, BookOpen, ChevronDown, ExternalLink, FolderGit2, ShoppingBag } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Blocks, BookOpen, ChevronDown, ExternalLink, FolderGit2, Pencil, ShoppingBag } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { CommentsSection } from '@/components/comments/CommentsSection';
 import { UserAvatar } from '@/components/UserAvatar';
@@ -13,6 +13,7 @@ import { AppReviewCard } from '@/components/AppReviewCard';
 import { useApp } from '@/hooks/useApps';
 import { useAppReviews } from '@/hooks/useAppReviews';
 import { useAuthor } from '@/hooks/useAuthor';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useGitRepo } from '@/hooks/useGitRepo';
 import { shortNpub } from '@/lib/nostr';
 import { sanitizeUrl } from '@/lib/sanitizeUrl';
@@ -220,6 +221,8 @@ export function AppPage({ pubkey, identifier }: AppPageProps) {
   const { data: app, isLoading, isError } = useApp(pubkey, identifier);
   const reviews = useAppReviews(app?.address);
   const author = useAuthor(pubkey);
+  const { user } = useCurrentUser();
+  const isOwner = user?.pubkey === pubkey;
   const authorMeta = author.data?.metadata;
   const authorName = authorMeta?.name || authorMeta?.display_name || shortNpub(pubkey);
   const [nipOpen, setNipOpen] = useState(false);
@@ -276,14 +279,24 @@ export function AppPage({ pubkey, identifier }: AppPageProps) {
                   <Blocks className="size-8 text-muted-foreground" aria-hidden="true" />
                 )}
               </span>
-              {website && (
-                <Button asChild className="gap-1.5 rounded-full">
-                  <a href={website} target="_blank" rel="noopener noreferrer">
-                    Open app
-                    <ExternalLink className="size-4" aria-hidden="true" />
-                  </a>
-                </Button>
-              )}
+              <div className="flex flex-wrap items-center gap-2">
+                {isOwner && (
+                  <Button asChild variant="outline" className="gap-1.5 rounded-full">
+                    <Link to={`/apps/edit/${app.naddr}`}>
+                      <Pencil className="size-4" aria-hidden="true" />
+                      Edit
+                    </Link>
+                  </Button>
+                )}
+                {website && (
+                  <Button asChild className="gap-1.5 rounded-full">
+                    <a href={website} target="_blank" rel="noopener noreferrer">
+                      Open app
+                      <ExternalLink className="size-4" aria-hidden="true" />
+                    </a>
+                  </Button>
+                )}
+              </div>
             </div>
 
             <div className="space-y-1.5">
