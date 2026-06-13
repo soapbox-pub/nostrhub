@@ -2,7 +2,13 @@ image: node:22
 
 default:
   interruptible: true
-  timeout: 1 minute
+  timeout: 5 minutes
+  cache:
+    key:
+      files:
+        - package-lock.json
+    paths:
+      - node_modules/
 
 stages:
   - test
@@ -10,18 +16,38 @@ stages:
 
 test:
   stage: test
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never
+    - when: always
   script:
     - npm run test
 
-pages:
+# Deploy the built web app to nostrhub.io on venus.vps via rsync over SSH.
+# Uses the per-site jailed deploy key documented in ~/GITLAB_DEPLOY.md.
+# DEPLOY_SSH_KEY and DEPLOY_TARGET are protected CI/CD variables; they're
+# only exposed to jobs on the protected default branch.
+deploy:
   stage: deploy
+  timeout: 10 minutes
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH && $DEPLOY_SSH_KEY && $DEPLOY_TARGET
   script:
+    # Build the web app (build script also writes dist/404.html)
+    - npm ci
     - npm run build
-    - rm -rf public
-    - mv dist public
-  artifacts:
-    paths:
-      - public
-  only:
-    variables:
-      - $CI_DEFAULT_BRANCH == $CI_COMMIT_REF_NAME
+
+    # Install rsync + ssh client and load the deploy key
+    - apt-get update -qq && apt-get install -y --no-install-recommends rsync openssh-client >/dev/null
+    - mkdir -p ~/.ssh && chmod 700 ~/.ssh
+    - echo "$DEPLOY_SSH_KEY" | tr -d '\r' > ~/.ssh/id_ed25519 && chmod 600 ~/.ssh/id_ed25519
+    - ssh-keyscan -H "${DEPLOY_TARGET##*@}" >> ~/.ssh/known_hosts 2>/dev/null
+
+    # Two-phase rsync: upload hashed assets first, then index.html last, so the
+    # site never serves an index.html that points at assets that haven't
+    # finished uploading. The destination ":/" is the rrsync jail root on venus,
+    # which maps to /var/www/nostrhub.io/.
+    - rsync -av --exclude=/sw.js --exclude=/index.html -e "ssh -i ~/.ssh/id_ed25519" dist/ "${DEPLOY_TARGET}:/"
+    - rsync -av -e "ssh -i ~/.ssh/id_ed25519" dist/index.html "${DEPLOY_TARGET}:/"
