@@ -7,7 +7,7 @@ import {
   useNostrLogin,
 } from '@nostrify/react/login';
 import { useAppContext } from '@/hooks/useAppContext';
-import { APP_RELAYS } from '@/lib/appRelays';
+import { APP_RELAYS, NIP46_RELAY } from '@/lib/appRelays';
 
 // NOTE: This file should not be edited except for adding new login methods.
 
@@ -65,9 +65,13 @@ export function useLoginActions() {
         .map((r) => r.url);
       // Fall back to the app default relays if the user has none configured,
       // so the remote signer has multiple connection options during handshake.
-      return relays.length > 0
+      const base = relays.length > 0
         ? relays
         : APP_RELAYS.relays.filter((r) => r.write).map((r) => r.url);
+      // Always include the dedicated NIP-46 relay so remote signers that default
+      // to it can complete the connect handshake, even though it isn't part of
+      // the app's general-purpose relay list. Deduped to avoid duplicates.
+      return [...new Set([...base, NIP46_RELAY])];
     },
     // Log out the current user
     async logout(): Promise<void> {

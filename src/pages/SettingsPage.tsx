@@ -10,6 +10,7 @@ import { useAppContext } from '@/hooks/useAppContext';
 import { useAuthor } from '@/hooks/useAuthor';
 import { useToast } from '@/hooks/useToast';
 import { DEFAULT_EXPERTS, DEFAULT_COMMUNITY_CAP } from '@/lib/experts';
+import { APP_RELAYS } from '@/lib/appRelays';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -305,6 +306,158 @@ function CommunitySettings() {
   );
 }
 
+/** Normalize a relay URL: trim, require a ws:// or wss:// scheme. Returns null if invalid. */
+function normalizeRelayUrl(input: string): string | null {
+  const value = input.trim();
+  if (!value) return null;
+  const withScheme = /^wss?:\/\//i.test(value) ? value : `wss://${value}`;
+  try {
+    const url = new URL(withScheme);
+    if (url.protocol !== 'ws:' && url.protocol !== 'wss:') return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+function RelaySettings() {
+  const { config, updateConfig } = useAppContext();
+  const { toast } = useToast();
+  const relays = config.relayMetadata.relays;
+  const [input, setInput] = useState('');
+
+  const setRelays = (next: { url: string; read: boolean; write: boolean }[]) => {
+    updateConfig((c) => ({
+      ...c,
+      relayMetadata: { relays: next, updatedAt: Math.floor(Date.now() / 1000) },
+    }));
+  };
+
+  const handleAdd = () => {
+    const url = normalizeRelayUrl(input);
+    if (!url) {
+      toast({
+        title: 'Invalid relay URL',
+        description: 'Enter a valid relay URL, e.g. wss://relay.example.com',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (relays.some((r) => r.url === url)) {
+      toast({ title: 'Relay already added' });
+      setInput('');
+      return;
+    }
+    setRelays([...relays, { url, read: true, write: true }]);
+    setInput('');
+  };
+
+  const removeRelay = (url: string) => {
+    setRelays(relays.filter((r) => r.url !== url));
+  };
+
+  const togglePermission = (url: string, key: 'read' | 'write') => {
+    setRelays(relays.map((r) => (r.url === url ? { ...r, [key]: !r[key] } : r)));
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Relays</CardTitle>
+        <CardDescription>
+          The relays NostrHub reads from and publishes to. These are stored only on this device and
+          are not synced from or to your Nostr relay list. Disable <span className="text-foreground">Read</span>{' '}
+          to stop fetching from a relay, or <span className="text-foreground">Write</span> to stop
+          publishing to it.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleAdd();
+              }
+            }}
+            placeholder="wss://relay.example.com"
+            aria-label="Add a relay URL"
+          />
+          <Button onClick={handleAdd} className="gap-1.5 sm:w-auto">
+            <Plus className="size-4" /> Add
+          </Button>
+        </div>
+
+        {relays.length > 0 ? (
+          <ul className="space-y-2">
+            {relays.map((relay) => (
+              <li
+                key={relay.url}
+                className="flex flex-col gap-3 rounded-lg border border-border/60 bg-card px-3 py-2 sm:flex-row sm:items-center"
+              >
+                <p className="min-w-0 flex-1 truncate text-sm font-medium" title={relay.url}>
+                  {relay.url}
+                </p>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id={`read-${relay.url}`}
+                      checked={relay.read}
+                      onCheckedChange={() => togglePermission(relay.url, 'read')}
+                    />
+                    <Label htmlFor={`read-${relay.url}`} className="text-xs">
+                      Read
+                    </Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id={`write-${relay.url}`}
+                      checked={relay.write}
+                      onCheckedChange={() => togglePermission(relay.url, 'write')}
+                    />
+                    <Label htmlFor={`write-${relay.url}`} className="text-xs">
+                      Write
+                    </Label>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeRelay(relay.url)}
+                    aria-label={`Remove ${relay.url}`}
+                  >
+                    <X className="size-4" />
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+            No relays configured. NostrHub can't load or publish content until you add at least one.
+          </p>
+        )}
+
+        <div className="flex items-center justify-between border-t border-border/60 pt-4">
+          <p className="text-sm text-muted-foreground">{relays.length} relay(s)</p>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-1.5"
+            onClick={() => {
+              setRelays(APP_RELAYS.relays.map((r) => ({ ...r })));
+              toast({ title: 'Relays reset to defaults' });
+            }}
+          >
+            <RotateCcw className="size-4" /> Reset to defaults
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function AppearanceSettings() {
   const { theme, setTheme } = useTheme();
   const { hasDittoTheme } = useActiveProfileTheme();
@@ -371,6 +524,7 @@ const SettingsPage = () => {
       </div>
       <div className="mt-6 space-y-6">
         <AppearanceSettings />
+        <RelaySettings />
         <ExpertsSettings />
         <CommunitySettings />
         <AiSettings />

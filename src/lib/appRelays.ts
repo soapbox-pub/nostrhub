@@ -17,6 +17,15 @@ export const SEARCH_RELAYS: string[] = [
 ];
 
 /**
+ * Relay used solely for NIP-46 (remote signer / nostrconnect) communication.
+ * Many remote signers (e.g. those built around Primal) default to this relay
+ * for the connect handshake, so we always include it as an extra connection
+ * option for NIP-46 — without adding it to the app's default NIP-65 relay list
+ * (see `getRelayUrls()` in `useLoginActions`).
+ */
+export const NIP46_RELAY = 'wss://relay.primal.net';
+
+/**
  * App default relays. Used as the initial `relayMetadata` for new users and as
  * a fallback when the user has no NIP-65 relay list configured (e.g. during
  * nostrconnect handshakes before any user relays have been loaded).
