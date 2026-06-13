@@ -1,4 +1,3 @@
-import { Wand2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { shakespeareEditUrl, type GitRepoAnnouncement } from '@/lib/git';
@@ -34,7 +33,7 @@ export function EditWithShakespeareButton({
           className,
         )}
       >
-        <Wand2 className="size-3" aria-hidden="true" />
+        <span className="text-xs leading-none" aria-hidden="true">🎭</span>
         Edit with Shakespeare
       </a>
     );
@@ -43,7 +42,7 @@ export function EditWithShakespeareButton({
   return (
     <Button size="sm" asChild className={cn('gap-1.5', className)}>
       <a href={href} target="_blank" rel="noopener noreferrer">
-        <Wand2 className="size-4" aria-hidden="true" />
+        <span className="text-sm leading-none" aria-hidden="true">🎭</span>
         Edit with Shakespeare
       </a>
     </Button>
