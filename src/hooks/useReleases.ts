@@ -2,6 +2,7 @@ import { useNostr } from '@nostrify/react';
 import { useQuery } from '@tanstack/react-query';
 import type { NostrEvent, NostrFilter } from '@nostrify/nostrify';
 import { useAppContext } from '@/hooks/useAppContext';
+import { APP_HANDLER_KIND, dedupeAppEvents } from '@/lib/apps';
 import {
   ZAPSTORE_APP_KIND,
   ZAPSTORE_RELAY,
@@ -26,6 +27,12 @@ export interface ReleaseWithApp {
   release: ZapstoreRelease;
   /** Linked kind 32267 app metadata, if found. */
   app?: ZapstoreApp;
+  /**
+   * bech32 naddr of the NIP-89 app listing (kind 31990) that references this
+   * release's Zapstore app, when one exists. Lets the release card link to the
+   * in-app listing instead of the external Zapstore page.
+   */
+  appNaddr?: string;
 }
 
 /**
@@ -42,6 +49,10 @@ export interface ReleaseWithApp {
  * multiple releases per piece of software. We over-fetch (4× the requested
  * limit, capped) and then collapse to the single latest release per software
  * before truncating to `limit`.
+ *
+ * Each release is then enriched with its kind 32267 app metadata and, when a
+ * NIP-89 handler listing (kind 31990) references that Zapstore app, the
+ * listing's naddr so the card can link to the in-app app page.
  */
 export function useReleases(options: UseReleasesOptions = {}) {
   const { nostr } = useNostr();
@@ -126,10 +137,53 @@ export function useReleases(options: UseReleasesOptions = {}) {
         }
       }
 
+      // Link releases to NIP-89 app listings (kind 31990). A 31990 event
+      // references its Zapstore listing via an `a` tag pointing at the
+      // `32267:<pubkey>:<d>` coordinate, so we query 31990 events that reference
+      // the Zapstore coordinates of the apps these releases belong to, then map
+      // each coordinate back to the listing's naddr.
+      const zapstoreCoords = appIds.length > 0
+        ? Array.from(
+            new Set(
+              releases
+                .filter((r) => r.appIdentifier)
+                .map((r) => `${ZAPSTORE_APP_KIND}:${r.pubkey}:${r.appIdentifier}`),
+            ),
+          )
+        : [];
+
+      const naddrByCoord = new Map<string, string>();
+      if (zapstoreCoords.length > 0) {
+        const handlerEvents = await nostr
+          .group([...urls].slice(0, 10))
+          .query(
+            // Scope to the release authors: a 31990 listing is only trusted to
+            // describe a Zapstore app published by the same author. Without the
+            // author filter anyone could publish a listing referencing someone
+            // else's `32267:<pubkey>:<d>` coordinate and hijack the card link.
+            [{ kinds: [APP_HANDLER_KIND], authors: releaseAuthors, '#a': zapstoreCoords }],
+            { signal: AbortSignal.any([signal, AbortSignal.timeout(6000)]) },
+          )
+          .catch(() => [] as NostrEvent[]);
+
+        for (const app of dedupeAppEvents(handlerEvents)) {
+          for (const ref of app.zapstoreRefs) {
+            // The referenced Zapstore coordinate embeds the app author's pubkey;
+            // only honour it when that matches the listing's own author so the
+            // link stays within a single author's events.
+            if (ref.pubkey !== app.pubkey) continue;
+            if (!naddrByCoord.has(ref.address)) naddrByCoord.set(ref.address, app.naddr);
+          }
+        }
+      }
+
       return releases.map((release) => ({
         release,
         app: release.appIdentifier
           ? apps.get(`${release.pubkey}:${release.appIdentifier}`)
+          : undefined,
+        appNaddr: release.appIdentifier
+          ? naddrByCoord.get(`${ZAPSTORE_APP_KIND}:${release.pubkey}:${release.appIdentifier}`)
           : undefined,
       }));
     },

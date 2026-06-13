@@ -1,4 +1,5 @@
 import { Package } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import type { ReleaseWithApp } from '@/hooks/useReleases';
 import { releaseDisplayName } from '@/lib/zapstore';
 import { useAuthor } from '@/hooks/useAuthor';
@@ -21,7 +22,7 @@ const CHANNEL_LABELS: Record<string, string> = {
 
 /** Directory card for a Zapstore software release (kind 30063). */
 export function ReleaseCard({ item }: ReleaseCardProps) {
-  const { release, app } = item;
+  const { release, app, appNaddr } = item;
   const author = useAuthor(release.pubkey);
   const authorMeta = author.data?.metadata;
   const authorName = authorMeta?.name || authorMeta?.display_name || shortNpub(release.pubkey);
@@ -32,12 +33,59 @@ export function ReleaseCard({ item }: ReleaseCardProps) {
   const notes = noteExcerpt(release.notes, 160);
   const channelLabel = CHANNEL_LABELS[release.channel];
 
-  // Zapstore releases don't have an internal detail route — link out to the
-  // app's Zapstore page when we know its identifier.
+  // Prefer linking to the in-app NIP-89 app listing (kind 31990) when one
+  // references this release's Zapstore app. Otherwise fall back to the app's
+  // external Zapstore page, which has no internal detail route here.
   const appId = app?.identifier ?? release.appIdentifier;
   const zapstoreUrl = appId
     ? `https://zapstore.dev/apps/${encodeURIComponent(appId)}`
     : undefined;
+
+  const sharedClassName =
+    'relative block h-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+
+  const body = (
+    <CardContent className="flex h-full flex-col gap-3 px-4">
+      <div className="flex items-start gap-3">
+        <span className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-xl border border-border/60 bg-muted/40">
+          {icon ? (
+            <img src={icon} alt="" loading="lazy" className="size-full object-cover" />
+          ) : (
+            <Package className="size-5 text-muted-foreground" aria-hidden="true" />
+          )}
+        </span>
+        <div className="min-w-0 flex-1 space-y-0.5">
+          <h3 className="truncate font-semibold leading-snug tracking-tight group-hover:text-primary">
+            {name}
+          </h3>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {release.version && (
+              <Badge variant="secondary" className="text-[10px] tracking-wider">
+                v{release.version}
+              </Badge>
+            )}
+            {channelLabel && (
+              <Badge variant="outline" className="text-[10px] uppercase tracking-wider">
+                {channelLabel}
+              </Badge>
+            )}
+            <span className="text-xs text-muted-foreground">{shortAgo(release.createdAt)}</span>
+          </div>
+        </div>
+      </div>
+
+      {(notes || summary) && (
+        <p className="line-clamp-3 flex-1 text-sm text-muted-foreground">
+          {notes || summary}
+        </p>
+      )}
+
+      <div className="flex items-center gap-2 border-t border-border/50 pt-3">
+        <UserAvatar pubkey={release.pubkey} size="sm" />
+        <span className="truncate text-xs text-muted-foreground">by {authorName}</span>
+      </div>
+    </CardContent>
+  );
 
   return (
     <Card className="group relative h-full overflow-hidden border-border/70 bg-card/60 backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-[0_8px_40px_-8px] hover:shadow-primary/30">
@@ -45,53 +93,20 @@ export function ReleaseCard({ item }: ReleaseCardProps) {
         aria-hidden="true"
         className="pointer-events-none absolute -right-8 -top-10 size-32 rounded-full bg-primary/20 opacity-0 blur-2xl transition-opacity duration-300 group-hover:opacity-100"
       />
-      <a
-        href={zapstoreUrl ?? 'https://zapstore.dev'}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="relative block h-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <CardContent className="flex h-full flex-col gap-3 px-4">
-          <div className="flex items-start gap-3">
-            <span className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-xl border border-border/60 bg-muted/40">
-              {icon ? (
-                <img src={icon} alt="" loading="lazy" className="size-full object-cover" />
-              ) : (
-                <Package className="size-5 text-muted-foreground" aria-hidden="true" />
-              )}
-            </span>
-            <div className="min-w-0 flex-1 space-y-0.5">
-              <h3 className="truncate font-semibold leading-snug tracking-tight group-hover:text-primary">
-                {name}
-              </h3>
-              <div className="flex flex-wrap items-center gap-1.5">
-                {release.version && (
-                  <Badge variant="secondary" className="text-[10px] tracking-wider">
-                    v{release.version}
-                  </Badge>
-                )}
-                {channelLabel && (
-                  <Badge variant="outline" className="text-[10px] uppercase tracking-wider">
-                    {channelLabel}
-                  </Badge>
-                )}
-                <span className="text-xs text-muted-foreground">{shortAgo(release.createdAt)}</span>
-              </div>
-            </div>
-          </div>
-
-          {(notes || summary) && (
-            <p className="line-clamp-3 flex-1 text-sm text-muted-foreground">
-              {notes || summary}
-            </p>
-          )}
-
-          <div className="flex items-center gap-2 border-t border-border/50 pt-3">
-            <UserAvatar pubkey={release.pubkey} size="sm" />
-            <span className="truncate text-xs text-muted-foreground">by {authorName}</span>
-          </div>
-        </CardContent>
-      </a>
+      {appNaddr ? (
+        <Link to={`/${appNaddr}`} className={sharedClassName}>
+          {body}
+        </Link>
+      ) : (
+        <a
+          href={zapstoreUrl ?? 'https://zapstore.dev'}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={sharedClassName}
+        >
+          {body}
+        </a>
+      )}
     </Card>
   );
 }
