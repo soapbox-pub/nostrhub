@@ -1,5 +1,5 @@
 import { useNostr } from '@nostrify/react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { nip19 } from 'nostr-tools';
 import type { NostrFilter } from '@nostrify/nostrify';
 import { CUSTOM_NIP_KIND, isValidCustomNip, parseCustomNip, type CustomNip } from '@/lib/nips';
@@ -51,10 +51,11 @@ export function useCustomNips(options: UseCustomNipsOptions = {}) {
 /** Fetch a single custom NIP by its address coordinate ("30817:<pubkey>:<d>"). */
 export function useCustomNipByAddress(address: string | undefined) {
   const { nostr } = useNostr();
+  const queryClient = useQueryClient();
 
   return useQuery<CustomNip | null>({
     queryKey: ['custom-nip-by-address', address ?? ''],
-    queryFn: async ({ signal }) => {
+    queryFn: async ({ signal, queryKey }) => {
       if (!address) return null;
       const parts = address.split(':');
       if (parts.length !== 3 || parts[0] !== String(CUSTOM_NIP_KIND)) return null;
@@ -66,7 +67,11 @@ export function useCustomNipByAddress(address: string | undefined) {
       );
 
       const event = events.find(isValidCustomNip);
-      return event ? parseCustomNip(event) : null;
+      // Keep an optimistically-seeded NIP if the relay hasn't indexed it yet.
+      if (!event) {
+        return queryClient.getQueryData<CustomNip | null>(queryKey) ?? null;
+      }
+      return parseCustomNip(event);
     },
     enabled: !!address,
     staleTime: 60 * 1000,
@@ -76,10 +81,11 @@ export function useCustomNipByAddress(address: string | undefined) {
 /** Fetch a single custom NIP by its naddr identifier. */
 export function useCustomNip(naddr: string | undefined) {
   const { nostr } = useNostr();
+  const queryClient = useQueryClient();
 
   return useQuery<CustomNip | null>({
     queryKey: ['custom-nip', naddr ?? ''],
-    queryFn: async ({ signal }) => {
+    queryFn: async ({ signal, queryKey }) => {
       if (!naddr) return null;
       const decoded = nip19.decode(naddr);
       if (decoded.type !== 'naddr' || decoded.data.kind !== CUSTOM_NIP_KIND) {
@@ -93,7 +99,11 @@ export function useCustomNip(naddr: string | undefined) {
       );
 
       const event = events.find(isValidCustomNip);
-      return event ? parseCustomNip(event) : null;
+      // Keep an optimistically-seeded NIP if the relay hasn't indexed it yet.
+      if (!event) {
+        return queryClient.getQueryData<CustomNip | null>(queryKey) ?? null;
+      }
+      return parseCustomNip(event);
     },
     enabled: !!naddr,
     staleTime: 60 * 1000,

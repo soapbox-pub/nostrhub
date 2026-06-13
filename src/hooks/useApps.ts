@@ -1,5 +1,5 @@
 import { useNostr } from '@nostrify/react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { NostrEvent, NostrFilter } from '@nostrify/nostrify';
 import {
   APP_CATEGORY_TAGS,
@@ -73,10 +73,11 @@ export function useApps(options: UseAppsOptions = {}) {
  */
 export function useApp(pubkey: string | undefined, identifier: string | undefined) {
   const { nostr } = useNostr();
+  const queryClient = useQueryClient();
 
   return useQuery<AppInfo | null>({
     queryKey: ['app', pubkey, identifier],
-    queryFn: async ({ signal }) => {
+    queryFn: async ({ signal, queryKey }) => {
       const events = await nostr.query(
         [
           {
@@ -89,7 +90,14 @@ export function useApp(pubkey: string | undefined, identifier: string | undefine
         { signal: AbortSignal.any([signal, AbortSignal.timeout(8000)]) },
       );
 
-      return dedupeAppEvents(events)[0] ?? null;
+      const fetched = dedupeAppEvents(events)[0] ?? null;
+      // Relays may not have indexed a freshly-published listing yet. Don't let
+      // an empty response clobber an optimistically-seeded entry — keep the
+      // cached app (e.g. from publish) until the relay actually has the event.
+      if (!fetched) {
+        return queryClient.getQueryData<AppInfo | null>(queryKey) ?? null;
+      }
+      return fetched;
     },
     enabled: Boolean(pubkey && identifier),
     staleTime: 5 * 60 * 1000,
