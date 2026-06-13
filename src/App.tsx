@@ -32,7 +32,10 @@ const queryClient = new QueryClient({
 });
 
 const defaultConfig: AppConfig = {
+  appName: "NostrHub",
+  appId: "nostrhub",
   theme: "dark",
+  autoShareTheme: true,
   relayMetadata: APP_RELAYS,
   blossomServerMetadata: {
     servers: [

@@ -1,6 +1,13 @@
 import { createContext } from "react";
+import type { ThemeConfig, ThemesConfig } from "@/themes";
 
-export type Theme = "dark" | "light" | "system";
+/**
+ * App theme preference.
+ * - "light" / "dark" — builtin (or configured) color sets.
+ * - "system" — resolves to "light" or "dark" via prefers-color-scheme.
+ * - "custom" — user-defined colors stored in `customTheme`.
+ */
+export type Theme = "dark" | "light" | "system" | "custom";
 
 export interface RelayMetadata {
   /** List of relays with read/write permissions */
@@ -32,8 +39,18 @@ export interface BlossomServerMetadata {
 }
 
 export interface AppConfig {
-  /** Current theme */
+  /** Application display name used in UI text and the NIP-78 metadata title. Default: "NostrHub". */
+  appName: string;
+  /** Application identifier, used as a prefix for app-specific metadata (NIP-78 d-tags). Default: "nostrhub". */
+  appId: string;
+  /** Current theme mode. */
   theme: Theme;
+  /** Custom theme config (colors, fonts, background). Only used when theme === "custom". */
+  customTheme?: ThemeConfig;
+  /** Automatically publish custom theme changes to the user's profile (kind 16767). Default: true. */
+  autoShareTheme: boolean;
+  /** Configured light and dark themes. Overrides the builtin themes when set. */
+  themes?: ThemesConfig;
   /** NIP-65 relay list metadata */
   relayMetadata: RelayMetadata;
   /** User's kind 10063 Blossom server list. */

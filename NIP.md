@@ -423,6 +423,118 @@ nostr.query([{ kinds: [39249], "#a": ["32473:<pk>:<d>"] }]);
 
 ---
 
+## Theme Definition — Kind `36767` (addressable)
+
+A shareable, named UI theme that a user has created — think of these as published
+theme presets. A theme is fundamentally **three core colors** (`background`, `text`,
+`primary`); NostrHub derives the full token set (cards, borders, muted, accent,
+sidebar, charts, `nebula`) from them on the client. Optional fonts and a background
+image round it out.
+
+Colors are stored as **hex** in single-letter `c` tags (converted to/from HSL by the
+client). The `content` field is empty.
+
+### Tags
+
+| Tag           | Required | Repeatable | Description                                                        |
+| ------------- | -------- | ---------- | ------------------------------------------------------------------ |
+| `d`           | yes      | no         | Identifier (slug). Used in the `naddr`.                            |
+| `c`           | yes      | yes (3)    | `["c", "#1a1a2e", "background"]` — color hex + role (`background`/`text`/`primary`). |
+| `f`           | no       | yes (≤2)   | Font: `["f", "<family>", "<url|empty>", "body"|"title"]`.          |
+| `bg`          | no       | no         | Background, imeta-style: `["bg", "url https://…", "mode cover", "m image/jpeg"]`. |
+| `title`       | yes      | no         | Display name.                                                     |
+| `alt`         | yes      | no         | NIP-31 human-readable description (`Custom NostrHub theme: …`).    |
+| `t`           | no       | no         | Topic tag, always `theme`.                                        |
+| `description` | no       | no         | Optional longer description.                                      |
+
+### Example
+
+```jsonc
+{
+  "kind": 36767,
+  "content": "",
+  "tags": [
+    ["d", "ocean-night"],
+    ["c", "#0a1a22", "background"],
+    ["c", "#e6f7ff", "text"],
+    ["c", "#22d3ee", "primary"],
+    ["f", "Inter", "", "body"],
+    ["bg", "url https://example.com/ocean.jpg", "mode cover", "m image/jpeg"],
+    ["title", "Ocean Night"],
+    ["alt", "Custom NostrHub theme: Ocean Night"],
+    ["t", "theme"]
+  ]
+}
+```
+
+Since kind 36767 is addressable, a user may publish multiple themes via distinct `d`
+tags; republishing with the same `d` replaces the previous version. Because these are
+author-owned addressable events, clients **must** filter by `authors` — the `d` tag
+alone is not a trust boundary.
+
+---
+
+## Active Profile Theme — Kind `16767` (replaceable)
+
+The user's currently active profile theme (one per user). Same tag structure as kind
+36767 but **without** `d`/`t`/`description`, plus an optional `a` tag referencing the
+source theme definition.
+
+| Tag     | Required | Description                                              |
+| ------- | -------- | -------------------------------------------------------- |
+| `c`     | yes      | Color tags (same as 36767).                              |
+| `f`     | no       | Font tags (same as 36767).                               |
+| `bg`    | no       | Background tag (same as 36767).                          |
+| `alt`   | yes      | Always `Active NostrHub profile theme`.                  |
+| `title` | no       | Optional theme name.                                     |
+| `a`     | no       | Optional `36767:<pubkey>:<d>` reference to the source.   |
+
+```jsonc
+{
+  "kind": 16767,
+  "content": "",
+  "tags": [
+    ["c", "#0a1a22", "background"],
+    ["c", "#e6f7ff", "text"],
+    ["c", "#22d3ee", "primary"],
+    ["alt", "Active NostrHub profile theme"],
+    ["a", "36767:<pubkey>:ocean-night"]
+  ]
+}
+```
+
+- Query a user's active theme: `{ kinds: [16767], authors: [pubkey], limit: 1 }`.
+- Setting a new active theme publishes a new kind 16767 event (replacing the old one).
+- To remove it, publish a kind 5 deletion targeting kind 16767, or an empty replacement.
+
+When `autoShareTheme` is enabled (default), applying a custom theme in NostrHub
+auto-publishes it as a kind 16767 event (debounced). On load, NostrHub reads the
+user's kind 16767 event and applies it as the `customTheme` **without** changing the
+active mode (light/dark/system/custom).
+
+---
+
+## Encrypted App Settings — Kind `30078` ([NIP-78](https://github.com/nostr-protocol/nips/blob/master/78.md))
+
+NostrHub syncs cross-device app preferences in a **single** kind 30078
+application-specific-data event, **encrypted to self** with [NIP-44](https://github.com/nostr-protocol/nips/blob/master/44.md).
+The decrypted `content` is a JSON object holding `theme`, `customTheme`,
+`autoShareTheme`, `experts`, `communityCap`, `statsProvider`, `useAppBlossomServers`,
+and a `lastSync` logical clock (ms). Device-local secrets (e.g. the AI API key) are
+**never** synced.
+
+| Tag     | Description                                              |
+| ------- | -------------------------------------------------------- |
+| `d`     | `nostrhub/metadata` — app-namespaced so multiple apps coexist on one pubkey. |
+| `title` | `NostrHub Settings`.                                     |
+| `client`| Client hostname.                                         |
+
+`content` is opaque NIP-44 ciphertext. Writes merge onto the freshest relay copy and
+bump `lastSync`; clients ignore remote snapshots older than the last applied one.
+These settings are private to the owner — always queried with `authors: [self]`.
+
+---
+
 ## Related standard kinds used by NostrHub
 
 These are **not** custom — NostrHub reuses standard NIPs:
