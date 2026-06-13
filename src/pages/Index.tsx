@@ -178,14 +178,14 @@ const Index = () => {
   return (
     <Layout className="max-w-6xl">
       {/* ── Masthead ─────────────────────────────────────────────── */}
-      <header className="relative mb-14 flex flex-col items-center gap-5 pt-8 text-center sm:pt-12">
+      <header className="relative mb-14 flex flex-col items-center gap-5 overflow-x-clip pt-8 text-center sm:pt-12">
         {/* Nebula halo behind the wordmark */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute -top-16 left-1/2 size-[28rem] -translate-x-1/2 rounded-full bg-primary/20 blur-[120px]"
+          className="pointer-events-none absolute -top-16 left-1/2 size-72 -translate-x-1/2 rounded-full bg-primary/20 blur-[120px] sm:size-[28rem]"
         />
 
-        <h1 className="relative font-display text-6xl font-bold uppercase leading-[0.9] tracking-tighter sm:text-8xl">
+        <h1 className="relative font-display text-5xl font-bold uppercase leading-[0.9] tracking-tighter xs:text-6xl sm:text-8xl">
           Nostr<span className="text-cosmic">Hub</span>
         </h1>
 
