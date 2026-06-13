@@ -242,17 +242,13 @@ export function hasFullAppMetadata(app: AppInfo): boolean {
  * Collect the unique repo references across a set of app listings — the
  * NIP-89 event is the nexus linking NIPs to the repos that implement them.
  *
- * Scope: an app may only vouch for a repo coordinate it published itself
- * (`ref.pubkey === app.pubkey`). A listing pointing at `30617:<someone-else>:…`
- * is an unverifiable third-party claim — anyone could announce an app that
- * name-drops a repo they don't own — so we drop cross-author refs to keep the
- * "Related Repos" sidebar within a single author's events.
+ * No author scoping: an app can legitimately be built from a repo published by
+ * someone else, so the repo↔app relationship is nebulous by design.
  */
 export function uniqueRepoRefs(apps: AppInfo[]): AppRepoRef[] {
   const map = new Map<string, AppRepoRef>();
   for (const app of apps) {
     for (const ref of app.repoRefs) {
-      if (ref.pubkey !== app.pubkey) continue;
       if (!map.has(ref.address)) map.set(ref.address, ref);
     }
   }
@@ -262,20 +258,14 @@ export function uniqueRepoRefs(apps: AppInfo[]): AppRepoRef[] {
 /**
  * Collect the unique NIP references across a set of app listings.
  *
- * Scope: official NIP refs (by number) have no author and are always kept.
- * Community NIP refs (kind 30817) are only honoured when the app vouches for
- * its own author's NIP (`ref.pubkey === app.pubkey`) — a listing can't make a
- * trusted association with a community NIP published by someone else.
+ * No author scoping: an app can implement a community NIP authored by someone
+ * else, so the NIP↔app relationship is nebulous by design.
  */
 export function uniqueNipRefs(apps: AppInfo[]): AppNipRef[] {
   const seen = new Set<string>();
   const refs: AppNipRef[] = [];
   for (const app of apps) {
     for (const ref of app.nipRefs) {
-      if (ref.type === 'custom') {
-        const refPubkey = ref.address.split(':')[1];
-        if (refPubkey !== app.pubkey) continue;
-      }
       const key = ref.type === 'official' ? `official:${ref.number}` : `custom:${ref.address}`;
       if (seen.has(key)) continue;
       seen.add(key);
