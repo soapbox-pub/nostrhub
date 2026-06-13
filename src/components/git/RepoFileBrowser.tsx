@@ -287,7 +287,7 @@ function FileViewer({ snapshot, path }: { snapshot: RepoSnapshot; path: string }
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="flex items-center gap-2 border-b border-border/60 bg-muted/40 px-4 py-2">
         <FileText className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
         <span className="min-w-0 truncate font-mono text-[13px]" title={path}>
@@ -560,7 +560,7 @@ export function RepoFileBrowser({ repo, state }: RepoFileBrowserProps) {
               </nav>
             </div>
 
-            <div className="flex min-h-96 flex-col md:max-h-[46rem] md:overflow-y-auto">
+            <div className="flex min-h-96 min-w-0 flex-col md:max-h-[46rem] md:overflow-y-auto">
               {selected ? (
                 <FileViewer snapshot={snapshot} path={selected} />
               ) : (
