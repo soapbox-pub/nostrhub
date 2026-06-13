@@ -4,7 +4,8 @@ import { nip19 } from 'nostr-tools';
 import { useAuthor } from '@/hooks/useAuthor';
 import { UserAvatar } from '@/components/UserAvatar';
 import { shortNpub } from '@/lib/nostr';
-import { repoNaddr, type GitRepoAnnouncement } from '@/lib/git';
+import { repoNaddr, isShakespeareRepo, type GitRepoAnnouncement } from '@/lib/git';
+import { EditWithShakespeareButton } from '@/components/git/EditWithShakespeareButton';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -46,6 +47,12 @@ export function RepoCard({ repo }: { repo: GitRepoAnnouncement }) {
           {/* Description */}
           {repo.description && (
             <p className="line-clamp-2 flex-1 text-sm text-muted-foreground">{repo.description}</p>
+          )}
+
+          {isShakespeareRepo(repo) && (
+            <div>
+              <EditWithShakespeareButton repo={repo} variant="chip" />
+            </div>
           )}
 
           {/* Author + timestamp */}

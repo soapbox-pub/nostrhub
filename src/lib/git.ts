@@ -221,6 +221,23 @@ export function nostrCloneUri(pubkey: string, identifier: string): string {
   return `nostr://${nip19.npubEncode(pubkey)}/${identifier}`;
 }
 
+/**
+ * True when a repository announces itself as a Shakespeare-editable project
+ * via a `["t", "shakespeare"]` tag.
+ */
+export function isShakespeareRepo(repo: GitRepoAnnouncement): boolean {
+  return repo.hashtags.includes('shakespeare');
+}
+
+/**
+ * Build a `https://shakespeare.diy/clone?url=...` link that opens the repo in
+ * Shakespeare, using the repo's `nostr://` clone URI (npub + d tag).
+ */
+export function shakespeareEditUrl(pubkey: string, identifier: string): string {
+  const nostrUri = nostrCloneUri(pubkey, identifier);
+  return `https://shakespeare.diy/clone?url=${encodeURIComponent(nostrUri)}`;
+}
+
 /** Build the naddr for a repository announcement. */
 export function repoNaddr(pubkey: string, identifier: string, relays?: string[]): string {
   return nip19.naddrEncode({

@@ -16,6 +16,7 @@ import { BackLink, DetailHero, HeroExternalLink } from '@/components/DetailHero'
 import { DetailSurface } from '@/components/DetailSurface';
 import { UserAvatar } from '@/components/UserAvatar';
 import { CopyButton } from '@/components/git/CopyButton';
+import { EditWithShakespeareButton } from '@/components/git/EditWithShakespeareButton';
 import { RepoFileBrowser } from '@/components/git/RepoFileBrowser';
 import { CommentsSection } from '@/components/comments/CommentsSection';
 import { UsedByAppsCard, RelatedNipsCard } from '@/components/CrossRefCards';
@@ -24,7 +25,7 @@ import { useGitRepo } from '@/hooks/useGitRepo';
 import { useAuthor } from '@/hooks/useAuthor';
 import { useAppsForRepo } from '@/hooks/useAppsForRepo';
 import { shortNpub } from '@/lib/nostr';
-import { GIT_REPO_KIND, type GitRepoAnnouncement } from '@/lib/git';
+import { GIT_REPO_KIND, isShakespeareRepo, type GitRepoAnnouncement } from '@/lib/git';
 import { uniqueNipRefs } from '@/lib/apps';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -219,8 +220,10 @@ export function GitRepoPage({ pubkey, identifier, relays }: GitRepoPageProps) {
                 : undefined
             }
             actions={
-              repo.webUrls.length > 0
-                ? repo.webUrls.map((url) => (
+              isShakespeareRepo(repo) || repo.webUrls.length > 0 ? (
+                <>
+                  {isShakespeareRepo(repo) && <EditWithShakespeareButton repo={repo} />}
+                  {repo.webUrls.map((url) => (
                     <HeroExternalLink
                       key={url}
                       href={url}
@@ -228,8 +231,9 @@ export function GitRepoPage({ pubkey, identifier, relays }: GitRepoPageProps) {
                     >
                       <span className="max-w-56 truncate">{new URL(url).hostname}</span>
                     </HeroExternalLink>
-                  ))
-                : undefined
+                  ))}
+                </>
+              ) : undefined
             }
           />
           </DetailSurface>

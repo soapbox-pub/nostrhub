@@ -5,7 +5,8 @@ import { nip19 } from 'nostr-tools';
 import { UserAvatar } from '@/components/UserAvatar';
 import { useAuthor } from '@/hooks/useAuthor';
 import { shortNpub } from '@/lib/nostr';
-import { repoNaddr, type GitRepoAnnouncement } from '@/lib/git';
+import { repoNaddr, isShakespeareRepo, type GitRepoAnnouncement } from '@/lib/git';
+import { EditWithShakespeareButton } from '@/components/git/EditWithShakespeareButton';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -74,6 +75,12 @@ export function RepoListItem({ repo, showAuthor = true }: RepoListItemProps) {
               #{tag}
             </Badge>
           ))}
+        </div>
+      )}
+
+      {isShakespeareRepo(repo) && (
+        <div className="pt-0.5">
+          <EditWithShakespeareButton repo={repo} variant="chip" />
         </div>
       )}
 
