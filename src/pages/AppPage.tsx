@@ -228,21 +228,44 @@ function ZapstoreRefRow({ zapRef }: { zapRef: AppZapstoreRef }) {
   );
 }
 
+/**
+ * Refs an app may legitimately surface in its own sidebar. Addressable refs
+ * (repos, community NIPs, Zapstore listings) are only trusted when the app
+ * vouches for a coordinate authored by the same pubkey — a listing pointing at
+ * someone else's `30617/30817/32267:<other>:…` is an unverifiable third-party
+ * claim. Official NIP refs (by number) have no author and are always kept.
+ */
+function scopedRefs(app: AppInfo): {
+  zapstoreRefs: AppZapstoreRef[];
+  repoRefs: AppRepoRef[];
+  nipRefs: AppNipRef[];
+} {
+  return {
+    zapstoreRefs: app.zapstoreRefs.filter((ref) => ref.pubkey === app.pubkey),
+    repoRefs: app.repoRefs.filter((ref) => ref.pubkey === app.pubkey),
+    nipRefs: app.nipRefs.filter(
+      (ref) => ref.type === 'official' || ref.address.split(':')[1] === app.pubkey,
+    ),
+  };
+}
+
 /** Whether the app declares anything worth a sidebar. */
 function hasSidebarContent(app: AppInfo): boolean {
+  const { zapstoreRefs, repoRefs, nipRefs } = scopedRefs(app);
   return (
-    app.zapstoreRefs.length > 0 ||
-    app.repoRefs.length > 0 ||
-    app.nipRefs.length > 0 ||
+    zapstoreRefs.length > 0 ||
+    repoRefs.length > 0 ||
+    nipRefs.length > 0 ||
     app.supportedKinds.length > 0
   );
 }
 
 /** Sidebar cards: install builds, source repos, implemented NIPs, handled kinds. */
 function AppSidebar({ app }: { app: AppInfo }) {
+  const { zapstoreRefs, repoRefs, nipRefs } = scopedRefs(app);
   return (
     <>
-      {app.zapstoreRefs.length > 0 && (
+      {zapstoreRefs.length > 0 && (
         <Card className="gap-2">
           <CardHeader>
             <SidebarCardTitle icon={<ShoppingBag className="size-4" aria-hidden="true" />}>
@@ -250,11 +273,11 @@ function AppSidebar({ app }: { app: AppInfo }) {
             </SidebarCardTitle>
           </CardHeader>
           <CardContent className="space-y-1.5">
-            {app.zapstoreRefs.map((zapRef) => <ZapstoreRefRow key={zapRef.address} zapRef={zapRef} />)}
+            {zapstoreRefs.map((zapRef) => <ZapstoreRefRow key={zapRef.address} zapRef={zapRef} />)}
           </CardContent>
         </Card>
       )}
-      {app.repoRefs.length > 0 && (
+      {repoRefs.length > 0 && (
         <Card className="gap-2">
           <CardHeader>
             <SidebarCardTitle icon={<FolderGit2 className="size-4" aria-hidden="true" />}>
@@ -262,11 +285,11 @@ function AppSidebar({ app }: { app: AppInfo }) {
             </SidebarCardTitle>
           </CardHeader>
           <CardContent className="space-y-1.5">
-            {app.repoRefs.map((repoRef) => <RepoRefRow key={repoRef.address} repoRef={repoRef} />)}
+            {repoRefs.map((repoRef) => <RepoRefRow key={repoRef.address} repoRef={repoRef} />)}
           </CardContent>
         </Card>
       )}
-      {app.nipRefs.length > 0 && (
+      {nipRefs.length > 0 && (
         <Card className="gap-2">
           <CardHeader>
             <SidebarCardTitle icon={<BookOpen className="size-4" aria-hidden="true" />}>
@@ -274,7 +297,7 @@ function AppSidebar({ app }: { app: AppInfo }) {
             </SidebarCardTitle>
           </CardHeader>
           <CardContent className="space-y-1.5">
-            {app.nipRefs.map((nipRef) => (
+            {nipRefs.map((nipRef) => (
               <NipRefRow
                 key={nipRef.type === 'official' ? `nip-${nipRef.number}` : nipRef.address}
                 nipRef={nipRef}
