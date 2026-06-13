@@ -1,7 +1,8 @@
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useSeoMeta } from '@unhead/react';
 import { nip19 } from 'nostr-tools';
-import { BookOpen, GitFork, AlertCircle, Pencil } from 'lucide-react';
+import { BookOpen, GitFork, AlertCircle, Pencil, Trash2 } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { BackLink, DetailHero } from '@/components/DetailHero';
 import { DetailSurface } from '@/components/DetailSurface';
@@ -14,8 +15,10 @@ import { RelatedReposCard, UsedByAppsCard } from '@/components/CrossRefCards';
 import { LinkAppNudge } from '@/components/LinkAppNudge';
 import { KindBadge } from '@/components/KindBadge';
 import { useCustomNip } from '@/hooks/useCustomNips';
+import { useDeleteNip } from '@/hooks/useSaveNip';
 import { useAuthor } from '@/hooks/useAuthor';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useToast } from '@/hooks/useToast';
 import { useAppsForCustomNip } from '@/hooks/useAppsForNip';
 import { shortNpub } from '@/lib/nostr';
 import { uniqueRepoRefs } from '@/lib/apps';
@@ -25,12 +28,26 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 /** Detail view for a community-authored NIP (kind 30817), routed via its naddr. */
 export function CustomNipPage({ naddr }: { naddr: string }) {
   const { data: nip, isLoading, isError } = useCustomNip(naddr);
   const { user } = useCurrentUser();
   const author = useAuthor(nip?.author);
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const { mutateAsync: deleteNip, isPending: isDeleting } = useDeleteNip();
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const authorName =
     author.data?.metadata?.name || author.data?.metadata?.display_name || (nip ? shortNpub(nip.author) : '');
   const appsForNip = useAppsForCustomNip(nip?.address);
@@ -48,6 +65,22 @@ export function CustomNipPage({ naddr }: { naddr: string }) {
   const target: NipTarget | null = nip ? { type: 'custom', address: nip.address } : null;
   const isOwner = !!user && !!nip && user.pubkey === nip.author;
   const showSidebar = apps.length > 0 || isOwner;
+
+  const handleDelete = async () => {
+    if (!nip) return;
+    try {
+      await deleteNip(nip);
+      toast({ title: 'NIP deleted' });
+      setShowDeleteDialog(false);
+      navigate('/');
+    } catch (error) {
+      toast({
+        title: 'Failed to delete NIP',
+        description: error instanceof Error ? error.message : undefined,
+        variant: 'destructive',
+      });
+    }
+  };
 
   return (
     <Layout className={showSidebar ? 'max-w-6xl' : undefined}>
@@ -104,6 +137,16 @@ export function CustomNipPage({ naddr }: { naddr: string }) {
                     <GitFork className="size-4" aria-hidden="true" /> Fork
                   </Link>
                 </Button>
+                {isOwner && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 text-destructive hover:text-destructive"
+                    onClick={() => setShowDeleteDialog(true)}
+                  >
+                    <Trash2 className="size-4" aria-hidden="true" /> Delete
+                  </Button>
+                )}
               </>
             }
           >
@@ -162,6 +205,31 @@ export function CustomNipPage({ naddr }: { naddr: string }) {
           </div>
         </article>
       )}
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this NIP?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This publishes a deletion request (NIP-09) for your NIP. Relays that honor it will remove the
+              event, but copies may remain on relays that don't. This can't be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleDelete();
+              }}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? 'Deleting…' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   );
 }
