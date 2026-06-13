@@ -1,5 +1,6 @@
-import { ChevronDown, LogOut, Monitor, Moon, Settings, Sun, UserPlus } from 'lucide-react';
+import { ChevronDown, LogOut, Monitor, Moon, Settings, Sun, User, UserPlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { nip19 } from 'nostr-tools';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,6 +42,8 @@ export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
   // we don't want to flash a generated animal name / its first letter.
   const isCurrentUserPending = isLoading && !currentUser.metadata.name;
 
+  const npub = nip19.npubEncode(currentUser.pubkey);
+
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
@@ -54,32 +57,6 @@ export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className='w-56 p-2 animate-scale-in'>
-        <div className='font-medium text-sm px-2 py-1.5'>Switch Account</div>
-        {otherUsers.map((user) => {
-          const isPending = isLoading && !user.metadata.name;
-          return (
-            <DropdownMenuItem
-              key={user.id}
-              onClick={() => setLogin(user.id)}
-              className='flex items-center gap-2 cursor-pointer p-2 rounded-md'
-            >
-              {isPending ? (
-                <Skeleton className='w-8 h-8 rounded-full' />
-              ) : (
-                <UserAvatar pubkey={user.pubkey} />
-              )}
-              <div className='flex-1 truncate'>
-                {isPending ? (
-                  <Skeleton className='h-4 w-24' />
-                ) : (
-                  <p className='text-sm font-medium'>{getDisplayName(user)}</p>
-                )}
-              </div>
-              {user.id === currentUser.id && <div className='w-2 h-2 rounded-full bg-primary'></div>}
-            </DropdownMenuItem>
-          );
-        })}
-        <DropdownMenuSeparator />
         <div className='px-2 py-1.5'>
           <span className='text-xs font-medium text-muted-foreground'>Theme</span>
           <Select value={theme} onValueChange={(v) => setTheme(v as Theme)}>
@@ -114,12 +91,48 @@ export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
         </div>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild className='flex items-center gap-2 cursor-pointer p-2 rounded-md'>
+          <Link to={`/${npub}`}>
+            <User className='w-4 h-4' />
+            <span>My Profile</span>
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild className='flex items-center gap-2 cursor-pointer p-2 rounded-md'>
           <Link to='/settings'>
             <Settings className='w-4 h-4' />
             <span>Settings</span>
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
+        {otherUsers.length > 0 && (
+          <>
+            <div className='font-medium text-sm px-2 py-1.5'>Switch Account</div>
+            {otherUsers.map((user) => {
+              const isPending = isLoading && !user.metadata.name;
+              return (
+                <DropdownMenuItem
+                  key={user.id}
+                  onClick={() => setLogin(user.id)}
+                  className='flex items-center gap-2 cursor-pointer p-2 rounded-md'
+                >
+                  {isPending ? (
+                    <Skeleton className='w-8 h-8 rounded-full' />
+                  ) : (
+                    <UserAvatar pubkey={user.pubkey} />
+                  )}
+                  <div className='flex-1 truncate'>
+                    {isPending ? (
+                      <Skeleton className='h-4 w-24' />
+                    ) : (
+                      <p className='text-sm font-medium'>{getDisplayName(user)}</p>
+                    )}
+                  </div>
+                  {user.id === currentUser.id && <div className='w-2 h-2 rounded-full bg-primary'></div>}
+                </DropdownMenuItem>
+              );
+            })}
+            <DropdownMenuSeparator />
+          </>
+        )}
         <DropdownMenuItem
           onClick={onAddAccountClick}
           className='flex items-center gap-2 cursor-pointer p-2 rounded-md'
