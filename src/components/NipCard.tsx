@@ -32,7 +32,7 @@ export function NipCard({ nip }: { nip: RankedNip }) {
   const extra = approvers.length - shown.length;
 
   return (
-    <Card className="group relative h-full overflow-hidden border-border/70 bg-card/60 backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-[0_8px_40px_-8px] hover:shadow-primary/30">
+    <Card className="group relative h-full overflow-clip border-border/70 bg-card/60 backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-[0_8px_40px_-8px] hover:shadow-primary/30">
       {/* Nebula sheen that fades in on hover */}
       <span
         aria-hidden="true"

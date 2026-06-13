@@ -67,7 +67,7 @@ function ArticleImage({
 export function LeadArticleCard({ article }: { article: ExpertArticle }) {
   const hasImage = Boolean(article.image);
   return (
-    <Card className="group relative overflow-hidden border-primary/25 bg-card/70 py-0 backdrop-blur-sm transition-all duration-300 hover:border-primary/60 hover:shadow-[0_12px_60px_-12px] hover:shadow-primary/40">
+    <Card className="group relative overflow-clip border-primary/25 bg-card/70 py-0 backdrop-blur-sm transition-all duration-300 hover:border-primary/60 hover:shadow-[0_12px_60px_-12px] hover:shadow-primary/40">
       <Link
         to={`/${article.naddr}`}
         className={cn(
