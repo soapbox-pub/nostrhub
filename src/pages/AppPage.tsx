@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSeoMeta } from '@unhead/react';
 import { nip19 } from 'nostr-tools';
-import { AlertCircle, Blocks, BookOpen, ChevronDown, ChevronRight, ExternalLink, FolderGit2, Pencil, ShoppingBag } from 'lucide-react';
+import { AlertCircle, Blocks, BookOpen, ChevronDown, ChevronRight, ExternalLink, FolderGit2, Link2, Pencil, ShoppingBag } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { BackLink, DetailHero } from '@/components/DetailHero';
 import { DetailSurface } from '@/components/DetailSurface';
@@ -250,6 +250,46 @@ function hasSidebarContent(app: AppInfo): boolean {
   );
 }
 
+/** Owner-only nudge: prompt linking any cross-references the listing is
+ *  missing. The app listing (kind 31990) is the nexus tying a project's repo,
+ *  NIPs, and zapstore release together — an unlinked listing is a missed
+ *  discovery opportunity. Links straight into the edit wizard.
+ */
+function AppLinksNudge({ app }: { app: AppInfo }) {
+  const missing: string[] = [];
+  if (ownZapstoreRefs(app).length === 0) missing.push('a Zapstore release');
+  if (app.repoRefs.length === 0) missing.push('source code');
+  if (app.nipRefs.length === 0) missing.push('the NIPs it implements');
+
+  if (missing.length === 0) return null;
+
+  const list =
+    missing.length === 1
+      ? missing[0]
+      : `${missing.slice(0, -1).join(', ')} and ${missing[missing.length - 1]}`;
+
+  return (
+    <Card className="border-2 border-dashed border-primary/40 bg-primary/[0.03]">
+      <CardContent className="space-y-3 py-5">
+        <div className="flex items-center gap-2 text-sm font-semibold">
+          <Link2 className="size-4 text-primary" aria-hidden="true" />
+          Finish linking your app
+        </div>
+        <p className="text-sm text-muted-foreground">
+          This listing is missing {list}. Linking them ties your project together
+          and helps people discover it across NostrHub.
+        </p>
+        <Button asChild size="sm" className="w-full gap-1.5">
+          <Link to={`/apps/edit/${app.naddr}`}>
+            <Pencil className="size-4" aria-hidden="true" />
+            Add links
+          </Link>
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
 /** Sidebar cards: install builds, source repos, implemented NIPs, handled kinds. */
 function AppSidebar({ app }: { app: AppInfo }) {
   const zapstoreRefs = ownZapstoreRefs(app);
@@ -473,7 +513,7 @@ export function AppPage({ pubkey, identifier }: AppPageProps) {
           <div
             className={cn(
               'space-y-6',
-              hasSidebarContent(app) &&
+              (hasSidebarContent(app) || isOwner) &&
                 'lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-8 lg:space-y-0',
             )}
           >
@@ -599,8 +639,9 @@ export function AppPage({ pubkey, identifier }: AppPageProps) {
               </section>
             </DetailSurface>
 
-            {hasSidebarContent(app) && (
+            {(hasSidebarContent(app) || isOwner) && (
               <aside aria-label="App resources" className="space-y-4 lg:sticky lg:top-24">
+                {isOwner && <AppLinksNudge app={app} />}
                 <AppSidebar app={app} />
               </aside>
             )}
