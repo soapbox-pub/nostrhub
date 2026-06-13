@@ -14,15 +14,10 @@ import {
 } from '@/components/DiscoveryGrid';
 import {
   useExpertArticles,
-  useCommunityArticles,
   type ExpertArticle,
 } from '@/hooks/useExpertPress';
 import { useExperts } from '@/hooks/useExperts';
-import { useCommunityAuthors } from '@/hooks/useCommunityAuthors';
 import { Button } from '@/components/ui/button';
-
-/** Expert articles lead the page; everything after this is community backfill. */
-const EXPERT_LEAD_COUNT = 10;
 
 function matchesSearch(article: ExpertArticle, q: string): boolean {
   if (!q) return true;
@@ -33,9 +28,8 @@ function matchesSearch(article: ExpertArticle, q: string): boolean {
 }
 
 /**
- * Directory of long-form articles (NIP-23, kind 30023). The freshest pieces
- * from the panel of experts lead the page; the feed then backfills from the
- * broader community web-of-trust. The newest article anchors the page as a
+ * Directory of long-form articles (NIP-23, kind 30023) authored by the panel
+ * of experts, sorted newest-first. The newest article anchors the page as a
  * lead feature and the rest fill a responsive grid. Searchable by title and
  * summary.
  */
@@ -44,44 +38,15 @@ export function ArticlesPage() {
   const [search, setSearch] = useState('');
   const { data: expertArticles, isLoading: expertsLoading } = useExpertArticles();
 
-  // Broaden beyond the panel: backfill with the whole community web-of-trust.
-  const community = useCommunityAuthors();
-  const { data: communityArticles, isLoading: communityLoading } = useCommunityArticles(
-    community.data?.authors,
-  );
-
   useSeoMeta({
     title: 'Articles | NostrHub',
     description:
       'Long-form dispatches from the panel: in-depth articles and essays on building the Nostr protocol.',
   });
 
-  // The freshest expert pieces lead the page. Everything after the leads comes
-  // from the community set (which already includes the experts), ranked by
-  // web-of-trust — how many experts follow the author — then recency. Experts
-  // are ranked like everyone else, so a well-followed or fresh community post
-  // isn't buried beneath old expert articles. Authors with no expert follows
-  // are dropped.
-  const combined = useMemo(() => {
-    const lead = (expertArticles ?? []).slice(0, EXPERT_LEAD_COUNT);
-    const seen = new Set(lead.map((a) => a.naddr));
-    const followCounts = community.data?.followCounts;
-
-    const rest = (communityArticles ?? [])
-      .filter((a) => {
-        if (seen.has(a.naddr)) return false;
-        if ((followCounts?.get(a.author) ?? 0) === 0) return false;
-        seen.add(a.naddr);
-        return true;
-      })
-      .sort((a, b) => {
-        const fa = followCounts?.get(a.author) ?? 0;
-        const fb = followCounts?.get(b.author) ?? 0;
-        return fb - fa || b.publishedAt - a.publishedAt;
-      });
-
-    return [...lead, ...rest];
-  }, [expertArticles, communityArticles, community.data?.followCounts]);
+  // Expert-authored articles only, newest-first. useExpertArticles already
+  // filters to expert authors and sorts by publishedAt descending.
+  const combined = useMemo(() => expertArticles ?? [], [expertArticles]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -90,7 +55,7 @@ export function ArticlesPage() {
 
   const hasExperts = experts.length > 0;
   const hasAnything = combined.length > 0;
-  const isLoading = expertsLoading || community.isLoading || communityLoading;
+  const isLoading = expertsLoading;
 
   // The newest article anchors the page; the rest flow into the grid below.
   const [lead, ...rest] = filtered;
