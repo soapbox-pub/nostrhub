@@ -27,7 +27,7 @@ import { useAppsForRepo } from '@/hooks/useAppsForRepo';
 import { shortNpub } from '@/lib/nostr';
 import { GIT_REPO_KIND, isShakespeareRepo, type GitRepoAnnouncement } from '@/lib/git';
 import { uniqueNipRefs } from '@/lib/apps';
-import { Badge } from '@/components/ui/badge';
+import { TagBadge } from '@/components/TagBadge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -213,9 +213,7 @@ export function GitRepoPage({ pubkey, identifier, relays }: GitRepoPageProps) {
             badges={
               repo.hashtags.length > 0
                 ? repo.hashtags.map((tag) => (
-                    <Badge key={tag} variant="secondary" className="font-normal">
-                      #{tag}
-                    </Badge>
+                    <TagBadge key={tag} tag={tag} to="repos" />
                   ))
                 : undefined
             }

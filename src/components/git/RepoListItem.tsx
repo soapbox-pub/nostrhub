@@ -8,6 +8,7 @@ import { shortNpub } from '@/lib/nostr';
 import { repoNaddr, isShakespeareRepo, type GitRepoAnnouncement } from '@/lib/git';
 import { EditWithShakespeareButton } from '@/components/git/EditWithShakespeareButton';
 import { Badge } from '@/components/ui/badge';
+import { TagBadge } from '@/components/TagBadge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -71,9 +72,7 @@ export function RepoListItem({ repo, showAuthor = true }: RepoListItemProps) {
       {repo.hashtags.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {repo.hashtags.slice(0, 5).map((tag) => (
-            <Badge key={tag} variant="secondary" className="h-5 px-1.5 text-[11px] font-normal">
-              #{tag}
-            </Badge>
+            <TagBadge key={tag} tag={tag} to="repos" className="h-5 px-1.5 text-[11px]" />
           ))}
         </div>
       )}

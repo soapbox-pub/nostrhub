@@ -34,7 +34,19 @@ export function GitReposPage() {
   const { user } = useCurrentUser();
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState('');
-  const [activeTag, setActiveTag] = useState<string>();
+
+  // The active topic filter is driven by the `?tag=` query param so that
+  // clickable tag badges elsewhere in the app can deep-link into a filtered
+  // view.
+  const activeTag = searchParams.get('tag') ?? undefined;
+  const setActiveTag = (tag?: string) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (tag) next.set('tag', tag);
+      else next.delete('tag');
+      return next;
+    }, { replace: true });
+  };
 
   // `/repos?author=<npub|nprofile|hex>` filters to one author's announcements.
   const authorHex = useMemo(
@@ -79,17 +91,21 @@ export function GitReposPage() {
     description: 'Discover git repositories announced on Nostr. Clone them over relays, no forge required.',
   });
 
-  // The most common hashtags across loaded repos, for one-tap filtering.
+  // The most common hashtags across loaded repos, for one-tap filtering. The
+  // active tag (which may have been deep-linked in) is always included so it
+  // renders as a removable pill even if it isn't among the most common.
   const topTags = useMemo(() => {
     const counts = new Map<string, number>();
     for (const repo of repos ?? []) {
       for (const tag of repo.hashtags) counts.set(tag, (counts.get(tag) ?? 0) + 1);
     }
-    return [...counts.entries()]
+    const top = [...counts.entries()]
       .sort((a, b) => b[1] - a[1])
       .slice(0, 8)
       .map(([tag]) => tag);
-  }, [repos]);
+    if (activeTag && !top.includes(activeTag)) return [activeTag, ...top];
+    return top;
+  }, [repos, activeTag]);
 
   const filtered = useMemo(() => {
     if (!repos) return [];

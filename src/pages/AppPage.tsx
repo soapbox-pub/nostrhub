@@ -11,6 +11,7 @@ import { UserAvatar } from '@/components/UserAvatar';
 import { ExpertToggleButton } from '@/components/ExpertToggleButton';
 import { TierBadge } from '@/components/TierBadge';
 import { KindBadge } from '@/components/KindBadge';
+import { TagBadge } from '@/components/TagBadge';
 import { AppReviewForm } from '@/components/AppReviewForm';
 import { AppReviewCard } from '@/components/AppReviewCard';
 import { ClientMetrics } from '@/components/ClientMetrics';
@@ -544,9 +545,7 @@ export function AppPage({ pubkey, identifier }: AppPageProps) {
                       </Badge>
                     ))}
                     {app.hashtags.map((tag) => (
-                      <Badge key={tag} variant="secondary" className="font-normal">
-                        #{tag}
-                      </Badge>
+                      <TagBadge key={tag} tag={tag} to="apps" />
                     ))}
                   </div>
                 )}

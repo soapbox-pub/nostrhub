@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useSeoMeta } from '@unhead/react';
 import { Eye, HelpCircle, PlusCircle, User, X } from 'lucide-react';
 import { AppCard, AppCardSkeleton } from '@/components/AppCard';
@@ -66,12 +66,26 @@ function useDebounced(value: string, delay = 400): string {
  */
 export function AppsPage() {
   const { user } = useCurrentUser();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState('');
   const [platform, setPlatform] = useState<AppPlatform>();
   const [tierFilter, setTierFilter] = useState<TierFilter>('all');
   const [sortBy, setSortBy] = useState<SortBy>('hot');
   const [showHidden, setShowHidden] = useState(false);
   const [mineOnly, setMineOnly] = useState(false);
+
+  // The active topic filter is driven by the `?tag=` query param so that
+  // clickable tag badges elsewhere in the app can deep-link into a filtered
+  // view.
+  const activeTag = searchParams.get('tag') ?? undefined;
+  const setActiveTag = (tag?: string) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (tag) next.set('tag', tag);
+      else next.delete('tag');
+      return next;
+    }, { replace: true });
+  };
 
   const query = useDebounced(search).trim();
   const searching = query.length > 0;
@@ -139,6 +153,9 @@ export function AppsPage() {
     if (platform) {
       result = result.filter((r) => r.app.platforms.includes(platform));
     }
+    if (activeTag) {
+      result = result.filter((r) => r.app.hashtags.includes(activeTag));
+    }
     if (tierFilter === 'unrated') {
       result = result.filter((r) => !r.overall);
     } else if (tierFilter !== 'all') {
@@ -179,7 +196,7 @@ export function AppsPage() {
       sorted.sort((a, b) => b.app.createdAt - a.app.createdAt);
     }
     return sorted;
-  }, [visibleRows, hiddenRows, platform, tierFilter, sortBy, showHidden, mine, query]);
+  }, [visibleRows, hiddenRows, platform, activeTag, tierFilter, sortBy, showHidden, mine, query]);
 
   const isLoading =
     active.isLoading ||
@@ -287,6 +304,16 @@ export function AppsPage() {
                 {mine && <X className="size-3" aria-hidden="true" />}
               </FilterPill>
             )}
+            {activeTag && (
+              <FilterPill
+                active
+                onClick={() => setActiveTag(undefined)}
+                aria-label={`Clear topic filter: #${activeTag}`}
+              >
+                #{activeTag}
+                <X className="size-3" aria-hidden="true" />
+              </FilterPill>
+            )}
             {APP_PLATFORMS.map((p) => {
               const isActive = p === platform;
               return (
@@ -340,7 +367,7 @@ export function AppsPage() {
             ? "You haven't published any app listings on Nostr yet."
             : searching
               ? `No apps match “${query}”. Try a different search term or clear the filters.`
-              : tierFilter !== 'all' || platform
+              : tierFilter !== 'all' || platform || activeTag
                 ? 'No apps match the current filters. Try clearing them.'
                 : 'No apps found. Try checking your relay connections or wait a moment for content to load.'
         }

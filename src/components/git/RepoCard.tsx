@@ -56,7 +56,7 @@ export function RepoCard({ repo }: { repo: GitRepoAnnouncement }) {
           )}
 
           {/* Author + timestamp */}
-          <div className="flex items-center gap-2 border-t border-border/50 pt-3">
+          <div className="mt-auto flex items-center gap-2 border-t border-border/50 pt-3">
             <Link
               to={`/${authorNpub}`}
               onClick={(e) => e.stopPropagation()}
