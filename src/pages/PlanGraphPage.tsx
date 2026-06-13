@@ -11,19 +11,19 @@ import { GraphCanvas } from '@/components/graph/GraphCanvas';
 import { NodeDialog } from '@/components/graph/NodeDialog';
 import { EdgeDialog } from '@/components/graph/EdgeDialog';
 import { NodePanel } from '@/components/graph/NodePanel';
-import { useStrategyGraph } from '@/hooks/useStrategyGraph';
+import { usePlanGraph } from '@/hooks/usePlanGraph';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { cn } from '@/lib/utils';
-import type { GraphNode } from '@/lib/strategyGraph';
+import type { GraphNode } from '@/lib/planGraph';
 
 /**
- * The community strategy graph: a shared force-directed map of goals,
+ * The community plan graph: a shared force-directed map of goals,
  * problems, and tasks. Every node and edge is an independent Nostr event
  * owned by its author; the client merges them into one view.
  */
-export function StrategyGraphPage() {
-  const { data: graph, isLoading } = useStrategyGraph();
+export function PlanGraphPage() {
+  const { data: graph, isLoading } = usePlanGraph();
   const { user } = useCurrentUser();
   const isMobile = useIsMobile();
 
@@ -42,9 +42,9 @@ export function StrategyGraphPage() {
   const [activeTopic, setActiveTopic] = useState<string | null>(null);
 
   useSeoMeta({
-    title: 'Strategy | NostrHub',
+    title: 'Plan | NostrHub',
     description:
-      'The community strategy graph — a shared map of goals, problems, and tasks for building Nostr together.',
+      'The community plan graph — a shared map of goals, problems, and tasks for building Nostr together.',
   });
 
   const nodes = graph?.nodes ?? [];
@@ -139,7 +139,7 @@ export function StrategyGraphPage() {
                 <Skeleton className="mx-auto size-24 rounded-full" />
                 <Skeleton className="h-4 w-full" />
                 <Skeleton className="h-4 w-4/5" />
-                <p className="text-center text-sm text-muted-foreground">Loading the strategy graph…</p>
+                <p className="text-center text-sm text-muted-foreground">Loading the plan graph…</p>
               </div>
             </div>
           ) : isEmpty ? (
@@ -147,7 +147,7 @@ export function StrategyGraphPage() {
               <Card className="max-w-md border-dashed">
                 <CardContent className="px-8 py-12 text-center">
                   <p className="mb-4 text-muted-foreground">
-                    The strategy graph is empty. Publish the first goal, problem, or task and
+                    The plan graph is empty. Publish the first goal, problem, or task and
                     give the community something to build around.
                   </p>
                   <Button onClick={openNewNode} disabled={!user}>
@@ -173,7 +173,7 @@ export function StrategyGraphPage() {
           {!isEmpty && !isLoading && (
             <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-3 p-4">
               <div className="pointer-events-auto rounded-lg border border-border/60 bg-background/80 px-3 py-2 backdrop-blur">
-                <h1 className="font-display text-sm font-semibold">Strategy graph</h1>
+                <h1 className="font-display text-sm font-semibold">Plan graph</h1>
                 <p className="hidden text-xs text-muted-foreground sm:block">
                   Goals, problems & tasks — owned by their authors, connected by everyone.
                 </p>
@@ -279,4 +279,4 @@ export function StrategyGraphPage() {
   );
 }
 
-export default StrategyGraphPage;
+export default PlanGraphPage;

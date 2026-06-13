@@ -6,7 +6,7 @@ import {
   EDGE_TYPE_LABELS,
   edgeIdentifier,
   type GraphEdgeType,
-} from '@/lib/strategyGraph';
+} from '@/lib/planGraph';
 
 export interface SaveGraphEdgeParams {
   /** Source node address (`32473:<pk>:<d>`). */
@@ -21,7 +21,7 @@ export interface SaveGraphEdgeParams {
 }
 
 /**
- * Create (or retype) a strategy-graph edge (kind 39249). The `d` tag is
+ * Create (or retype) a plan-graph edge (kind 39249). The `d` tag is
  * deterministic per directed pair, so republishing replaces the author's
  * previous edge between the same two nodes.
  */
@@ -37,13 +37,13 @@ export function useSaveGraphEdge() {
         ['a', from, '', 'from'],
         ['a', to, '', 'to'],
         ['type', type],
-        ['alt', `NostrHub strategy edge: ${EDGE_TYPE_LABELS[type]}`],
+        ['alt', `NostrHub plan edge: ${EDGE_TYPE_LABELS[type]}`],
       ];
       if (label?.trim()) tags.push(['label', label.trim()]);
       return publish({ kind: GRAPH_EDGE_KIND, content: notes?.trim() ?? '', tags });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['strategy-graph'] });
+      queryClient.invalidateQueries({ queryKey: ['plan-graph'] });
     },
   });
 }

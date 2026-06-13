@@ -18,7 +18,7 @@ import {
   type GraphNode,
   type GraphNodeType,
   type HierarchyLink,
-} from '@/lib/strategyGraph';
+} from '@/lib/planGraph';
 
 interface GraphCanvasProps {
   nodes: GraphNode[];
@@ -287,7 +287,7 @@ export function GraphCanvas({
       <svg
         ref={svgRef}
         role="application"
-        aria-label="Strategy graph canvas"
+        aria-label="Plan graph canvas"
         className="h-full w-full touch-none select-none cursor-grab active:cursor-grabbing"
         onPointerDown={onBackgroundPointerDown}
         onPointerMove={onPointerMove}

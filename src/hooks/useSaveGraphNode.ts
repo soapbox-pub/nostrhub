@@ -7,7 +7,7 @@ import {
   isEntityType,
   type GraphNodeType,
   type GraphNodeStatus,
-} from '@/lib/strategyGraph';
+} from '@/lib/planGraph';
 
 export interface SaveGraphNodeParams {
   /** `d` tag identifier (slug). */
@@ -30,7 +30,7 @@ export interface SaveGraphNodeParams {
   anchors?: string[];
 }
 
-/** Create or update a strategy-graph node (kind 32473). */
+/** Create or update a plan-graph node (kind 32473). */
 export function useSaveGraphNode() {
   const { mutateAsync: publish } = useNostrPublish();
   const queryClient = useQueryClient();
@@ -43,7 +43,7 @@ export function useSaveGraphNode() {
         ['d', params.identifier],
         ['title', title],
         ['type', params.type],
-        ['alt', `NostrHub strategy node (${NODE_TYPE_LABELS[params.type].toLowerCase()}): ${title}`],
+        ['alt', `NostrHub plan node (${NODE_TYPE_LABELS[params.type].toLowerCase()}): ${title}`],
       ];
       // Status only applies to work items.
       if (!entity) tags.push(['status', params.status]);
@@ -66,7 +66,7 @@ export function useSaveGraphNode() {
       return publish({ kind: GRAPH_NODE_KIND, content: params.content.trim(), tags });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['strategy-graph'] });
+      queryClient.invalidateQueries({ queryKey: ['plan-graph'] });
     },
   });
 }

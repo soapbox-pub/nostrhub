@@ -31,7 +31,7 @@ interface LayoutProps {
 const NAV_ITEMS = [
   { to: '/nips', label: 'NIPs' },
   { to: '/apps', label: 'Apps' },
-  { to: '/strategy', label: 'Strategy' },
+  { to: '/plan', label: 'Plan' },
 ];
 
 /** Secondary destinations surfaced in the footer to keep the header uncluttered. */

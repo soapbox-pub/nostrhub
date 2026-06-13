@@ -11,7 +11,7 @@ import { ARTICLE_KIND } from '@/hooks/useExpertPress';
 import { CUSTOM_NIP_KIND } from '@/lib/nips';
 import { APP_HANDLER_KIND } from '@/lib/apps';
 import { GIT_REPO_KIND, GIT_STATE_KIND } from '@/lib/git';
-import { GRAPH_NODE_KIND } from '@/lib/strategyGraph';
+import { GRAPH_NODE_KIND } from '@/lib/planGraph';
 
 export function NIP19Page() {
   const { nip19: identifier } = useParams<{ nip19: string }>();
@@ -61,10 +61,10 @@ export function NIP19Page() {
       if (decoded.data.kind === APP_HANDLER_KIND) {
         return <AppPage pubkey={decoded.data.pubkey} identifier={decoded.data.identifier} />;
       }
-      // Strategy-graph nodes open on the graph with the node selected.
+      // Plan-graph nodes open on the graph with the node selected.
       if (decoded.data.kind === GRAPH_NODE_KIND) {
         const { kind, pubkey, identifier: d } = decoded.data;
-        return <Navigate to={`/strategy?node=${encodeURIComponent(`${kind}:${pubkey}:${d}`)}`} replace />;
+        return <Navigate to={`/plan?node=${encodeURIComponent(`${kind}:${pubkey}:${d}`)}`} replace />;
       }
       return <div>Addressable event placeholder</div>;
     }

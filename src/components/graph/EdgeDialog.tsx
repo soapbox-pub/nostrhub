@@ -26,7 +26,7 @@ import {
   EDGE_TYPE_LABELS,
   type GraphEdgeType,
   type GraphNode,
-} from '@/lib/strategyGraph';
+} from '@/lib/planGraph';
 
 interface EdgeDialogProps {
   open: boolean;

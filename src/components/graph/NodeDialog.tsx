@@ -40,7 +40,7 @@ import {
   type GraphNodeType,
   type GraphNodeStatus,
   type HierarchyLink,
-} from '@/lib/strategyGraph';
+} from '@/lib/planGraph';
 
 interface NodeDialogProps {
   open: boolean;
@@ -79,7 +79,7 @@ function toHexPubkey(input: string): string | null {
   return null;
 }
 
-/** Create or edit a strategy-graph node. */
+/** Create or edit a plan-graph node. */
 export function NodeDialog({
   open,
   onOpenChange,
@@ -198,7 +198,7 @@ export function NodeDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{node ? 'Edit node' : 'Add to the strategy graph'}</DialogTitle>
+          <DialogTitle>{node ? 'Edit node' : 'Add to the plan graph'}</DialogTitle>
           <DialogDescription>
             {node
               ? 'Update your node. Only you can edit it; others coordinate through comments and connections.'

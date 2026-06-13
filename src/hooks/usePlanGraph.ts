@@ -5,22 +5,22 @@ import {
   GRAPH_NODE_KIND,
   GRAPH_EDGE_KIND,
   assembleGraph,
-  type StrategyGraph,
-} from '@/lib/strategyGraph';
+  type PlanGraph,
+} from '@/lib/planGraph';
 
 /**
- * Fetches the community strategy graph: all kind-32473 nodes and kind-39249
+ * Fetches the community plan graph: all kind-32473 nodes and kind-39249
  * edges in a single two-filter query, scoped to the community author set for
  * spam resistance (same policy as comments and chat). Edges pointing at
  * unknown nodes are dropped during assembly.
  */
-export function useStrategyGraph() {
+export function usePlanGraph() {
   const { nostr } = useNostr();
   const community = useCommunityAuthors();
   const communityAuthors = community.data?.authors;
 
-  const query = useQuery<StrategyGraph>({
-    queryKey: ['strategy-graph', communityAuthors?.length ?? null],
+  const query = useQuery<PlanGraph>({
+    queryKey: ['plan-graph', communityAuthors?.length ?? null],
     queryFn: async ({ signal }) => {
       const authors = communityAuthors ?? [];
       const events = await nostr.query(

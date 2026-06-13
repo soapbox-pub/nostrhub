@@ -38,7 +38,7 @@ import {
   type GraphEdge,
   type GraphNode,
   type GraphNodeType,
-} from '@/lib/strategyGraph';
+} from '@/lib/planGraph';
 
 interface NodePanelProps {
   node: GraphNode;
@@ -80,7 +80,7 @@ const INCOMING_EDGE_LABELS: Record<GraphEdge['type'], string> = {
   'builds': 'built by',
 };
 
-/** Detail panel for the selected strategy node. */
+/** Detail panel for the selected plan node. */
 export function NodePanel({
   node,
   edges,
@@ -131,7 +131,7 @@ export function NodePanel({
           ['k', GRAPH_NODE_KIND.toString()],
         ],
       });
-      queryClient.invalidateQueries({ queryKey: ['strategy-graph'] });
+      queryClient.invalidateQueries({ queryKey: ['plan-graph'] });
       toast({ title: 'Deletion requested', description: 'Relays that honor NIP-09 will remove the node.' });
       onClose();
     } catch (err) {

@@ -1,9 +1,9 @@
 import type { NostrEvent } from '@nostrify/nostrify';
 import { nip19 } from 'nostr-tools';
 
-/** Addressable event kind for a strategy-graph node (goal / problem / task). */
+/** Addressable event kind for a plan-graph node (goal / problem / task). */
 export const GRAPH_NODE_KIND = 32473;
-/** Addressable event kind for a typed edge between two strategy nodes. */
+/** Addressable event kind for a typed edge between two plan nodes. */
 export const GRAPH_EDGE_KIND = 39249;
 
 /**
@@ -102,7 +102,7 @@ export interface GraphEdge {
   createdAt: number;
 }
 
-export interface StrategyGraph {
+export interface PlanGraph {
   nodes: GraphNode[];
   /** Edges whose `from` and `to` both resolve to a known node. */
   edges: GraphEdge[];
@@ -213,7 +213,7 @@ export function edgeIdentifier(from: string, to: string): string {
  * - drops edges/parent-links that reference unknown nodes,
  * - dedupes identical directed pairs from multiple authors (keeps the newest).
  */
-export function assembleGraph(nodeEvents: NostrEvent[], edgeEvents: NostrEvent[]): StrategyGraph {
+export function assembleGraph(nodeEvents: NostrEvent[], edgeEvents: NostrEvent[]): PlanGraph {
   const nodesByAddress = new Map<string, GraphNode>();
   for (const event of nodeEvents) {
     if (!isValidGraphNode(event)) continue;

@@ -94,7 +94,7 @@ export function createSimulation(
   function tick(): number {
     if (alpha < 0.005) return 0;
 
-    // Repulsion between every pair (n is small: a community strategy board).
+    // Repulsion between every pair (n is small: a community plan board).
     for (let i = 0; i < nodes.length; i++) {
       for (let j = i + 1; j < nodes.length; j++) {
         const a = nodes[i];

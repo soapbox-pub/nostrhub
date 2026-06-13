@@ -285,16 +285,16 @@ nostr.query([{ kinds: [31986], "#l": ["nip-compatibility"], limit: 1000 }]);
 
 ---
 
-## Strategy Graph — Kinds `32473` (Node) and `39249` (Edge)
+## Plan Graph — Kinds `32473` (Node) and `39249` (Edge)
 
-NostrHub's `/strategy` page is a **community strategy graph**: a shared, visual map of goals,
+NostrHub's `/plan` page is a **community plan graph**: a shared, visual map of goals,
 problems, and work items that anyone can contribute to. There is no shared mutable canvas —
 the graph is **append-only and author-owned**. Every node and every edge is an independent
 addressable event owned by its creator; clients merge all contributions into a single view
 and compute the layout locally (force-directed). Positions are never stored, so contributors
 cannot conflict over them.
 
-### Kind `32473` — Strategy Node
+### Kind `32473` — Plan Node
 
 An **addressable** event representing one node in the graph. `content` holds a Markdown
 description.
@@ -325,7 +325,7 @@ description.
     ["t", "dms"],
     ["t", "interop"],
     ["p", "<assignee-pubkey>"],
-    ["alt", "NostrHub strategy node (goal): Interoperable DMs everywhere"]
+    ["alt", "NostrHub plan node (goal): Interoperable DMs everywhere"]
   ]
 }
 ```
@@ -341,7 +341,7 @@ A `person` entity node bound to a real identity:
     ["title", "Alice"],
     ["type", "person"],
     ["p", "<alice-pubkey>", "", "subject"],
-    ["alt", "NostrHub strategy node (person): Alice"]
+    ["alt", "NostrHub plan node (person): Alice"]
   ]
 }
 ```
@@ -367,7 +367,7 @@ goal/problem/task). A large goal with sub-tasks renders as a sun with orbiting m
 Clients should render **unrecognized `type` or `status` values gracefully** (e.g. fall back
 to a neutral style) so the vocabulary can evolve without a coordinating server.
 
-### Kind `39249` — Strategy Edge
+### Kind `39249` — Plan Edge
 
 An **addressable** event declaring a typed, directed relationship between two nodes —
 the node a relationship starts **from** and the node it points **to**, marked with
@@ -394,7 +394,7 @@ The event `content` may hold a longer Markdown note explaining the relationship.
     ["a", "32473:<pk-b>:interoperable-dms", "", "to"],
     ["type", "depends-on"],
     ["label", "blocks until merged"],
-    ["alt", "NostrHub strategy edge: fix-relay-auth depends on interoperable-dms"]
+    ["alt", "NostrHub plan edge: fix-relay-auth depends on interoperable-dms"]
   ]
 }
 ```
