@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { nip19 } from 'nostr-tools';
 import { Save, ImagePlus, Loader2, X } from 'lucide-react';
 import { MarkdownContent } from '@/components/MarkdownContent';
@@ -23,6 +24,7 @@ interface ArticleEditorProps {
 export function ArticleEditor({ editing }: ArticleEditorProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { mutate: saveArticle, isPending } = useSaveArticle();
   const { mutateAsync: uploadFile, isPending: isUploading } = useUploadFile();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -80,11 +82,16 @@ export function ArticleEditor({ editing }: ArticleEditorProps) {
       },
       {
         onSuccess: (event) => {
+          const dTag = event.tags.find(([n]) => n === 'd')?.[1] ?? effectiveIdentifier;
           const naddr = nip19.naddrEncode({
             kind: event.kind,
             pubkey: event.pubkey,
-            identifier: event.tags.find(([n]) => n === 'd')?.[1] ?? effectiveIdentifier,
+            identifier: dTag,
           });
+          // Seed the detail-page cache with the freshly signed event so
+          // navigation is optimistic — relays may not index it for a few
+          // seconds, which would otherwise render "Article not found".
+          queryClient.setQueryData(['article', event.pubkey, dTag], event);
           toast({ title: editing ? 'Article updated' : 'Article published' });
           navigate(`/${naddr}`);
         },

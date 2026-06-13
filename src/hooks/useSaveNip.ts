@@ -63,3 +63,28 @@ export function useSaveNip() {
     },
   });
 }
+
+/** Request deletion of a community NIP (kind 30817) via a NIP-09 kind-5 event. */
+export function useDeleteNip() {
+  const { mutateAsync: publish } = useNostrPublish();
+  const queryClient = useQueryClient();
+
+  return useMutation<NostrEvent, Error, CustomNip>({
+    mutationFn: async (nip) => {
+      // Addressable events are deleted by their `a` coordinate, not `e`.
+      return publish({
+        kind: 5,
+        content: '',
+        tags: [
+          ['a', nip.address],
+          ['e', nip.event.id],
+          ['k', CUSTOM_NIP_KIND.toString()],
+        ],
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['custom-nips'] });
+      queryClient.invalidateQueries({ queryKey: ['custom-nip'] });
+    },
+  });
+}

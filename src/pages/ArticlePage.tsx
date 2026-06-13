@@ -1,5 +1,5 @@
 import { useNostr } from '@nostrify/react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSeoMeta } from '@unhead/react';
 import { Link } from 'react-router-dom';
 import { nip19 } from 'nostr-tools';
@@ -28,12 +28,13 @@ const tag = (event: NostrEvent, name: string): string | undefined =>
 /** Long-form article page (NIP-23, kind 30023), addressed by naddr. */
 export function ArticlePage({ pubkey, identifier }: ArticlePageProps) {
   const { nostr } = useNostr();
+  const queryClient = useQueryClient();
   const author = useAuthor(pubkey);
   const metadata = author.data?.metadata;
 
   const { data: event, isLoading } = useQuery<NostrEvent | null>({
     queryKey: ['article', pubkey, identifier],
-    queryFn: async ({ signal }) => {
+    queryFn: async ({ signal, queryKey }) => {
       const filter = { kinds: [ARTICLE_KIND], authors: [pubkey], '#d': [identifier], limit: 1 };
       const opts = { signal: AbortSignal.any([signal, AbortSignal.timeout(6000)]) };
 
@@ -42,7 +43,13 @@ export function ArticlePage({ pubkey, identifier }: ArticlePageProps) {
       const fromPool = await nostr.query([filter], opts);
       const events = fromPool.length > 0 ? fromPool : await nostr.group(SEARCH_RELAYS).query([filter], opts);
 
-      return events.sort((a, b) => b.created_at - a.created_at)[0] ?? null;
+      const fetched = events.sort((a, b) => b.created_at - a.created_at)[0] ?? null;
+      // A freshly-published article may not be indexed yet; keep any
+      // optimistically-seeded event rather than overwriting it with null.
+      if (!fetched) {
+        return queryClient.getQueryData<NostrEvent | null>(queryKey) ?? null;
+      }
+      return fetched;
     },
     staleTime: 60 * 1000,
   });

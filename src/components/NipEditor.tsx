@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { nip19 } from 'nostr-tools';
 import { Save, GitFork, X, Plus } from 'lucide-react';
 import { MarkdownContent } from '@/components/MarkdownContent';
 import { useSaveNip, type SaveNipParams } from '@/hooks/useSaveNip';
 import { useToast } from '@/hooks/useToast';
-import { slugify, type CustomNip } from '@/lib/nips';
+import { slugify, parseCustomNip, type CustomNip } from '@/lib/nips';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -33,6 +34,7 @@ interface NipEditorProps {
 export function NipEditor({ editing, initial }: NipEditorProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { mutate: saveNip, isPending } = useSaveNip();
 
   const [title, setTitle] = useState(editing?.title ?? initial?.title ?? '');
@@ -77,6 +79,12 @@ export function NipEditor({ editing, initial }: NipEditorProps) {
             pubkey: event.pubkey,
             identifier: event.tags.find(([n]) => n === 'd')?.[1] ?? effectiveIdentifier,
           });
+          // Seed the detail-page cache with the freshly signed event so
+          // navigation is optimistic — relays may not index it for a few
+          // seconds, which would otherwise render "NIP not found".
+          const parsed = parseCustomNip(event);
+          queryClient.setQueryData(['custom-nip', naddr], parsed);
+          queryClient.setQueryData(['custom-nip-by-address', parsed.address], parsed);
           toast({ title: editing ? 'NIP updated' : 'NIP published' });
           navigate(`/${naddr}`);
         },
