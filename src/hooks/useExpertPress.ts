@@ -38,14 +38,38 @@ const tag = (event: NostrEvent, name: string): string | undefined =>
 /**
  * Minimum markdown body length for the feature well — just enough to drop
  * "test"/placeholder kind 30023 events without excluding legit short pieces.
+ * Measured against the *prose* body, after stripping references (see
+ * {@link proseLength}), so link-roll aggregator posts don't qualify.
  */
 const MIN_ARTICLE_CHARS = 200;
+
+/**
+ * Length of the human-readable prose in a markdown body, ignoring boilerplate
+ * that carries no editorial weight: `nostr:` mentions, bare URLs, markdown
+ * link/image targets, and whitespace. Aggregator/link-roll posts (e.g. the
+ * `matometr` client, which dumps a stack of `nostr:nevent1…` references with
+ * no commentary) collapse to ~0 here and are dropped from the feature well.
+ */
+function proseLength(content: string): number {
+  return content
+    // markdown images / links: keep the visible label, drop the target.
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+    // nostr: mentions (npub/note/nevent/naddr/nprofile + raw entity strings).
+    .replace(/(?:nostr:)?(?:npub|note|nevent|naddr|nprofile|nsec)1[0-9a-z]+/gi, '')
+    // bare URLs.
+    .replace(/https?:\/\/\S+/gi, '')
+    // collapse remaining whitespace.
+    .replace(/\s+/g, ' ')
+    .trim().length;
+}
 
 function parseArticle(event: NostrEvent): ExpertArticle | null {
   const identifier = tag(event, 'd');
   const title = tag(event, 'title')?.trim();
   const content = event.content.trim();
-  if (identifier === undefined || !title || content.length < MIN_ARTICLE_CHARS) return null;
+  if (identifier === undefined || !title || proseLength(content) < MIN_ARTICLE_CHARS) {
+    return null;
+  }
 
   const publishedAtRaw = Number(tag(event, 'published_at'));
   const publishedAt =
