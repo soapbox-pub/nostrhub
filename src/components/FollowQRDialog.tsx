@@ -70,6 +70,7 @@ export function FollowQRDialog({
             src={qrDataUrl}
             alt={`QR code linking to ${displayName}'s profile`}
             className="w-full rounded-xl border border-border"
+            style={{ imageRendering: 'pixelated' }}
           />
         ) : (
           <div className="aspect-square w-full animate-pulse rounded-xl border border-border bg-muted" />
