@@ -40,7 +40,19 @@ const NODE_FILL: Record<GraphNodeType, string> = {
   task: 'fill-sky-500',
   person: 'fill-emerald-500',
   org: 'fill-amber-500',
+  concept: 'fill-teal-500',
+  object: 'fill-fuchsia-500',
 };
+
+/** Build an SVG hexagon path of "radius" r, point-up. Used for `object` nodes. */
+function hexagonPoints(r: number): string {
+  const pts: string[] = [];
+  for (let i = 0; i < 6; i++) {
+    const angle = (Math.PI / 3) * i - Math.PI / 2;
+    pts.push(`${(r * Math.cos(angle)).toFixed(2)},${(r * Math.sin(angle)).toFixed(2)}`);
+  }
+  return pts.join(' ');
+}
 
 const EDGE_CLASS: Partial<Record<GraphEdgeType, string>> = {
   'depends-on': 'stroke-muted-foreground',
@@ -412,6 +424,21 @@ export function GraphCanvas({
         <span className="flex items-center gap-2">
           <span className="inline-block size-3 rounded-[3px] bg-amber-500" aria-hidden="true" /> Org
         </span>
+        <span className="flex items-center gap-2">
+          <span
+            className="inline-block size-3 rounded-full border-2 border-dashed border-teal-500"
+            aria-hidden="true"
+          />{' '}
+          Concept
+        </span>
+        <span className="flex items-center gap-2">
+          <span
+            className="inline-block size-3 rotate-90 bg-fuchsia-500"
+            style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}
+            aria-hidden="true"
+          />{' '}
+          Object
+        </span>
       </div>
     </div>
   );
@@ -449,6 +476,8 @@ function GraphNodeShape({
   const picture = sanitizeUrl(author.data?.metadata?.picture);
   const isPerson = node.type === 'person';
   const isOrg = node.type === 'org';
+  const isConcept = node.type === 'concept';
+  const isObject = node.type === 'object';
   const entity = isEntityType(node.type);
   const done = node.status === 'done' || node.status === 'dropped';
   const clipId = `clip-${node.address}`;
@@ -488,6 +517,26 @@ function GraphNodeShape({
           rx={r * 0.35}
           className={cn(NODE_FILL[node.type], 'stroke-background stroke-2')}
         />
+      ) : isObject ? (
+        // Objects render as a hexagon to read as a concrete "artifact".
+        <polygon
+          points={hexagonPoints(r)}
+          className={cn(NODE_FILL[node.type], 'stroke-background stroke-2')}
+        />
+      ) : isConcept ? (
+        // Concepts render as a dashed-outline circle to read as "abstract".
+        <>
+          <circle r={r} className={cn(NODE_FILL[node.type], 'opacity-25')} />
+          <circle
+            r={r - 1}
+            strokeWidth={2}
+            strokeDasharray="3 3"
+            className={cn(
+              NODE_FILL[node.type].replace('fill-', 'stroke-'),
+              'fill-none',
+            )}
+          />
+        </>
       ) : isPerson && picture ? (
         <>
           <clipPath id={clipId}>

@@ -9,11 +9,13 @@ export const GRAPH_EDGE_KIND = 39249;
 /**
  * Node types fall into two families:
  * - **work items** (goal/problem/task) — abstract things with a lifecycle status.
- * - **entities** (person/org) — actors in the ecosystem; status is meaningless,
- *   and a `person` may bind to a real Nostr identity (subject pubkey).
+ * - **entities** (person/org/concept/object) — actors and subjects in the
+ *   ecosystem; status is meaningless. A `person` may bind to a real Nostr
+ *   identity (subject pubkey); a `concept` is an abstract theme/domain (e.g.
+ *   "Marketing"); an `object` is a concrete thing/artifact (e.g. "Ditto app").
  */
 export const WORK_ITEM_TYPES = ['goal', 'problem', 'task'] as const;
-export const ENTITY_TYPES = ['person', 'org'] as const;
+export const ENTITY_TYPES = ['person', 'org', 'concept', 'object'] as const;
 export const NODE_TYPES = [...WORK_ITEM_TYPES, ...ENTITY_TYPES] as const;
 export type GraphNodeType = (typeof NODE_TYPES)[number];
 
@@ -299,6 +301,8 @@ export const NODE_TYPE_LABELS: Record<GraphNodeType, string> = {
   task: 'Task',
   person: 'Person',
   org: 'Organization',
+  concept: 'Concept',
+  object: 'Object',
 };
 
 export const NODE_STATUS_LABELS: Record<GraphNodeStatus, string> = {

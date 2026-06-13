@@ -303,7 +303,7 @@ description.
 | -------- | -------- | ---------- | ------------------------------------------------------------------------ |
 | `d`      | yes      | no         | Unique identifier (kebab-case slug).                                     |
 | `title`  | yes      | no         | Short human-readable node title.                                         |
-| `type`   | yes      | no         | Node type. **Work items:** `goal`, `problem`, `task`. **Entities:** `person`, `org`. |
+| `type`   | yes      | no         | Node type. **Work items:** `goal`, `problem`, `task`. **Entities:** `person`, `org`, `concept`, `object`. |
 | `status` | no       | no         | Work items only: `open` (default), `in-progress`, `blocked`, `done`, or `dropped`. Ignored for entities. |
 | `p`      | no       | no         | With marker `subject` (`["p", "<pubkey>", "", "subject"]`): on a `person` node, the **real Nostr identity** it represents (renders their profile avatar/name). |
 | `a`      | no       | yes        | With marker `parent` (`["a", "32473:<pk>:<d>", "", "parent"]`): a **parent node**, forming a multi-parent hierarchy. Without a marker: an **anchor** to a related entity (custom NIP `30817:<pk>:<d>`, app `31990:<pk>:<d>`, repo `30617:<pk>:<d>`). |
@@ -347,11 +347,13 @@ A `person` entity node bound to a real identity:
 ```
 
 **Node families.** Types split into **work items** (goal/problem/task — abstract things
-with a lifecycle `status`) and **entities** (person/org — actors in the ecosystem, no
-status). A `person` may carry a `subject`-marked `p` tag binding it to a real npub so the
-node renders that user's avatar and links to their profile. This keeps the graph a single
-kind (kind = schema, `type` = semantics) while supporting both roadmap items and the
-people/orgs around them.
+with a lifecycle `status`) and **entities** (person/org/concept/object — actors and
+subjects in the ecosystem, no status). A `person` may carry a `subject`-marked `p` tag
+binding it to a real npub so the node renders that user's avatar and links to their
+profile. A `concept` is an abstract theme or domain (e.g. "Marketing"); an `object` is a
+concrete thing or artifact (e.g. an app like "Ditto"). This keeps the graph a single kind
+(kind = schema, `type` = semantics) while supporting roadmap items, the people/orgs around
+them, and the concepts/objects they touch.
 
 Only the node's author can edit it (addressable replacement) or delete it (NIP-09).
 `status` is managed by the author; others coordinate through NIP-22 comments on the node.

@@ -61,6 +61,8 @@ const TYPE_HINTS: Record<GraphNodeType, string> = {
   task: 'A concrete, actionable unit of work.',
   person: 'A real person in the ecosystem. Link their Nostr identity below.',
   org: 'A company, project, working group, or funder.',
+  concept: 'An abstract theme or domain, e.g. "Marketing" or "Onboarding".',
+  object: 'A concrete thing or artifact, e.g. an app like "Ditto" or a spec.',
 };
 
 /** Decode an npub or accept raw 64-char hex; returns hex pubkey or null. */
