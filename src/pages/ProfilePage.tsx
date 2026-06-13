@@ -1,9 +1,11 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useSeoMeta } from '@unhead/react';
 import { nip19 } from 'nostr-tools';
-import { BadgeCheck, Blocks, FileText, FolderGit2, Globe, Zap } from 'lucide-react';
+import { BadgeCheck, Blocks, FileText, FolderGit2, Globe, QrCode, Zap } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { UserAvatar } from '@/components/UserAvatar';
+import { DittoIcon } from '@/components/icons/DittoIcon';
+import { FollowQRDialog } from '@/components/FollowQRDialog';
 import { NipCard, NipCardSkeleton } from '@/components/NipCard';
 import { AppCard, AppCardSkeleton } from '@/components/AppCard';
 import { ContributionChart } from '@/components/ContributionChart';
@@ -18,7 +20,9 @@ import { useApps } from '@/hooks/useApps';
 import { customToRanked, type RankedNip } from '@/hooks/useRankedNips';
 import { shortNpub } from '@/lib/nostr';
 import { sanitizeUrl } from '@/lib/sanitizeUrl';
+import { getAvatarShape, isEmoji, shapedAvatarBorderStyle } from '@/lib/avatarShape';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -44,6 +48,8 @@ export function ProfilePage({ pubkey }: ProfilePageProps) {
   const metadata = author.data?.metadata;
   const { isExpert } = useExperts();
 
+  const [qrOpen, setQrOpen] = useState(false);
+
   const nipsQuery = useCustomNips({ authors: [pubkey] });
   const reposQuery = useGitRepos({ authors: [pubkey] });
   // Show all of this author's own listings, even with incomplete metadata.
@@ -65,6 +71,12 @@ export function ProfilePage({ pubkey }: ProfilePageProps) {
   const banner = sanitizeUrl(metadata?.banner);
   const expert = isExpert(pubkey);
 
+  // Custom avatar shape (emoji mask) from kind-0 metadata, if present.
+  const avatarShape = getAvatarShape(metadata);
+  const isEmojiShape = !!avatarShape && isEmoji(avatarShape);
+
+  const dittoUrl = `https://ditto.pub/${npub}`;
+
   useSeoMeta({
     title: `${displayName} | NostrHub`,
     description: about ? about.slice(0, 160) : `${displayName} on NostrHub.`,
@@ -82,9 +94,9 @@ export function ProfilePage({ pubkey }: ProfilePageProps) {
   return (
     <Layout className="max-w-5xl">
       <article className="space-y-6">
-        {/* Banner */}
+        {/* Banner — full-bleed to the screen edges on mobile, boxed on sm+. */}
         <div
-          className="relative isolate h-40 overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-primary/20 via-nebula/15 to-background sm:h-52"
+          className="relative isolate -mx-4 -mt-6 h-40 overflow-hidden border-border/60 bg-gradient-to-br from-primary/20 via-nebula/15 to-background sm:mx-0 sm:mt-0 sm:h-52 sm:rounded-2xl sm:border"
           aria-hidden={banner ? undefined : 'true'}
         >
           {banner && (
@@ -99,25 +111,61 @@ export function ProfilePage({ pubkey }: ProfilePageProps) {
         </div>
 
         {/* Header */}
-        <header className="space-y-4 px-1 sm:px-2">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <UserAvatar
-              pubkey={pubkey}
-              size="lg"
-              className="-mt-16 size-24 border-4 border-background shadow-lg sm:-mt-20 sm:size-28"
-            />
+        <header className="space-y-3 px-1 sm:px-2">
+          {/* Action buttons — large glassy circles sitting on the banner line. */}
+          <div className="z-10 -mt-12 flex items-center justify-end gap-2 pr-1 sm:-mt-14 sm:pr-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setQrOpen(true)}
+              title="Show profile QR code"
+              aria-label="Show profile QR code"
+              className="size-14 rounded-full border-border/40 bg-background/50 p-0 shadow-md backdrop-blur-sm"
+            >
+              <QrCode className="size-7" />
+            </Button>
+            <Button
+              variant="outline"
+              asChild
+              title={`View ${displayName} on Ditto`}
+              className="size-14 rounded-full border-border/40 bg-background/50 p-0 shadow-md backdrop-blur-sm"
+            >
+              <a
+                href={dittoUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`View ${displayName} on Ditto`}
+              >
+                <DittoIcon className="size-8" />
+              </a>
+            </Button>
             <ExpertToggleButton pubkey={pubkey} />
           </div>
 
-          <div className="space-y-1.5">
-            {author.isLoading && !metadata ? (
-              <div className="space-y-2">
-                <Skeleton className="h-8 w-56" />
-                <Skeleton className="h-4 w-40" />
-              </div>
-            ) : (
-              <>
-                <h1 className="flex flex-wrap items-center gap-2 font-display text-3xl font-bold tracking-tight">
+          {/* Avatar bleeds up into the banner; identity below on mobile, beside on sm+. */}
+          <div className="-mt-7 flex flex-col gap-2 sm:flex-row sm:items-end sm:gap-4">
+            <div
+              className="-mt-12 shrink-0 sm:-mt-14"
+              style={isEmojiShape ? shapedAvatarBorderStyle : undefined}
+            >
+              <UserAvatar
+                pubkey={pubkey}
+                className={
+                  isEmojiShape
+                    ? 'size-28 shadow-xl sm:size-32'
+                    : 'size-28 border-4 border-background shadow-xl sm:size-32'
+                }
+              />
+            </div>
+
+            <div className="min-w-0 flex-1 space-y-1 sm:pb-1">
+              {author.isLoading && !metadata ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-8 w-56" />
+                  <Skeleton className="h-4 w-40" />
+                </div>
+              ) : (
+                <h1 className="flex flex-wrap items-center gap-x-2 gap-y-1 font-display text-3xl font-bold tracking-tight">
                   <span className="break-words">{displayName}</span>
                   {expert && (
                     <BadgeCheck
@@ -125,14 +173,18 @@ export function ProfilePage({ pubkey }: ProfilePageProps) {
                       aria-label="Nostr Expert"
                     />
                   )}
+                  {handle && (
+                    <span className="text-base font-normal text-muted-foreground">
+                      {handle}
+                    </span>
+                  )}
                 </h1>
-                {handle && <p className="text-muted-foreground">{handle}</p>}
-              </>
-            )}
+              )}
 
-            <div className="flex items-center gap-1 text-sm text-muted-foreground">
-              <span className="font-mono">{shortNpub(pubkey)}</span>
-              <CopyButton value={npub} label="Copy npub" />
+              <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                <span className="font-mono">{shortNpub(pubkey)}</span>
+                <CopyButton value={npub} label="Copy npub" />
+              </div>
             </div>
           </div>
 
@@ -259,6 +311,14 @@ export function ProfilePage({ pubkey }: ProfilePageProps) {
           </TabsContent>
         </Tabs>
       </article>
+
+      <FollowQRDialog
+        open={qrOpen}
+        onOpenChange={setQrOpen}
+        pubkey={pubkey}
+        npub={npub}
+        displayName={displayName}
+      />
     </Layout>
   );
 }
