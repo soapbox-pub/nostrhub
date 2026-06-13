@@ -57,7 +57,7 @@ export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className='w-56 p-2 animate-scale-in'>
-        <div className='px-2 py-1.5'>
+        <div className='px-2 pb-1.5'>
           <span className='text-xs font-medium text-muted-foreground'>Theme</span>
           <Select value={theme} onValueChange={(v) => setTheme(v as Theme)}>
             <SelectTrigger className='mt-1 h-9 w-full'>

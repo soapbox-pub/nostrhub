@@ -83,7 +83,7 @@ export function Layout({ children, sidebar, className, fullBleed = false }: Layo
                 <Menu className="size-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-72 gap-0 p-0">
+            <SheetContent side="left" showCloseButton={false} className="w-72 gap-0 p-0">
               <SheetHeader className="border-b border-primary/15 p-4">
                 <SheetTitle asChild>
                   <Logo onClick={() => setMobileMenuOpen(false)} />
