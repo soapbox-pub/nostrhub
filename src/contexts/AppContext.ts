@@ -1,13 +1,13 @@
 import { createContext } from "react";
-import type { ThemeConfig, ThemesConfig } from "@/themes";
 
 /**
  * App theme preference.
- * - "light" / "dark" — builtin (or configured) color sets.
+ * - "light" / "dark" — NostrHub's builtin palettes.
  * - "system" — resolves to "light" or "dark" via prefers-color-scheme.
- * - "custom" — user-defined colors stored in `customTheme`.
+ * - "ditto" — applies the logged-in user's Ditto profile theme (kind 16767),
+ *   pulled from Nostr. Only selectable when the user has published one.
  */
-export type Theme = "dark" | "light" | "system" | "custom";
+export type Theme = "dark" | "light" | "system" | "ditto";
 
 export interface RelayMetadata {
   /** List of relays with read/write permissions */
@@ -45,12 +45,6 @@ export interface AppConfig {
   appId: string;
   /** Current theme mode. */
   theme: Theme;
-  /** Custom theme config (colors, fonts, background). Only used when theme === "custom". */
-  customTheme?: ThemeConfig;
-  /** Automatically publish custom theme changes to the user's profile (kind 16767). Default: true. */
-  autoShareTheme: boolean;
-  /** Configured light and dark themes. Overrides the builtin themes when set. */
-  themes?: ThemesConfig;
   /** NIP-65 relay list metadata */
   relayMetadata: RelayMetadata;
   /** User's kind 10063 Blossom server list. */

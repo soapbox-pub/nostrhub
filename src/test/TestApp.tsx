@@ -24,7 +24,6 @@ export function TestApp({ children }: TestAppProps) {
     appName: 'NostrHub',
     appId: 'nostrhub',
     theme: 'light',
-    autoShareTheme: true,
     relayMetadata: {
       relays: [
         { url: 'wss://relay.primal.net', read: true, write: true },

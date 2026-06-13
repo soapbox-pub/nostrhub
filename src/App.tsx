@@ -7,6 +7,7 @@ import { InferSeoMetaPlugin } from 'unhead/plugins';
 import { Suspense } from 'react';
 import NostrProvider from '@/components/NostrProvider';
 import { NostrSync } from '@/components/NostrSync';
+import { DittoThemeInjector } from '@/components/DittoThemeInjector';
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { NostrLoginProvider } from '@nostrify/react/login';
@@ -35,7 +36,6 @@ const defaultConfig: AppConfig = {
   appName: "NostrHub",
   appId: "nostrhub",
   theme: "dark",
-  autoShareTheme: true,
   relayMetadata: APP_RELAYS,
   blossomServerMetadata: {
     servers: [
@@ -64,6 +64,7 @@ export function App() {
           <NostrLoginProvider storageKey='nostr:login'>
             <NostrProvider>
               <NostrSync />
+              <DittoThemeInjector />
               <TooltipProvider>
                 <Toaster />
                 <Suspense>

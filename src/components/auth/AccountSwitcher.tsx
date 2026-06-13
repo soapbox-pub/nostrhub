@@ -1,60 +1,41 @@
-import { ChevronDown, LogOut, Monitor, Moon, Palette, Settings, Sun, UserPlus, Check } from 'lucide-react';
+import { ChevronDown, LogOut, Monitor, Moon, Settings, Sun, UserPlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu.tsx';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select.tsx';
 import { Skeleton } from '@/components/ui/skeleton.tsx';
 import { UserAvatar } from '@/components/UserAvatar';
+import { DittoIcon } from '@/components/icons/DittoIcon';
 import { useLoggedInAccounts, type Account } from '@/hooks/useLoggedInAccounts';
 import { useTheme } from '@/hooks/useTheme';
+import { useActiveProfileTheme } from '@/hooks/useActiveProfileTheme';
 import { type Theme } from '@/contexts/AppContext';
-import { themePresets, type ThemePreset } from '@/themes';
 
 interface AccountSwitcherProps {
   onAddAccountClick: () => void;
 }
 
-const MODE_ITEMS: { value: Theme; label: string; icon: typeof Sun }[] = [
-  { value: 'light', label: 'Light', icon: Sun },
-  { value: 'dark', label: 'Dark', icon: Moon },
-  { value: 'system', label: 'System', icon: Monitor },
-];
-
 export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
   const { currentUser, otherUsers, isLoading, setLogin, removeLogin } = useLoggedInAccounts();
-  const { theme, customTheme, setTheme, applyCustomTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
+  const { hasDittoTheme } = useActiveProfileTheme();
 
   if (!currentUser) return null;
 
   const getDisplayName = (account: Account): string => {
     return account.metadata.name ?? 'Anonymous';
   }
-
-  const featuredPresets = Object.entries(themePresets).filter(([, p]) => p.featured);
-
-  const applyPreset = (preset: ThemePreset) => {
-    applyCustomTheme({
-      title: preset.label,
-      colors: preset.colors,
-      ...(preset.font && { font: preset.font }),
-      ...(preset.titleFont && { titleFont: preset.titleFont }),
-      ...(preset.background && { background: preset.background }),
-    });
-  };
-
-  const activePresetKey =
-    theme === 'custom' && customTheme
-      ? Object.entries(themePresets).find(
-          ([, p]) => JSON.stringify(p.colors) === JSON.stringify(customTheme.colors),
-        )?.[0]
-      : undefined;
 
   // While the metadata query is in-flight and we don't yet have a name,
   // we don't want to flash a generated animal name / its first letter.
@@ -99,50 +80,39 @@ export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
           );
         })}
         <DropdownMenuSeparator />
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger className='flex items-center gap-2 p-2 rounded-md'>
-            <Palette className='w-4 h-4 text-muted-foreground' />
-            <span>Theme</span>
-          </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent className='w-48 p-1'>
-            {MODE_ITEMS.map(({ value, label, icon: Icon }) => (
-              <DropdownMenuItem
-                key={value}
-                onClick={() => setTheme(value)}
-                className='flex items-center gap-2 cursor-pointer p-2 rounded-md'
-              >
-                <Icon className='w-4 h-4 text-muted-foreground' />
-                <span className='flex-1'>{label}</span>
-                {theme === value && <Check className='w-4 h-4 text-primary' />}
-              </DropdownMenuItem>
-            ))}
-            <DropdownMenuSeparator />
-            {featuredPresets.map(([key, preset]) => (
-              <DropdownMenuItem
-                key={key}
-                onClick={() => applyPreset(preset)}
-                className='flex items-center gap-2 cursor-pointer p-2 rounded-md'
-              >
-                <span aria-hidden className='text-base leading-none'>{preset.emoji}</span>
-                <span className='flex overflow-hidden rounded-full ring-1 ring-border'>
-                  {(['background', 'primary', 'text'] as const).map((role) => (
-                    <span
-                      key={role}
-                      className='size-3'
-                      style={{ background: `hsl(${preset.colors[role]})` }}
-                    />
-                  ))}
+        <div className='px-2 py-1.5'>
+          <span className='text-xs font-medium text-muted-foreground'>Theme</span>
+          <Select value={theme} onValueChange={(v) => setTheme(v as Theme)}>
+            <SelectTrigger className='mt-1 h-9 w-full'>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value='light'>
+                <span className='flex items-center gap-2'>
+                  <Sun className='w-4 h-4' /> Light
                 </span>
-                <span className='flex-1 truncate'>{preset.label}</span>
-                {activePresetKey === key && <Check className='w-4 h-4 text-primary' />}
-              </DropdownMenuItem>
-            ))}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild className='cursor-pointer p-2 rounded-md text-muted-foreground'>
-              <Link to='/settings'>More in Settings…</Link>
-            </DropdownMenuItem>
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
+              </SelectItem>
+              <SelectItem value='dark'>
+                <span className='flex items-center gap-2'>
+                  <Moon className='w-4 h-4' /> Dark
+                </span>
+              </SelectItem>
+              <SelectItem value='system'>
+                <span className='flex items-center gap-2'>
+                  <Monitor className='w-4 h-4' /> System
+                </span>
+              </SelectItem>
+              {hasDittoTheme && (
+                <SelectItem value='ditto'>
+                  <span className='flex items-center gap-2'>
+                    <DittoIcon className='w-4 h-4' /> Ditto
+                  </span>
+                </SelectItem>
+              )}
+            </SelectContent>
+          </Select>
+        </div>
+        <DropdownMenuSeparator />
         <DropdownMenuItem asChild className='flex items-center gap-2 cursor-pointer p-2 rounded-md'>
           <Link to='/settings'>
             <Settings className='w-4 h-4' />

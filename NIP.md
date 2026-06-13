@@ -423,71 +423,24 @@ nostr.query([{ kinds: [39249], "#a": ["32473:<pk>:<d>"] }]);
 
 ---
 
-## Theme Definition — Kind `36767` (addressable)
+## Ditto Profile Theme — Kind `16767` (replaceable, consumed read-only)
 
-A shareable, named UI theme that a user has created — think of these as published
-theme presets. A theme is fundamentally **three core colors** (`background`, `text`,
-`primary`); NostrHub derives the full token set (cards, borders, muted, accent,
-sidebar, charts, `nebula`) from them on the client. Optional fonts and a background
-image round it out.
+NostrHub offers a **Ditto** theme option that applies the theme a user configured
+in [Ditto](https://ditto.pub) (or any compatible client), published as a replaceable
+kind 16767 event. NostrHub **reads** this event; it does not author it.
 
-Colors are stored as **hex** in single-letter `c` tags (converted to/from HSL by the
-client). The `content` field is empty.
+A theme is fundamentally **three core colors** (`background`, `text`, `primary`),
+stored as **hex** in single-letter `c` tags. NostrHub derives its full token set
+(cards, borders, muted, accent, `nebula`, sidebar, charts) from those three colors on
+the client. Optional fonts (`f` tags) and a background image (`bg` tag) are also honored.
 
-### Tags
-
-| Tag           | Required | Repeatable | Description                                                        |
-| ------------- | -------- | ---------- | ------------------------------------------------------------------ |
-| `d`           | yes      | no         | Identifier (slug). Used in the `naddr`.                            |
-| `c`           | yes      | yes (3)    | `["c", "#1a1a2e", "background"]` — color hex + role (`background`/`text`/`primary`). |
-| `f`           | no       | yes (≤2)   | Font: `["f", "<family>", "<url|empty>", "body"|"title"]`.          |
-| `bg`          | no       | no         | Background, imeta-style: `["bg", "url https://…", "mode cover", "m image/jpeg"]`. |
-| `title`       | yes      | no         | Display name.                                                     |
-| `alt`         | yes      | no         | NIP-31 human-readable description (`Custom NostrHub theme: …`).    |
-| `t`           | no       | no         | Topic tag, always `theme`.                                        |
-| `description` | no       | no         | Optional longer description.                                      |
-
-### Example
-
-```jsonc
-{
-  "kind": 36767,
-  "content": "",
-  "tags": [
-    ["d", "ocean-night"],
-    ["c", "#0a1a22", "background"],
-    ["c", "#e6f7ff", "text"],
-    ["c", "#22d3ee", "primary"],
-    ["f", "Inter", "", "body"],
-    ["bg", "url https://example.com/ocean.jpg", "mode cover", "m image/jpeg"],
-    ["title", "Ocean Night"],
-    ["alt", "Custom NostrHub theme: Ocean Night"],
-    ["t", "theme"]
-  ]
-}
-```
-
-Since kind 36767 is addressable, a user may publish multiple themes via distinct `d`
-tags; republishing with the same `d` replaces the previous version. Because these are
-author-owned addressable events, clients **must** filter by `authors` — the `d` tag
-alone is not a trust boundary.
-
----
-
-## Active Profile Theme — Kind `16767` (replaceable)
-
-The user's currently active profile theme (one per user). Same tag structure as kind
-36767 but **without** `d`/`t`/`description`, plus an optional `a` tag referencing the
-source theme definition.
-
-| Tag     | Required | Description                                              |
-| ------- | -------- | -------------------------------------------------------- |
-| `c`     | yes      | Color tags (same as 36767).                              |
-| `f`     | no       | Font tags (same as 36767).                               |
-| `bg`    | no       | Background tag (same as 36767).                          |
-| `alt`   | yes      | Always `Active NostrHub profile theme`.                  |
-| `title` | no       | Optional theme name.                                     |
-| `a`     | no       | Optional `36767:<pubkey>:<d>` reference to the source.   |
+| Tag     | Description                                              |
+| ------- | -------------------------------------------------------- |
+| `c`     | Color: `["c", "#1a1a2e", "background"]` — hex + role (`background`/`text`/`primary`). |
+| `f`     | Font: `["f", "<family>", "<url|empty>", "body"|"title"]`. |
+| `bg`    | Background, imeta-style: `["bg", "url https://…", "mode cover", "m image/jpeg"]`. |
+| `title` | Optional theme name.                                     |
+| `alt`   | NIP-31 human-readable description.                       |
 
 ```jsonc
 {
@@ -497,20 +450,20 @@ source theme definition.
     ["c", "#0a1a22", "background"],
     ["c", "#e6f7ff", "text"],
     ["c", "#22d3ee", "primary"],
-    ["alt", "Active NostrHub profile theme"],
-    ["a", "36767:<pubkey>:ocean-night"]
+    ["f", "Inter", "", "body"],
+    ["bg", "url https://example.com/ocean.jpg", "mode cover", "m image/jpeg"]
   ]
 }
 ```
 
-- Query a user's active theme: `{ kinds: [16767], authors: [pubkey], limit: 1 }`.
-- Setting a new active theme publishes a new kind 16767 event (replacing the old one).
-- To remove it, publish a kind 5 deletion targeting kind 16767, or an empty replacement.
-
-When `autoShareTheme` is enabled (default), applying a custom theme in NostrHub
-auto-publishes it as a kind 16767 event (debounced). On load, NostrHub reads the
-user's kind 16767 event and applies it as the `customTheme` **without** changing the
-active mode (light/dark/system/custom).
+- NostrHub queries `{ kinds: [16767], authors: [self], limit: 1 }` for the logged-in
+  user. The "Ditto" theme option only appears when such an event exists.
+- Colors may alternatively appear as JSON in `content` (legacy Ditto format); both the
+  current 3-color and the legacy 19-token shapes are parsed.
+- When the Ditto theme carries a background image, NostrHub paints it full-viewport and
+  lays a tint/scrim (derived from the theme background color) beneath the content for
+  legibility.
+- Filtered by `authors` — a replaceable event's author is its trust boundary.
 
 ---
 
@@ -518,8 +471,8 @@ active mode (light/dark/system/custom).
 
 NostrHub syncs cross-device app preferences in a **single** kind 30078
 application-specific-data event, **encrypted to self** with [NIP-44](https://github.com/nostr-protocol/nips/blob/master/44.md).
-The decrypted `content` is a JSON object holding `theme`, `customTheme`,
-`autoShareTheme`, `experts`, `communityCap`, `statsProvider`, `useAppBlossomServers`,
+The decrypted `content` is a JSON object holding `theme` (the mode: `light`/`dark`/
+`system`/`ditto`), `experts`, `communityCap`, `statsProvider`, `useAppBlossomServers`,
 and a `lastSync` logical clock (ms). Device-local secrets (e.g. the AI API key) are
 **never** synced.
 

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { nip19 } from 'nostr-tools';
 import { useSeoMeta } from '@unhead/react';
-import { X, Plus, RotateCcw } from 'lucide-react';
+import { X, Plus, RotateCcw, Sun, Moon, Monitor } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { UserAvatar } from '@/components/UserAvatar';
 import { shortNpub } from '@/lib/nostr';
@@ -15,7 +15,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { ThemeSelector } from '@/components/ThemeSelector';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { DittoIcon } from '@/components/icons/DittoIcon';
+import { useTheme } from '@/hooks/useTheme';
+import { useActiveProfileTheme } from '@/hooks/useActiveProfileTheme';
+import { type Theme } from '@/contexts/AppContext';
 
 /** Resolve a hex pubkey, npub, or nprofile string to a hex pubkey. */
 function resolvePubkey(input: string): string | null {
@@ -296,17 +306,52 @@ function CommunitySettings() {
 }
 
 function AppearanceSettings() {
+  const { theme, setTheme } = useTheme();
+  const { hasDittoTheme } = useActiveProfileTheme();
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Appearance</CardTitle>
         <CardDescription>
-          Choose a theme mode or a preset, or craft a custom look from three core
-          colors. Custom themes can be shared to your Nostr profile.
+          Choose how NostrHub looks. The <span className="text-foreground">Ditto</span>{' '}
+          option applies the theme you configured in Ditto (or any compatible client),
+          and only appears once you've set one.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <ThemeSelector />
+        <div className="max-w-xs space-y-2">
+          <Label htmlFor="theme-mode">Theme</Label>
+          <Select value={theme} onValueChange={(v) => setTheme(v as Theme)}>
+            <SelectTrigger id="theme-mode">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="light">
+                <span className="flex items-center gap-2">
+                  <Sun className="w-4 h-4" /> Light
+                </span>
+              </SelectItem>
+              <SelectItem value="dark">
+                <span className="flex items-center gap-2">
+                  <Moon className="w-4 h-4" /> Dark
+                </span>
+              </SelectItem>
+              <SelectItem value="system">
+                <span className="flex items-center gap-2">
+                  <Monitor className="w-4 h-4" /> System
+                </span>
+              </SelectItem>
+              {hasDittoTheme && (
+                <SelectItem value="ditto">
+                  <span className="flex items-center gap-2">
+                    <DittoIcon className="w-4 h-4" /> Ditto
+                  </span>
+                </SelectItem>
+              )}
+            </SelectContent>
+          </Select>
+        </div>
       </CardContent>
     </Card>
   );
