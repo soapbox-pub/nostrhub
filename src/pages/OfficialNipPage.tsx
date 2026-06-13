@@ -9,8 +9,10 @@ import { MarkdownContent } from '@/components/MarkdownContent';
 import { ApproveButton } from '@/components/ApproveButton';
 import { CommentsSection } from '@/components/comments/CommentsSection';
 import { RelatedReposCard, UsedByAppsCard } from '@/components/CrossRefCards';
+import { LinkAppNudge } from '@/components/LinkAppNudge';
 import { useOfficialNip } from '@/hooks/useOfficialNips';
 import { useAppsForOfficialNip } from '@/hooks/useAppsForNip';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { uniqueRepoRefs } from '@/lib/apps';
 import { cn } from '@/lib/utils';
 import type { NipTarget } from '@/hooks/useNipApprovals';
@@ -29,12 +31,17 @@ const OfficialNipPage = () => {
   const { number } = useParams<{ number: string }>();
   const code = (number ?? '').toUpperCase();
   const { data, isLoading, isError } = useOfficialNip(code);
+  const { user } = useCurrentUser();
 
   // NIP-89 listings referencing this NIP — the nexus of discoverability —
   // also surface the repos those apps are built from.
   const appsForNip = useAppsForOfficialNip(code || undefined);
   const apps = appsForNip.data ?? [];
   const repoRefs = uniqueRepoRefs(apps);
+
+  // Official NIPs have no owner, so nudge any logged-in user to link an app
+  // they've built that implements this NIP.
+  const showSidebar = apps.length > 0 || Boolean(user);
 
   const title = useMemo(
     () => (data ? extractTitle(data.content, `NIP-${code}`) : `NIP-${code}`),
@@ -49,7 +56,7 @@ const OfficialNipPage = () => {
   const target: NipTarget = { type: 'official', number: code };
 
   return (
-    <Layout className={apps.length > 0 ? 'max-w-6xl' : undefined}>
+    <Layout className={showSidebar ? 'max-w-6xl' : undefined}>
       <BackLink to="/">Back to NIPs</BackLink>
 
       {isLoading ? (
@@ -89,7 +96,7 @@ const OfficialNipPage = () => {
           <div
             className={cn(
               'mt-6 space-y-6',
-              apps.length > 0 &&
+              showSidebar &&
                 'lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-8 lg:space-y-0',
             )}
           >
@@ -106,8 +113,12 @@ const OfficialNipPage = () => {
               </section>
             </DetailSurface>
 
-            {apps.length > 0 && (
+            {showSidebar && (
               <aside aria-label="NIP cross-references" className="space-y-4 lg:sticky lg:top-24">
+                <LinkAppNudge
+                  target={{ kind: 'officialNip', number: code, label: `NIP-${code}` }}
+                  linkedApps={apps}
+                />
                 <UsedByAppsCard apps={apps} />
                 <RelatedReposCard repoRefs={repoRefs} />
               </aside>

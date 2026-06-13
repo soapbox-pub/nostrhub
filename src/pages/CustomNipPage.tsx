@@ -11,6 +11,7 @@ import { CommentsSection } from '@/components/comments/CommentsSection';
 import { UserAvatar } from '@/components/UserAvatar';
 import { ExpertToggleButton } from '@/components/ExpertToggleButton';
 import { RelatedReposCard, UsedByAppsCard } from '@/components/CrossRefCards';
+import { LinkAppNudge } from '@/components/LinkAppNudge';
 import { KindBadge } from '@/components/KindBadge';
 import { useCustomNip } from '@/hooks/useCustomNips';
 import { useAuthor } from '@/hooks/useAuthor';
@@ -46,9 +47,10 @@ export function CustomNipPage({ naddr }: { naddr: string }) {
 
   const target: NipTarget | null = nip ? { type: 'custom', address: nip.address } : null;
   const isOwner = !!user && !!nip && user.pubkey === nip.author;
+  const showSidebar = apps.length > 0 || isOwner;
 
   return (
-    <Layout className={apps.length > 0 ? 'max-w-6xl' : undefined}>
+    <Layout className={showSidebar ? 'max-w-6xl' : undefined}>
       <BackLink to="/">Back to NIPs</BackLink>
 
       {isLoading ? (
@@ -125,7 +127,7 @@ export function CustomNipPage({ naddr }: { naddr: string }) {
           <div
             className={cn(
               'mt-6 space-y-6',
-              apps.length > 0 &&
+              showSidebar &&
                 'lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-8 lg:space-y-0',
             )}
           >
@@ -142,8 +144,17 @@ export function CustomNipPage({ naddr }: { naddr: string }) {
               </section>
             </DetailSurface>
 
-            {apps.length > 0 && (
+            {showSidebar && (
               <aside aria-label="NIP cross-references" className="space-y-4 lg:sticky lg:top-24">
+                <LinkAppNudge
+                  target={{
+                    kind: 'customNip',
+                    address: nip.address,
+                    ownerPubkey: nip.author,
+                    label: nip.title,
+                  }}
+                  linkedApps={apps}
+                />
                 <UsedByAppsCard apps={apps} />
                 <RelatedReposCard repoRefs={repoRefs} />
               </aside>

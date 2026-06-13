@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useSeoMeta } from '@unhead/react';
 import {
   ArrowLeft, ArrowRight, AlertCircle, Blocks, BookOpen, Check, ChevronDown,
@@ -829,6 +829,9 @@ export function SubmitAppPage() {
   const { naddr: editNaddr } = useParams<{ naddr: string }>();
   const isEditMode = Boolean(editNaddr);
 
+  // --- prefill from a "link an app" nudge (route: /apps/submit?repo=…&nip=…) ---
+  const [searchParams] = useSearchParams();
+
   /** Decoded pubkey + d-tag of the listing being edited, or null if invalid. */
   const editTarget = useMemo(() => {
     if (!editNaddr) return null;
@@ -913,6 +916,67 @@ export function SubmitAppPage() {
 
     // Everything is already filled in, so let the user jump to any step.
     setMaxVisited(STEPS.length - 1);
+  }
+
+  // Prefill cross-references when arriving from a "link an app" nudge on a repo,
+  // NIP, or zapstore page. Works for both new and existing listings: refs are
+  // *merged* into whatever's already in the form via functional updates, so an
+  // owner can attach the entity to an existing listing. In edit mode we wait
+  // for the base listing to load first so the merge doesn't get clobbered.
+  // Applied once (the "adjust state during render" pattern) so the user can
+  // freely deselect afterwards.
+  const [prefilledParams, setPrefilledParams] = useState(false);
+  const paramPrefillReady = !isEditMode || prefilledFrom !== null;
+  if (paramPrefillReady && !prefilledParams && searchParams.toString().length > 0) {
+    setPrefilledParams(true);
+
+    const repoAddr = searchParams.get('repo');
+    if (repoAddr) {
+      const parts = repoAddr.split(':');
+      if (parts.length === 3 && parts[0] === '30617') {
+        setRepoRefs((prev) =>
+          prev.some((r) => r.address === repoAddr)
+            ? prev
+            : [...prev, { address: repoAddr, relayHint: searchParams.get('relay') ?? '', name: parts[2] }],
+        );
+      }
+    }
+
+    const customNip = searchParams.get('nip');
+    if (customNip) {
+      const parts = customNip.split(':');
+      if (parts.length === 3 && parts[0] === '30817') {
+        setNipRefs((prev) =>
+          prev.some((r) => r.type === 'custom' && r.address === customNip)
+            ? prev
+            : [...prev, { type: 'custom', number: '', address: customNip, relayHint: searchParams.get('relay') ?? '' }],
+        );
+      }
+    }
+
+    const officialNip = searchParams.get('officialNip');
+    if (officialNip) {
+      const num = officialNip.replace(/^nip-?/i, '').padStart(2, '0').toUpperCase();
+      if (/^[0-9A-F]{2}$/.test(num)) {
+        setNipRefs((prev) =>
+          prev.some((r) => r.type === 'official' && r.number === num)
+            ? prev
+            : [...prev, { type: 'official', number: num, address: '', relayHint: '' }],
+        );
+      }
+    }
+
+    const zapstoreAddr = searchParams.get('zapstore');
+    if (zapstoreAddr) {
+      const parts = zapstoreAddr.split(':');
+      if (parts.length === 3 && parts[0] === '32267') {
+        setZapstoreRefs((prev) =>
+          prev.some((r) => r.address === zapstoreAddr)
+            ? prev
+            : [...prev, { address: zapstoreAddr, relayHint: searchParams.get('relay') ?? '', name: parts[2] }],
+        );
+      }
+    }
   }
 
   useSeoMeta({

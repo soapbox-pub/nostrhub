@@ -19,6 +19,7 @@ import { CopyButton } from '@/components/git/CopyButton';
 import { RepoFileBrowser } from '@/components/git/RepoFileBrowser';
 import { CommentsSection } from '@/components/comments/CommentsSection';
 import { UsedByAppsCard, RelatedNipsCard } from '@/components/CrossRefCards';
+import { LinkAppNudge } from '@/components/LinkAppNudge';
 import { useGitRepo } from '@/hooks/useGitRepo';
 import { useAuthor } from '@/hooks/useAuthor';
 import { useAppsForRepo } from '@/hooks/useAppsForRepo';
@@ -252,6 +253,16 @@ export function GitRepoPage({ pubkey, identifier, relays }: GitRepoPageProps) {
             </div>
 
             <aside aria-label="Repository details" className="space-y-4 lg:sticky lg:top-24">
+              <LinkAppNudge
+                target={{
+                  kind: 'repo',
+                  address: repoAddress,
+                  ownerPubkey: pubkey,
+                  relayHint: repo.relays[0],
+                  label: repo.name,
+                }}
+                linkedApps={appsForRepo.data ?? []}
+              />
               <UsedByAppsCard apps={appsForRepo.data ?? []} />
               <RelatedNipsCard nipRefs={nipRefs} />
               <RepoSidebar repo={repo} />
