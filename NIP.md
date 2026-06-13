@@ -285,6 +285,142 @@ nostr.query([{ kinds: [31986], "#l": ["nip-compatibility"], limit: 1000 }]);
 
 ---
 
+## Strategy Graph — Kinds `32473` (Node) and `39249` (Edge)
+
+NostrHub's `/strategy` page is a **community strategy graph**: a shared, visual map of goals,
+problems, and work items that anyone can contribute to. There is no shared mutable canvas —
+the graph is **append-only and author-owned**. Every node and every edge is an independent
+addressable event owned by its creator; clients merge all contributions into a single view
+and compute the layout locally (force-directed). Positions are never stored, so contributors
+cannot conflict over them.
+
+### Kind `32473` — Strategy Node
+
+An **addressable** event representing one node in the graph. `content` holds a Markdown
+description.
+
+| Tag      | Required | Repeatable | Description                                                              |
+| -------- | -------- | ---------- | ------------------------------------------------------------------------ |
+| `d`      | yes      | no         | Unique identifier (kebab-case slug).                                     |
+| `title`  | yes      | no         | Short human-readable node title.                                         |
+| `type`   | yes      | no         | Node type. **Work items:** `goal`, `problem`, `task`. **Entities:** `person`, `org`. |
+| `status` | no       | no         | Work items only: `open` (default), `in-progress`, `blocked`, `done`, or `dropped`. Ignored for entities. |
+| `p`      | no       | no         | With marker `subject` (`["p", "<pubkey>", "", "subject"]`): on a `person` node, the **real Nostr identity** it represents (renders their profile avatar/name). |
+| `a`      | no       | yes        | With marker `parent` (`["a", "32473:<pk>:<d>", "", "parent"]`): a **parent node**, forming a multi-parent hierarchy. Without a marker: an **anchor** to a related entity (custom NIP `30817:<pk>:<d>`, app `31990:<pk>:<d>`, repo `30617:<pk>:<d>`). |
+| `t`      | no       | yes        | Topic tag for grouping/filtering subgraphs (relay-indexable).            |
+| `p`      | no       | yes        | Pubkey of a person involved/assigned (unmarked `p` tag; notifies them).  |
+| `alt`    | yes      | no         | NIP-31 human-readable description.                                       |
+
+```jsonc
+{
+  "kind": 32473,
+  "content": "We should converge on a single DM standard across clients...",
+  "tags": [
+    ["d", "interoperable-dms"],
+    ["title", "Interoperable DMs everywhere"],
+    ["type", "goal"],
+    ["status", "open"],
+    ["a", "32473:<pubkey>:nostr-roadmap", "", "parent"],
+    ["a", "30817:<pubkey>:my-dm-nip"],
+    ["t", "dms"],
+    ["t", "interop"],
+    ["p", "<assignee-pubkey>"],
+    ["alt", "NostrHub strategy node (goal): Interoperable DMs everywhere"]
+  ]
+}
+```
+
+A `person` entity node bound to a real identity:
+
+```jsonc
+{
+  "kind": 32473,
+  "content": "Maintains the reference DM implementation.",
+  "tags": [
+    ["d", "alice"],
+    ["title", "Alice"],
+    ["type", "person"],
+    ["p", "<alice-pubkey>", "", "subject"],
+    ["alt", "NostrHub strategy node (person): Alice"]
+  ]
+}
+```
+
+**Node families.** Types split into **work items** (goal/problem/task — abstract things
+with a lifecycle `status`) and **entities** (person/org — actors in the ecosystem, no
+status). A `person` may carry a `subject`-marked `p` tag binding it to a real npub so the
+node renders that user's avatar and links to their profile. This keeps the graph a single
+kind (kind = schema, `type` = semantics) while supporting both roadmap items and the
+people/orgs around them.
+
+Only the node's author can edit it (addressable replacement) or delete it (NIP-09).
+`status` is managed by the author; others coordinate through NIP-22 comments on the node.
+
+**Hierarchy & scale.** `parent` references form a multi-parent DAG (a node may have several
+parents; cycles are ignored at render time). Clients derive each node's **depth** from the
+hierarchy (root = 0) and use it to size nodes — sun → planet → moon → submoon. This keeps
+*scale* (how broad something is, from the hierarchy) independent from *type* (its nature:
+goal/problem/task). A large goal with sub-tasks renders as a sun with orbiting moons.
+
+Clients should render **unrecognized `type` or `status` values gracefully** (e.g. fall back
+to a neutral style) so the vocabulary can evolve without a coordinating server.
+
+### Kind `39249` — Strategy Edge
+
+An **addressable** event declaring a typed, directed relationship between two nodes —
+the node a relationship starts **from** and the node it points **to**, marked with
+NIP-10-style markers on `a` tags. Anyone may link any two nodes (including other
+people's); an edge is owned by whoever published it.
+
+| Tag    | Required | Repeatable | Description                                                            |
+| ------ | -------- | ---------- | ----------------------------------------------------------------------- |
+| `d`    | yes      | no         | `"<from-address>-><to-address>"` — deterministic, so each author has at most one edge per directed pair; republishing retypes it. |
+| `a`    | yes      | yes (2)    | `["a", "32473:<pk>:<d>", "", "from"]` and `["a", "32473:<pk>:<d>", "", "to"]`. |
+| `type` | yes      | no         | Work-flow: `depends-on`, `blocks`, `supports`, `relates` (undirected). Relationship (for entities): `leads`, `funds`, `works-with` (undirected), `advises`, `builds`. |
+| `label`| no       | no         | Short free-text annotation, e.g. "needs NIP-44 first".                  |
+| `alt`  | yes      | no         | NIP-31 human-readable description.                                      |
+
+The event `content` may hold a longer Markdown note explaining the relationship.
+
+```jsonc
+{
+  "kind": 39249,
+  "content": "We can't ship interop until auth lands.",
+  "tags": [
+    ["d", "32473:<pk-a>:fix-relay-auth->32473:<pk-b>:interoperable-dms"],
+    ["a", "32473:<pk-a>:fix-relay-auth", "", "from"],
+    ["a", "32473:<pk-b>:interoperable-dms", "", "to"],
+    ["type", "depends-on"],
+    ["label", "blocks until merged"],
+    ["alt", "NostrHub strategy edge: fix-relay-auth depends on interoperable-dms"]
+  ]
+}
+```
+
+Edges whose `from` or `to` node cannot be found (deleted, out of the author set, or not
+fetched) are ignored at render time.
+
+### Spam resistance
+
+Like comments and chat, the graph view is scoped to the **community author set** (the
+pubkeys followed by the configured experts, plus the current user). Anyone can publish
+nodes and edges, but NostrHub only renders contributions from that set.
+
+### Querying
+
+```ts
+// The whole graph in one query (two filters)
+nostr.query([
+  { kinds: [32473], authors: communityAuthors, limit: 500 },
+  { kinds: [39249], authors: communityAuthors, limit: 1000 },
+]);
+
+// Edges touching one node (matches both roles)
+nostr.query([{ kinds: [39249], "#a": ["32473:<pk>:<d>"] }]);
+```
+
+---
+
 ## Related standard kinds used by NostrHub
 
 These are **not** custom — NostrHub reuses standard NIPs:
