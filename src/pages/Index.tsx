@@ -39,15 +39,15 @@ function Department({
 
   return (
     <div className="space-y-1">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <h2 className="relative inline-block font-display text-3xl font-bold uppercase tracking-tight sm:text-4xl">
+      <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-2">
+        <h2 className="relative inline-block max-w-full font-display text-2xl font-bold uppercase tracking-tight text-balance break-words xs:text-3xl sm:text-4xl">
           <span
             aria-hidden="true"
-            className={`absolute -inset-x-2 bottom-0 h-3.5 -skew-x-12 ${accentSwipe}`}
+            className={`absolute -inset-x-1 bottom-0 h-3 -skew-x-12 sm:-inset-x-2 sm:h-3.5 ${accentSwipe}`}
           />
           <span className="relative">{title}</span>
         </h2>
-        {action}
+        {action && <div className="shrink-0">{action}</div>}
       </div>
       {subtitle && <p className="max-w-2xl text-muted-foreground">{subtitle}</p>}
     </div>
