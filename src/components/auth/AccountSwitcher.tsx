@@ -1,32 +1,60 @@
-import { ChevronDown, LogOut, Moon, Settings, Sun, UserPlus } from 'lucide-react';
+import { ChevronDown, LogOut, Monitor, Moon, Palette, Settings, Sun, UserPlus, Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu.tsx';
 import { Skeleton } from '@/components/ui/skeleton.tsx';
-import { Switch } from '@/components/ui/switch.tsx';
 import { UserAvatar } from '@/components/UserAvatar';
 import { useLoggedInAccounts, type Account } from '@/hooks/useLoggedInAccounts';
 import { useTheme } from '@/hooks/useTheme';
+import { type Theme } from '@/contexts/AppContext';
+import { themePresets, type ThemePreset } from '@/themes';
 
 interface AccountSwitcherProps {
   onAddAccountClick: () => void;
 }
 
+const MODE_ITEMS: { value: Theme; label: string; icon: typeof Sun }[] = [
+  { value: 'light', label: 'Light', icon: Sun },
+  { value: 'dark', label: 'Dark', icon: Moon },
+  { value: 'system', label: 'System', icon: Monitor },
+];
+
 export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
   const { currentUser, otherUsers, isLoading, setLogin, removeLogin } = useLoggedInAccounts();
-  const { theme, setTheme } = useTheme();
-  const isDark = theme === 'dark';
+  const { theme, customTheme, setTheme, applyCustomTheme } = useTheme();
 
   if (!currentUser) return null;
 
   const getDisplayName = (account: Account): string => {
     return account.metadata.name ?? 'Anonymous';
   }
+
+  const featuredPresets = Object.entries(themePresets).filter(([, p]) => p.featured);
+
+  const applyPreset = (preset: ThemePreset) => {
+    applyCustomTheme({
+      title: preset.label,
+      colors: preset.colors,
+      ...(preset.font && { font: preset.font }),
+      ...(preset.titleFont && { titleFont: preset.titleFont }),
+      ...(preset.background && { background: preset.background }),
+    });
+  };
+
+  const activePresetKey =
+    theme === 'custom' && customTheme
+      ? Object.entries(themePresets).find(
+          ([, p]) => JSON.stringify(p.colors) === JSON.stringify(customTheme.colors),
+        )?.[0]
+      : undefined;
 
   // While the metadata query is in-flight and we don't yet have a name,
   // we don't want to flash a generated animal name / its first letter.
@@ -71,30 +99,50 @@ export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
           );
         })}
         <DropdownMenuSeparator />
-        <div
-          className='flex items-center gap-2 p-2 rounded-md text-sm cursor-pointer hover:bg-accent'
-          role='button'
-          tabIndex={0}
-          onClick={(e) => {
-            e.preventDefault();
-            setTheme(isDark ? 'light' : 'dark');
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              setTheme(isDark ? 'light' : 'dark');
-            }
-          }}
-        >
-          {isDark ? <Moon className='w-4 h-4 text-muted-foreground' /> : <Sun className='w-4 h-4 text-muted-foreground' />}
-          <span className='flex-1'>Dark mode</span>
-          <Switch
-            checked={isDark}
-            onClick={(e) => e.stopPropagation()}
-            onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')}
-            aria-label='Toggle dark mode'
-          />
-        </div>
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger className='flex items-center gap-2 p-2 rounded-md'>
+            <Palette className='w-4 h-4 text-muted-foreground' />
+            <span>Theme</span>
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent className='w-48 p-1'>
+            {MODE_ITEMS.map(({ value, label, icon: Icon }) => (
+              <DropdownMenuItem
+                key={value}
+                onClick={() => setTheme(value)}
+                className='flex items-center gap-2 cursor-pointer p-2 rounded-md'
+              >
+                <Icon className='w-4 h-4 text-muted-foreground' />
+                <span className='flex-1'>{label}</span>
+                {theme === value && <Check className='w-4 h-4 text-primary' />}
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
+            {featuredPresets.map(([key, preset]) => (
+              <DropdownMenuItem
+                key={key}
+                onClick={() => applyPreset(preset)}
+                className='flex items-center gap-2 cursor-pointer p-2 rounded-md'
+              >
+                <span aria-hidden className='text-base leading-none'>{preset.emoji}</span>
+                <span className='flex overflow-hidden rounded-full ring-1 ring-border'>
+                  {(['background', 'primary', 'text'] as const).map((role) => (
+                    <span
+                      key={role}
+                      className='size-3'
+                      style={{ background: `hsl(${preset.colors[role]})` }}
+                    />
+                  ))}
+                </span>
+                <span className='flex-1 truncate'>{preset.label}</span>
+                {activePresetKey === key && <Check className='w-4 h-4 text-primary' />}
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild className='cursor-pointer p-2 rounded-md text-muted-foreground'>
+              <Link to='/settings'>More in Settings…</Link>
+            </DropdownMenuItem>
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
         <DropdownMenuItem asChild className='flex items-center gap-2 cursor-pointer p-2 rounded-md'>
           <Link to='/settings'>
             <Settings className='w-4 h-4' />

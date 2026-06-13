@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { ThemeSelector } from '@/components/ThemeSelector';
 
 /** Resolve a hex pubkey, npub, or nprofile string to a hex pubkey. */
 function resolvePubkey(input: string): string | null {
@@ -294,6 +295,23 @@ function CommunitySettings() {
   );
 }
 
+function AppearanceSettings() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Appearance</CardTitle>
+        <CardDescription>
+          Choose a theme mode or a preset, or craft a custom look from three core
+          colors. Custom themes can be shared to your Nostr profile.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ThemeSelector />
+      </CardContent>
+    </Card>
+  );
+}
+
 const SettingsPage = () => {
   useSeoMeta({
     title: 'Settings | NostrHub',
@@ -307,6 +325,7 @@ const SettingsPage = () => {
         <p className="text-muted-foreground">Tune the trust model that powers NostrHub.</p>
       </div>
       <div className="mt-6 space-y-6">
+        <AppearanceSettings />
         <ExpertsSettings />
         <CommunitySettings />
         <AiSettings />
