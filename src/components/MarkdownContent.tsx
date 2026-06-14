@@ -1,6 +1,7 @@
 import { useMemo, Fragment, type ReactNode } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeHighlight from 'rehype-highlight';
 import { Link } from 'react-router-dom';
 import { nip19 } from 'nostr-tools';
 import { useAuthor } from '@/hooks/useAuthor';
@@ -221,7 +222,12 @@ export function MarkdownContent({ content, className, inlineOnly }: MarkdownCont
 
   const rendered = useMemo(
     () => (
-      <ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml components={components}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[[rehypeHighlight, { detect: true, ignoreMissing: true }]]}
+        skipHtml
+        components={components}
+      >
         {content}
       </ReactMarkdown>
     ),

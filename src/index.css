@@ -427,3 +427,120 @@
     drop-shadow(-1.4px -1.4px 0 var(--background));
 }
 
+/* ---------------------------------------------------------------------------
+   Syntax highlighting (highlight.js token classes via rehype-highlight).
+
+   Text-only theme: we deliberately set NO background on `.hljs` so the code
+   block keeps the surrounding `bg-muted` styling. Colors are driven by CSS
+   variables that flip between light and dark, tuned for WCAG-AA contrast
+   against the muted code-block background.
+--------------------------------------------------------------------------- */
+:root {
+  --hljs-comment: oklch(0.55 0.02 260);
+  --hljs-keyword: oklch(0.5 0.2 295);
+  --hljs-string: oklch(0.52 0.14 145);
+  --hljs-number: oklch(0.55 0.16 50);
+  --hljs-literal: oklch(0.55 0.16 50);
+  --hljs-function: oklch(0.5 0.18 250);
+  --hljs-title: oklch(0.5 0.18 250);
+  --hljs-type: oklch(0.52 0.13 195);
+  --hljs-attr: oklch(0.55 0.16 50);
+  --hljs-tag: oklch(0.5 0.2 25);
+  --hljs-meta: oklch(0.55 0.02 260);
+  --hljs-symbol: oklch(0.5 0.2 25);
+}
+
+.dark {
+  --hljs-comment: oklch(0.6 0.02 260);
+  --hljs-keyword: oklch(0.78 0.13 300);
+  --hljs-string: oklch(0.8 0.13 145);
+  --hljs-number: oklch(0.82 0.12 65);
+  --hljs-literal: oklch(0.82 0.12 65);
+  --hljs-function: oklch(0.78 0.12 235);
+  --hljs-title: oklch(0.78 0.12 235);
+  --hljs-type: oklch(0.82 0.1 195);
+  --hljs-attr: oklch(0.82 0.12 65);
+  --hljs-tag: oklch(0.78 0.13 20);
+  --hljs-meta: oklch(0.6 0.02 260);
+  --hljs-symbol: oklch(0.78 0.13 20);
+}
+
+/* Base code text inherits the foreground color; only tokens are recolored. */
+.hljs {
+  color: inherit;
+  background: transparent;
+}
+
+.hljs-comment,
+.hljs-quote {
+  color: var(--hljs-comment);
+  font-style: italic;
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-doctag,
+.hljs-formula {
+  color: var(--hljs-keyword);
+}
+
+.hljs-string,
+.hljs-regexp,
+.hljs-addition {
+  color: var(--hljs-string);
+}
+
+.hljs-number,
+.hljs-literal {
+  color: var(--hljs-number);
+}
+
+.hljs-title,
+.hljs-title.class_,
+.hljs-title.function_,
+.hljs-section {
+  color: var(--hljs-title);
+}
+
+.hljs-type,
+.hljs-built_in,
+.hljs-class .hljs-title,
+.hljs-selector-class {
+  color: var(--hljs-type);
+}
+
+.hljs-attr,
+.hljs-attribute,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-selector-attr,
+.hljs-selector-pseudo {
+  color: var(--hljs-attr);
+}
+
+.hljs-name,
+.hljs-tag,
+.hljs-deletion {
+  color: var(--hljs-tag);
+}
+
+.hljs-symbol,
+.hljs-bullet,
+.hljs-link {
+  color: var(--hljs-symbol);
+}
+
+.hljs-meta,
+.hljs-meta .hljs-keyword,
+.hljs-comment .hljs-doctag {
+  color: var(--hljs-meta);
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: 600;
+}
+
