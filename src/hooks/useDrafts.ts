@@ -14,6 +14,29 @@ import {
 
 const DRAFTS_QUERY_KEY = 'drafts';
 
+/**
+ * Slugs deleted this session, scoped per-pubkey. A NIP-37 deletion (blank
+ * content) can take a few seconds to propagate and index, so a refetch fired
+ * right after deleting may still return the old draft. We suppress these slugs
+ * from query results until the deletion lands, so an optimistically-removed
+ * draft can't reappear.
+ */
+const recentlyDeleted = new Map<string, Set<string>>();
+
+function markDeleted(pubkey: string, slug: string): void {
+  const set = recentlyDeleted.get(pubkey) ?? new Set<string>();
+  set.add(slug);
+  recentlyDeleted.set(pubkey, set);
+}
+
+function unmarkDeleted(pubkey: string, slug: string): void {
+  recentlyDeleted.get(pubkey)?.delete(slug);
+}
+
+function isDeleted(pubkey: string, slug: string): boolean {
+  return recentlyDeleted.get(pubkey)?.has(slug) ?? false;
+}
+
 export interface SaveDraftParams {
   /** The unsigned event to stash (exactly what would be published). */
   template: DraftEventTemplate;
@@ -69,6 +92,10 @@ export function useDrafts() {
       for (const ev of latest.values()) {
         // Blank content = deleted per NIP-37.
         if (!ev.content.trim()) continue;
+        const d = ev.tags.find(([n]) => n === 'd')?.[1];
+        // Suppress drafts deleted this session whose deletion may not have
+        // propagated to the relay yet, so they don't resurrect on refetch.
+        if (d && isDeleted(user.pubkey, d)) continue;
         try {
           const plaintext = await user.signer.nip44.decrypt(user.pubkey, ev.content);
           const draft = parseDraft(ev, plaintext);
@@ -112,7 +139,7 @@ export function useDrafts() {
   });
 
   // ── Mutation: delete a draft (blank the content per NIP-37) ────────────
-  const remove = useMutation<void, Error, { slug: string }>({
+  const remove = useMutation<void, Error, { slug: string }, { previous?: Draft[] }>({
     mutationFn: async ({ slug }) => {
       if (!user) throw new Error('You must be logged in');
 
@@ -125,13 +152,30 @@ export function useDrafts() {
       });
     },
     onMutate: async ({ slug }) => {
+      const key = [DRAFTS_QUERY_KEY, user?.pubkey];
+      // Stop in-flight refetches from clobbering the optimistic state.
+      await queryClient.cancelQueries({ queryKey: key });
+
+      // Suppress this slug so a stale relay refetch can't resurrect it before
+      // the deletion propagates.
+      if (user) markDeleted(user.pubkey, slug);
+
+      const previous = queryClient.getQueryData<Draft[]>(key);
       // Optimistically drop it from the list.
-      queryClient.setQueryData<Draft[]>(
-        [DRAFTS_QUERY_KEY, user?.pubkey],
-        (old) => (old ?? []).filter((d) => d.slug !== slug),
-      );
+      queryClient.setQueryData<Draft[]>(key, (old) => (old ?? []).filter((d) => d.slug !== slug));
+
+      return { previous };
+    },
+    onError: (_err, { slug }, context) => {
+      // Roll back: restore the list and let the draft resurface.
+      if (user) unmarkDeleted(user.pubkey, slug);
+      if (context?.previous) {
+        queryClient.setQueryData<Draft[]>([DRAFTS_QUERY_KEY, user?.pubkey], context.previous);
+      }
     },
     onSettled: () => {
+      // Reconcile with the relay. Deleted slugs stay suppressed via the
+      // `recentlyDeleted` guard until their blank-content event indexes.
       queryClient.invalidateQueries({ queryKey: [DRAFTS_QUERY_KEY, user?.pubkey] });
     },
   });
