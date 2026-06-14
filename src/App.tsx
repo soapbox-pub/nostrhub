@@ -17,6 +17,7 @@ import { APP_RELAYS, DITTO_RELAY } from '@/lib/appRelays';
 import { SEARCH_RELAYS } from '@/lib/searchRelays';
 import { DEFAULT_EXPERTS, DEFAULT_COMMUNITY_CAP, DEFAULT_STATS_PROVIDER } from '@/lib/experts';
 import AppRouter from './AppRouter';
+
 const head = createHead({
   plugins: [
     InferSeoMetaPlugin(),
