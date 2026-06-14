@@ -115,6 +115,8 @@ authored by the user's configured **Nostr Experts**.
 - **Target:** the NIP being approved
   - Custom NIP → `a` tag: `30817:<pubkey>:<d>`
   - Official NIP → `i` tag (NIP-73 external id / GitHub URL) or `r` tag (URL)
+- **Author (`p`):** for custom NIPs, the target event's author pubkey, so the approval
+  surfaces in their notifications. Official NIPs have no Nostr author, so no `p` tag is added.
 
 ### Example — approving a custom NIP
 
@@ -125,7 +127,8 @@ authored by the user's configured **Nostr Experts**.
   "tags": [
     ["L", "nostrhub"],
     ["l", "approve", "nostrhub"],
-    ["a", "30817:<nip-author-pubkey>:<nip-d-tag>", "<relay-url>"]
+    ["a", "30817:<nip-author-pubkey>:<nip-d-tag>", "<relay-url>"],
+    ["p", "<nip-author-pubkey>"]
   ]
 }
 ```

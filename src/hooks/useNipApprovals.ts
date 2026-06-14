@@ -156,6 +156,13 @@ export function useApproveNip() {
         ['l', APPROVE_LABEL_VALUE, APPROVE_LABEL_NAMESPACE],
         targetTag(target),
       ];
+      // For community NIPs, also tag the target event's author so the
+      // approval surfaces in their notifications. Official NIPs have no
+      // Nostr author, so no `p` tag applies.
+      if (target.type === 'custom') {
+        const authorPubkey = target.address.split(':')[1];
+        if (authorPubkey) tags.push(['p', authorPubkey]);
+      }
       return publish({ kind: 1985, content: '', tags });
     },
     onSuccess: (event, target) => {
