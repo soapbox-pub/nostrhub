@@ -1,4 +1,4 @@
-import { Bell, ChevronDown, LogOut, Monitor, Moon, Settings, Sun, User, UserPlus } from 'lucide-react';
+import { Bell, ChevronDown, FileText, LogOut, Monitor, Moon, Settings, Sun, User, UserPlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { nip19 } from 'nostr-tools';
 import {
@@ -107,6 +107,12 @@ export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
           <Link to={`/${npub}`}>
             <User className='w-4 h-4' />
             <span>My Profile</span>
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild className='flex items-center gap-2 cursor-pointer p-2 rounded-md'>
+          <Link to='/drafts'>
+            <FileText className='w-4 h-4' />
+            <span>My Drafts</span>
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild className='flex items-center gap-2 cursor-pointer p-2 rounded-md'>
