@@ -2,67 +2,24 @@ import * as React from "react"
 import { Avatar as AvatarPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
-import {
-  getAvatarMaskUrl,
-  isValidAvatarShape,
-  type AvatarShape,
-} from "@/lib/avatarShape"
-
-/**
- * Context so children (e.g. `AvatarFallback`) can inherit the avatar shape
- * and drop their own `rounded-full` when a custom shape is applied.
- */
-const AvatarShapeContext = React.createContext<AvatarShape | undefined>(
-  undefined
-)
 
 function Avatar({
   className,
   size = "default",
-  shape,
-  style,
   ...props
 }: React.ComponentProps<typeof AvatarPrimitive.Root> & {
   size?: "default" | "sm" | "lg"
-  /** Optional emoji glyph (from kind-0 metadata) used as a CSS mask. */
-  shape?: AvatarShape
 }) {
-  const hasCustomShape = !!shape && isValidAvatarShape(shape)
-  // `getAvatarMaskUrl` renders the emoji to a canvas and caches the data-URL,
-  // so repeated calls are cheap.
-  const maskUrl = hasCustomShape ? getAvatarMaskUrl(shape) : ""
-
-  const mergedStyle = React.useMemo<React.CSSProperties>(() => {
-    if (maskUrl) {
-      return {
-        ...style,
-        WebkitMaskImage: `url(${maskUrl})`,
-        maskImage: `url(${maskUrl})`,
-        WebkitMaskSize: "contain",
-        maskSize: "contain",
-        WebkitMaskRepeat: "no-repeat",
-        maskRepeat: "no-repeat",
-        WebkitMaskPosition: "center",
-        maskPosition: "center",
-      }
-    }
-    return style ?? {}
-  }, [maskUrl, style])
-
   return (
-    <AvatarShapeContext.Provider value={hasCustomShape ? shape : undefined}>
-      <AvatarPrimitive.Root
-        data-slot="avatar"
-        data-size={size}
-        className={cn(
-          "group/avatar relative flex size-8 shrink-0 overflow-hidden select-none data-[size=lg]:size-10 data-[size=sm]:size-6",
-          !hasCustomShape && "rounded-full",
-          className
-        )}
-        style={mergedStyle}
-        {...props}
-      />
-    </AvatarShapeContext.Provider>
+    <AvatarPrimitive.Root
+      data-slot="avatar"
+      data-size={size}
+      className={cn(
+        "group/avatar relative flex size-8 shrink-0 overflow-hidden rounded-full select-none data-[size=lg]:size-10 data-[size=sm]:size-6",
+        className
+      )}
+      {...props}
+    />
   )
 }
 
@@ -83,14 +40,11 @@ function AvatarFallback({
   className,
   ...props
 }: React.ComponentProps<typeof AvatarPrimitive.Fallback>) {
-  const shape = React.useContext(AvatarShapeContext)
-  const hasCustomShape = !!shape && isValidAvatarShape(shape)
   return (
     <AvatarPrimitive.Fallback
       data-slot="avatar-fallback"
       className={cn(
-        "flex size-full items-center justify-center bg-muted text-sm text-muted-foreground group-data-[size=sm]/avatar:text-xs",
-        !hasCustomShape && "rounded-full",
+        "flex size-full items-center justify-center rounded-full bg-muted text-sm text-muted-foreground group-data-[size=sm]/avatar:text-xs",
         className
       )}
       {...props}

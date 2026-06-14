@@ -5,7 +5,6 @@ interface AudioVisualizerProps {
   mime?: string;
   avatarUrl?: string;
   avatarFallback?: string;
-  avatarShape?: string;
   className?: string;
 }
 
@@ -13,16 +12,14 @@ interface AudioVisualizerProps {
  * Minimal inline audio player — renders a native `<audio controls>`
  * alongside the author's avatar.
  *
- * Ditto's richer `AudioVisualizer` renders a waveform visualization,
- * applies `avatarShape` as a CSS mask, and supports background playback
- * state. Replace this stub with a richer player (e.g. using WebAudio +
- * Canvas visualization) when desired.
+ * Ditto's richer `AudioVisualizer` renders a waveform visualization and
+ * supports background playback state. Replace this stub with a richer
+ * player (e.g. using WebAudio + Canvas visualization) when desired.
  */
 export function AudioVisualizer({
   src,
   avatarUrl,
   avatarFallback,
-  avatarShape: _avatarShape,
   className,
 }: AudioVisualizerProps) {
   return (

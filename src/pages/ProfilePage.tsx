@@ -20,7 +20,6 @@ import { useApps } from '@/hooks/useApps';
 import { customToRanked, type RankedNip } from '@/hooks/useRankedNips';
 import { shortNpub } from '@/lib/nostr';
 import { sanitizeUrl } from '@/lib/sanitizeUrl';
-import { getAvatarShape, isEmoji, shapedAvatarBorderStyle } from '@/lib/avatarShape';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -70,10 +69,6 @@ export function ProfilePage({ pubkey }: ProfilePageProps) {
   const lightning = metadata?.lud16 || metadata?.lud06;
   const banner = sanitizeUrl(metadata?.banner);
   const expert = isExpert(pubkey);
-
-  // Custom avatar shape (emoji mask) from kind-0 metadata, if present.
-  const avatarShape = getAvatarShape(metadata);
-  const isEmojiShape = !!avatarShape && isEmoji(avatarShape);
 
   const dittoUrl = `https://ditto.pub/${npub}`;
 
@@ -144,17 +139,10 @@ export function ProfilePage({ pubkey }: ProfilePageProps) {
 
           {/* Avatar bleeds up into the banner; identity below on mobile, beside on sm+. */}
           <div className="-mt-7 flex flex-col gap-2 sm:flex-row sm:items-end sm:gap-4">
-            <div
-              className="-mt-12 shrink-0 sm:-mt-14"
-              style={isEmojiShape ? shapedAvatarBorderStyle : undefined}
-            >
+            <div className="-mt-12 shrink-0 sm:-mt-14">
               <UserAvatar
                 pubkey={pubkey}
-                className={
-                  isEmojiShape
-                    ? 'size-28 shadow-xl sm:size-32'
-                    : 'size-28 border-4 border-background shadow-xl sm:size-32'
-                }
+                className="size-28 border-4 border-background shadow-xl sm:size-32"
               />
             </div>
 

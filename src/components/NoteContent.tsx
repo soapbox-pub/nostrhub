@@ -4,7 +4,6 @@ import { Link } from 'react-router-dom';
 import { nip19 } from 'nostr-tools';
 import { useAuthor } from '@/hooks/useAuthor';
 import { getDisplayName } from '@/lib/getDisplayName';
-import { getAvatarShape } from '@/lib/avatarShape';
 import { useProfileUrl } from '@/hooks/useProfileUrl';
 import { LinkEmbed } from '@/components/LinkEmbed';
 import { EmbeddedNote } from '@/components/EmbeddedNote';
@@ -690,7 +689,6 @@ export function NoteContent({
                   mime={imeta?.mime}
                   avatarUrl={authorMetadata?.picture}
                   avatarFallback={authorDisplayName[0]?.toUpperCase() ?? '?'}
-                  avatarShape={getAvatarShape(authorMetadata)}
                 />
               );
             }
