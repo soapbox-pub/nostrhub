@@ -121,9 +121,6 @@ export function RevisionsDialog({ open, onOpenChange, target, relays }: Revision
                       {preview && (
                         <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{preview}</p>
                       )}
-                      <p className="mt-1 truncate font-mono text-xs text-muted-foreground/70">
-                        {event.id.slice(0, 16)}…
-                      </p>
                     </button>
                   </li>
                 );
