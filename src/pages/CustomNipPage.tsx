@@ -160,8 +160,7 @@ export function CustomNipPage({ naddr, eventId }: { naddr?: string; eventId?: st
                   You're viewing a past revision of this NIP.{' '}
                   <Link to={`/${nip.naddr}`} className="font-medium text-primary hover:underline">
                     View the latest version
-                  </Link>
-                  .
+                  </Link>.
                 </AlertDescription>
               </Alert>
             )}
