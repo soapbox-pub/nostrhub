@@ -147,6 +147,7 @@ export function useNipApprovals(targets: NipTarget[], opts: { expertsOnly?: bool
 export function useApproveNip() {
   const { mutateAsync: publish } = useNostrPublish();
   const queryClient = useQueryClient();
+  const { expertSet } = useExperts();
 
   return useMutation<NostrEvent, Error, NipTarget>({
     mutationFn: async (target) => {
@@ -157,8 +158,38 @@ export function useApproveNip() {
       ];
       return publish({ kind: 1985, content: '', tags });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['nip-approvals'] });
+    onSuccess: (event, target) => {
+      const key = nipTargetKey(target);
+      const isExpert = expertSet.has(event.pubkey);
+      // Optimistically reflect the new approval across all cached
+      // `nip-approvals` queries — relays may not have indexed it yet.
+      queryClient.setQueriesData<ApprovalMap>({ queryKey: ['nip-approvals'] }, (prev) => {
+        if (!prev || !(key in prev)) return prev;
+        const entry = prev[key];
+        if (entry.all.includes(event.pubkey)) return prev;
+        const all = [...entry.all, event.pubkey];
+        const experts = isExpert ? [...entry.experts, event.pubkey] : entry.experts;
+        return {
+          ...prev,
+          [key]: {
+            ...entry,
+            all,
+            experts,
+            expertCount: experts.length,
+            totalCount: all.length,
+            eventIdsByAuthor: {
+              ...entry.eventIdsByAuthor,
+              [event.pubkey]: [...(entry.eventIdsByAuthor[event.pubkey] ?? []), event.id],
+            },
+          },
+        };
+      });
+      // Reconcile with the relay once it has had time to index the new
+      // label. An immediate invalidation would refetch before propagation
+      // and clobber the optimistic update with stale data.
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['nip-approvals'] });
+      }, 4000);
     },
   });
 }
@@ -180,8 +211,42 @@ export function useUnapproveNip() {
       ];
       return publish({ kind: 5, content: '', tags });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['nip-approvals'] });
+    onSuccess: (event) => {
+      // The deletion is authored by the current user, so remove their
+      // approval from all cached `nip-approvals` queries immediately —
+      // relays may not have processed the deletion yet.
+      const pubkey = event.pubkey;
+      queryClient.setQueriesData<ApprovalMap>({ queryKey: ['nip-approvals'] }, (prev) => {
+        if (!prev) return prev;
+        let changed = false;
+        const next: ApprovalMap = {};
+        for (const [key, entry] of Object.entries(prev)) {
+          if (!entry.all.includes(pubkey)) {
+            next[key] = entry;
+            continue;
+          }
+          changed = true;
+          const all = entry.all.filter((pk) => pk !== pubkey);
+          const experts = entry.experts.filter((pk) => pk !== pubkey);
+          const eventIdsByAuthor = { ...entry.eventIdsByAuthor };
+          delete eventIdsByAuthor[pubkey];
+          next[key] = {
+            ...entry,
+            all,
+            experts,
+            expertCount: experts.length,
+            totalCount: all.length,
+            eventIdsByAuthor,
+          };
+        }
+        return changed ? next : prev;
+      });
+      // Reconcile with the relay once it has had time to process the
+      // deletion. An immediate invalidation would refetch before
+      // propagation and clobber the optimistic update with stale data.
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['nip-approvals'] });
+      }, 4000);
     },
   });
 }
