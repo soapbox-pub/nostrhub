@@ -21,7 +21,7 @@ const COMMENT_KIND = 1111;
 const LABEL_KIND = 1985;
 
 /** Categories of activity that can generate a notification. */
-export type NotificationType = 'reaction' | 'review' | 'comment' | 'approval' | 'mention';
+export type NotificationType = 'reaction' | 'review' | 'comment' | 'approval';
 
 export interface Notification {
   /** Underlying Nostr event id (stable React key). */
@@ -138,8 +138,6 @@ export function useNotifications() {
           },
         );
       }
-      // Direct mentions of the user anywhere in the community discussion.
-      filters.push({ kinds: [COMMENT_KIND], '#p': [pubkey], limit: 100 });
 
       const events = await nostr.query(filters, { signal: querySignal });
 
@@ -174,12 +172,12 @@ export function useNotifications() {
           if (!coord) continue;
           type = 'approval';
         } else if (event.kind === COMMENT_KIND) {
-          // A comment either targets owned content (#A) or mentions the user (#p).
-          const mentionsUser = event.tags.some(
-            ([n, v]) => n === 'p' && v === pubkey,
-          );
-          if (!coord && !mentionsUser) continue;
-          type = coord ? 'comment' : 'mention';
+          // Only notify for comments that target one of the user's own core
+          // content coordinates (#A). Generic NIP-22 comments on notes, URLs,
+          // hashtags, or other people's content are ignored even if they tag
+          // the user.
+          if (!coord) continue;
+          type = 'comment';
           text = event.content.trim() || undefined;
         }
 

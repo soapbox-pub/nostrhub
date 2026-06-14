@@ -7,7 +7,6 @@ import {
   MessageSquare,
   Star,
   BadgeCheck,
-  AtSign,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -31,7 +30,6 @@ const TYPE_ICON: Record<NotificationType, LucideIcon> = {
   comment: MessageSquare,
   review: Star,
   approval: BadgeCheck,
-  mention: AtSign,
 };
 
 const TYPE_ACTION: Record<NotificationType, string> = {
@@ -39,7 +37,6 @@ const TYPE_ACTION: Record<NotificationType, string> = {
   comment: 'commented on',
   review: 'reviewed',
   approval: 'approved',
-  mention: 'mentioned you',
 };
 
 /** Relative-time formatter using the platform Intl API (no extra deps). */
@@ -88,7 +85,7 @@ function NotificationRow({ notification }: { notification: Notification }) {
               {actorName}
             </Link>{' '}
             <span className="text-muted-foreground">{action}</span>
-            {notification.type !== 'mention' && contentLabel && (
+            {contentLabel && (
               <>
                 {' '}
                 <span className="text-muted-foreground">your {contentLabel}</span>
