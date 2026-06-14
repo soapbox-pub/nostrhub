@@ -16,7 +16,7 @@ export interface SaveArticleParams {
 }
 
 /** Build the tag array for a kind-30023 long-form article (NIP-23). */
-function buildTags(params: SaveArticleParams): string[][] {
+export function buildArticleTags(params: SaveArticleParams): string[][] {
   const title = params.title.trim();
   const tags: string[][] = [
     ['d', params.identifier.trim()],
@@ -41,7 +41,7 @@ export function useSaveArticle() {
 
   return useMutation<NostrEvent, Error, SaveArticleParams>({
     mutationFn: async (params) => {
-      return publish({ kind: ARTICLE_KIND, content: params.content.trim(), tags: buildTags(params) });
+      return publish({ kind: ARTICLE_KIND, content: params.content.trim(), tags: buildArticleTags(params) });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expert-articles'] });

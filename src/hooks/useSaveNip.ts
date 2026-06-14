@@ -17,7 +17,7 @@ export interface SaveNipParams {
 }
 
 /** Build the tag array for a kind-30817 custom NIP. */
-function buildTags(params: SaveNipParams): string[][] {
+export function buildNipTags(params: SaveNipParams): string[][] {
   const tags: string[][] = [
     ['d', params.identifier.trim()],
     ['title', params.title.trim()],
@@ -55,7 +55,7 @@ export function useSaveNip() {
 
   return useMutation<NostrEvent, Error, SaveNipParams>({
     mutationFn: async (params) => {
-      return publish({ kind: CUSTOM_NIP_KIND, content: params.content.trim(), tags: buildTags(params) });
+      return publish({ kind: CUSTOM_NIP_KIND, content: params.content.trim(), tags: buildNipTags(params) });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['custom-nips'] });

@@ -499,3 +499,33 @@ These are **not** custom — NostrHub reuses standard NIPs:
 - **Kind `9`** — Community chat messages ([NIP-C7](https://github.com/nostr-protocol/nips/blob/master/C7.md)); see the dedicated section above.
 - **Kind `31990`** — App listings ([NIP-89](https://github.com/nostr-protocol/nips/blob/master/89.md) Handler Information); powers the `/apps` directory.
 - **Kind `31986`** — App compatibility reports (proposed NIP-85 Reviews, Borkstr-compatible); see the dedicated section above.
+- **Kind `31234`** — Encrypted drafts ([NIP-37](https://github.com/nostr-protocol/nips/blob/master/37.md) Draft Wraps); see below.
+
+---
+
+## Drafts — Kind `31234` ([NIP-37](https://github.com/nostr-protocol/nips/blob/master/37.md))
+
+Manual drafts for unfinished community NIPs (kind `30817`) and long-form articles
+(kind `30023`) are stored as standard NIP-37 Draft Wraps. The unsigned draft event —
+the exact `{ kind, content, tags }` that would be published — is JSON-stringified,
+**NIP-44-encrypted to the author's own pubkey**, and placed in `.content`. Drafts are
+therefore private to their owner and sync across the user's devices.
+
+Each draft has a unique `d` tag, so a user can keep several in flight at once. A
+blanked `.content` signals deletion per NIP-37.
+
+### Tags
+
+| Tag          | Required | Description                                                                 |
+| ------------ | -------- | --------------------------------------------------------------------------- |
+| `d`          | yes      | Unique draft identifier (`draft-<ts>-<rand>`).                              |
+| `k`          | yes      | Kind of the wrapped draft event: `30817` (NIP) or `30023` (article).        |
+| `expiration` | no       | NIP-40 expiration; set to ~90 days out, as recommended by NIP-37.           |
+
+### Querying
+
+```ts
+// Always scoped to self; content is encrypted to the owner.
+nostr.query([{ kinds: [31234], authors: [user.pubkey], limit: 100 }]);
+// Decrypt content with the owner's NIP-44 key, then route by the `k` tag.
+```

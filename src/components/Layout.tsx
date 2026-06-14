@@ -38,6 +38,7 @@ const NAV_ITEMS = [
 const FOOTER_NAV_ITEMS = [
   { to: '/repos', label: 'Repos' },
   { to: '/articles', label: 'Articles' },
+  { to: '/drafts', label: 'Drafts' },
   { to: '/chat', label: 'Chat' },
   { to: '/stats', label: 'Stats' },
   { to: '/experts', label: 'Experts' },

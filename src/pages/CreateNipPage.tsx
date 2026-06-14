@@ -4,9 +4,12 @@ import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, AlertCircle } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { NipEditor, type NipEditorInitial } from '@/components/NipEditor';
+import { ResumeDraftsBanner } from '@/components/ResumeDraftsBanner';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useCustomNip } from '@/hooks/useCustomNips';
 import { useOfficialNip } from '@/hooks/useOfficialNips';
+import { useDrafts, findDraft } from '@/hooks/useDrafts';
+import { CUSTOM_NIP_KIND } from '@/lib/nips';
 import { LoginArea } from '@/components/auth/LoginArea';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -37,10 +40,13 @@ const CreateNipPage = () => {
 
   const forkParam = searchParams.get('fork'); // custom NIP naddr
   const officialForkParam = searchParams.get('officialFork'); // official NIP code
+  const draftParam = searchParams.get('draft'); // resume a saved draft
   const statePrefill = useMemo(() => parseLocationState(location.state), [location.state]);
 
   const { data: customForkSource } = useCustomNip(forkParam ?? undefined);
   const { data: officialForkSource } = useOfficialNip(officialForkParam ?? undefined);
+  const { drafts } = useDrafts();
+  const loadedDraft = findDraft(drafts.data, draftParam);
 
   useSeoMeta({
     title: 'Draft a NIP | NostrHub',
@@ -48,6 +54,18 @@ const CreateNipPage = () => {
   });
 
   const initial = useMemo<NipEditorInitial | undefined>(() => {
+    // Resuming a saved draft takes precedence over fork/state prefills.
+    if (draftParam && loadedDraft) {
+      const t = loadedDraft.template;
+      const findTag = (name: string) => t.tags.find(([n]) => n === name)?.[1];
+      return {
+        title: findTag('title') ?? '',
+        identifier: findTag('d') ?? '',
+        content: t.content,
+        kinds: t.tags.filter(([n]) => n === 'k').map(([, v]) => v).filter(Boolean),
+        draftSlug: loadedDraft.slug,
+      };
+    }
     if (forkParam && customForkSource) {
       return {
         title: `${customForkSource.title} (fork)`,
@@ -71,10 +89,10 @@ const CreateNipPage = () => {
       return { title: statePrefill.title, content: statePrefill.content };
     }
     return undefined;
-  }, [forkParam, customForkSource, officialForkParam, officialForkSource, statePrefill]);
+  }, [draftParam, loadedDraft, forkParam, customForkSource, officialForkParam, officialForkSource, statePrefill]);
 
-  // Remount the editor once fork data resolves so its initial state hydrates.
-  const editorKey = `${forkParam ?? ''}:${officialForkParam ?? ''}:${initial ? 'ready' : 'empty'}`;
+  // Remount the editor once fork/draft data resolves so its initial state hydrates.
+  const editorKey = `${forkParam ?? ''}:${officialForkParam ?? ''}:${loadedDraft?.slug ?? draftParam ?? ''}:${initial ? 'ready' : 'empty'}`;
 
   return (
     <Layout>
@@ -90,7 +108,10 @@ const CreateNipPage = () => {
         </CardHeader>
         <CardContent>
           {user ? (
-            <NipEditor key={editorKey} initial={initial} />
+            <>
+              <ResumeDraftsBanner kind={CUSTOM_NIP_KIND} currentSlug={searchParams.get('draft')} />
+              <NipEditor key={editorKey} initial={initial} />
+            </>
           ) : (
             <div className="space-y-4">
               <Alert>

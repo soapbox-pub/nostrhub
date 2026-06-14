@@ -2,41 +2,59 @@ import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { nip19 } from 'nostr-tools';
-import { Save, ImagePlus, Loader2, X } from 'lucide-react';
+import { Save, ImagePlus, Loader2, X, FileText } from 'lucide-react';
 import { MarkdownContent } from '@/components/MarkdownContent';
-import { useSaveArticle, articleToParams } from '@/hooks/useSaveArticle';
+import { useSaveArticle, articleToParams, buildArticleTags, type SaveArticleParams } from '@/hooks/useSaveArticle';
 import { useUploadFile } from '@/hooks/useUploadFile';
+import { useDrafts } from '@/hooks/useDrafts';
 import { useToast } from '@/hooks/useToast';
 import { slugify } from '@/lib/nips';
 import { sanitizeUrl } from '@/lib/sanitizeUrl';
-import { type ExpertArticle } from '@/hooks/useExpertPress';
+import { ARTICLE_KIND, type ExpertArticle } from '@/hooks/useExpertPress';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
+/** Pre-filled values when resuming a saved article draft. */
+export interface ArticleEditorInitial {
+  title?: string;
+  identifier?: string;
+  summary?: string;
+  image?: string;
+  content?: string;
+  /** Slug of the draft being resumed, so repeated saves overwrite it. */
+  draftSlug?: string;
+}
+
 interface ArticleEditorProps {
   /** Existing article to edit (locks identifier, preserves publish date). */
   editing?: ExpertArticle;
+  /** Initial values from a resumed draft. Ignored when `editing` is set. */
+  initialDraft?: ArticleEditorInitial;
 }
 
-export function ArticleEditor({ editing }: ArticleEditorProps) {
+export function ArticleEditor({ editing, initialDraft }: ArticleEditorProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { mutate: saveArticle, isPending } = useSaveArticle();
   const { mutateAsync: uploadFile, isPending: isUploading } = useUploadFile();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { saveDraft, deleteDraft, hasNip44Support } = useDrafts();
 
   const initial = editing ? articleToParams(editing) : undefined;
 
-  const [title, setTitle] = useState(initial?.title ?? '');
-  const [identifier, setIdentifier] = useState(initial?.identifier ?? '');
-  const [summary, setSummary] = useState(initial?.summary ?? '');
-  const [image, setImage] = useState(initial?.image ?? '');
-  const [content, setContent] = useState(initial?.content ?? '');
-  const [identifierEdited, setIdentifierEdited] = useState(!!editing);
+  const [title, setTitle] = useState(initial?.title ?? initialDraft?.title ?? '');
+  const [identifier, setIdentifier] = useState(initial?.identifier ?? initialDraft?.identifier ?? '');
+  const [summary, setSummary] = useState(initial?.summary ?? initialDraft?.summary ?? '');
+  const [image, setImage] = useState(initial?.image ?? initialDraft?.image ?? '');
+  const [content, setContent] = useState(initial?.content ?? initialDraft?.content ?? '');
+  const [identifierEdited, setIdentifierEdited] = useState(!!editing || !!initialDraft?.identifier);
+
+  // The draft slug we're editing into, so repeated saves overwrite the same draft.
+  const [draftSlug, setDraftSlug] = useState<string | null>(initialDraft?.draftSlug ?? null);
 
   // Derive the identifier from the title until the user edits it directly.
   const effectiveIdentifier = useMemo(() => {
@@ -92,11 +110,41 @@ export function ArticleEditor({ editing }: ArticleEditorProps) {
           // navigation is optimistic — relays may not index it for a few
           // seconds, which would otherwise render "Article not found".
           queryClient.setQueryData(['article', event.pubkey, dTag], event);
+          // Now that it's published, drop the working draft (if any).
+          if (draftSlug) deleteDraft.mutate({ slug: draftSlug });
           toast({ title: editing ? 'Article updated' : 'Article published' });
           navigate(`/${naddr}`);
         },
         onError: (err) =>
           toast({ title: 'Failed to publish', description: err.message, variant: 'destructive' }),
+      },
+    );
+  };
+
+  const handleSaveDraft = () => {
+    if (!title.trim() && !content.trim()) {
+      toast({ title: 'Nothing to save yet', variant: 'destructive' });
+      return;
+    }
+    const params: SaveArticleParams = {
+      identifier: effectiveIdentifier || slugify(title) || 'untitled',
+      title: title || 'Untitled article',
+      content,
+      summary: summary.trim() || undefined,
+      image: image.trim() || undefined,
+      publishedAt: editing?.publishedAt,
+    };
+    saveDraft.mutate(
+      {
+        template: { kind: ARTICLE_KIND, content: content.trim(), tags: buildArticleTags(params) },
+        slug: draftSlug ?? undefined,
+      },
+      {
+        onSuccess: ({ slug }) => {
+          setDraftSlug(slug);
+          toast({ title: 'Draft saved', description: 'Find it under your drafts to pick up later.' });
+        },
+        onError: (err) => toast({ title: 'Failed to save draft', description: err.message, variant: 'destructive' }),
       },
     );
   };
@@ -224,6 +272,18 @@ export function ArticleEditor({ editing }: ArticleEditorProps) {
         <Button type="button" variant="outline" onClick={() => navigate(-1)} className="sm:w-auto">
           Cancel
         </Button>
+        {!editing && hasNip44Support && (
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={handleSaveDraft}
+            disabled={saveDraft.isPending}
+            className="gap-1.5 sm:w-auto"
+          >
+            <FileText className="size-4" />
+            {saveDraft.isPending ? 'Saving…' : 'Save draft'}
+          </Button>
+        )}
         <Button type="submit" disabled={isPending} className="gap-1.5 sm:w-auto">
           <Save className="size-4" />
           {isPending ? 'Publishing…' : editing ? 'Update article' : 'Publish article'}

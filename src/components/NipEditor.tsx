@@ -2,11 +2,12 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { nip19 } from 'nostr-tools';
-import { Save, GitFork, X, Plus } from 'lucide-react';
+import { Save, GitFork, X, Plus, FileText } from 'lucide-react';
 import { MarkdownContent } from '@/components/MarkdownContent';
-import { useSaveNip, type SaveNipParams } from '@/hooks/useSaveNip';
+import { useSaveNip, buildNipTags, type SaveNipParams } from '@/hooks/useSaveNip';
+import { useDrafts } from '@/hooks/useDrafts';
 import { useToast } from '@/hooks/useToast';
-import { slugify, parseCustomNip, type CustomNip } from '@/lib/nips';
+import { slugify, parseCustomNip, CUSTOM_NIP_KIND, type CustomNip } from '@/lib/nips';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -15,19 +16,22 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
-/** Pre-filled values when forking another NIP. */
+/** Pre-filled values when forking another NIP or resuming a saved draft. */
 export interface NipEditorInitial {
   title?: string;
+  identifier?: string;
   content?: string;
   kinds?: string[];
   fork?: SaveNipParams['fork'];
   forkLabel?: string;
+  /** Slug of the draft being resumed, so repeated saves overwrite it. */
+  draftSlug?: string;
 }
 
 interface NipEditorProps {
   /** Existing NIP to edit (locks identifier and preserves fork markers). */
   editing?: CustomNip;
-  /** Initial values, e.g. from a fork source. Ignored when `editing` is set. */
+  /** Initial values, e.g. from a fork source or a resumed draft. Ignored when `editing` is set. */
   initial?: NipEditorInitial;
 }
 
@@ -36,13 +40,18 @@ export function NipEditor({ editing, initial }: NipEditorProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { mutate: saveNip, isPending } = useSaveNip();
+  const { saveDraft, deleteDraft, hasNip44Support } = useDrafts();
 
   const [title, setTitle] = useState(editing?.title ?? initial?.title ?? '');
-  const [identifier, setIdentifier] = useState(editing?.identifier ?? '');
+  const [identifier, setIdentifier] = useState(editing?.identifier ?? initial?.identifier ?? '');
   const [content, setContent] = useState(editing?.content ?? initial?.content ?? '');
   const [kinds, setKinds] = useState<string[]>(editing?.kinds ?? initial?.kinds ?? []);
   const [kindInput, setKindInput] = useState('');
-  const [identifierEdited, setIdentifierEdited] = useState(!!editing);
+  const [identifierEdited, setIdentifierEdited] = useState(!!editing || !!initial?.identifier);
+
+  // The draft slug we're currently editing into, so repeated saves overwrite
+  // the same draft instead of piling up new ones.
+  const [draftSlug, setDraftSlug] = useState<string | null>(initial?.draftSlug ?? null);
 
   // Derive the identifier from the title until the user edits it directly.
   const effectiveIdentifier = useMemo(() => {
@@ -85,10 +94,40 @@ export function NipEditor({ editing, initial }: NipEditorProps) {
           const parsed = parseCustomNip(event);
           queryClient.setQueryData(['custom-nip', naddr], parsed);
           queryClient.setQueryData(['custom-nip-by-address', parsed.address], parsed);
+          // Now that it's published, drop the working draft (if any).
+          if (draftSlug) deleteDraft.mutate({ slug: draftSlug });
           toast({ title: editing ? 'NIP updated' : 'NIP published' });
           navigate(`/${naddr}`);
         },
         onError: (err) => toast({ title: 'Failed to publish', description: err.message, variant: 'destructive' }),
+      },
+    );
+  };
+
+  const handleSaveDraft = () => {
+    if (!title.trim() && !content.trim()) {
+      toast({ title: 'Nothing to save yet', variant: 'destructive' });
+      return;
+    }
+    const params: SaveNipParams = {
+      identifier: effectiveIdentifier || slugify(title) || 'untitled',
+      title: title || 'Untitled NIP',
+      content,
+      kinds,
+      fork,
+      original: editing,
+    };
+    saveDraft.mutate(
+      {
+        template: { kind: CUSTOM_NIP_KIND, content: content.trim(), tags: buildNipTags(params) },
+        slug: draftSlug ?? undefined,
+      },
+      {
+        onSuccess: ({ slug }) => {
+          setDraftSlug(slug);
+          toast({ title: 'Draft saved', description: 'Find it under your drafts to pick up later.' });
+        },
+        onError: (err) => toast({ title: 'Failed to save draft', description: err.message, variant: 'destructive' }),
       },
     );
   };
@@ -209,6 +248,18 @@ export function NipEditor({ editing, initial }: NipEditorProps) {
         <Button type="button" variant="outline" onClick={() => navigate(-1)} className="sm:w-auto">
           Cancel
         </Button>
+        {!editing && hasNip44Support && (
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={handleSaveDraft}
+            disabled={saveDraft.isPending}
+            className="gap-1.5 sm:w-auto"
+          >
+            <FileText className="size-4" />
+            {saveDraft.isPending ? 'Saving…' : 'Save draft'}
+          </Button>
+        )}
         <Button type="submit" disabled={isPending} className="gap-1.5 sm:w-auto">
           <Save className="size-4" />
           {isPending ? 'Publishing…' : editing ? 'Update NIP' : 'Publish NIP'}

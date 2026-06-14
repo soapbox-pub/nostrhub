@@ -18,6 +18,7 @@ import AppsPage from "./pages/AppsPage";
 import SubmitAppPage from "./pages/SubmitAppPage";
 import ArticlesPage from "./pages/ArticlesPage";
 import CreateArticlePage from "./pages/CreateArticlePage";
+import DraftsPage from "./pages/DraftsPage";
 import PlanGraphPage from "./pages/PlanGraphPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import { DEFAULT_TOPIC } from "./lib/chat";
@@ -31,6 +32,7 @@ export function AppRouter() {
         <Route path="/nips" element={<NipsPage />} />
         <Route path="/articles" element={<ArticlesPage />} />
         <Route path="/articles/create" element={<CreateArticlePage />} />
+        <Route path="/drafts" element={<DraftsPage />} />
         <Route path="/repos" element={<GitReposPage />} />
         <Route path="/apps" element={<AppsPage />} />
         <Route path="/apps/submit" element={<SubmitAppPage />} />
