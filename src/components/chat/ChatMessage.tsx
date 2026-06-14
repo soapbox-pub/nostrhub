@@ -147,9 +147,9 @@ export function ChatMessage({ message, grouped = false }: ChatMessageProps) {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem asChild>
-              <a href={`https://njump.me/${nevent}`} target="_blank" rel="noopener noreferrer">
+              <a href={`https://ditto.pub/${nevent}`} target="_blank" rel="noopener noreferrer">
                 <ExternalLink className="mr-2 h-3.5 w-3.5" />
-                Open in njump
+                Open with Ditto
               </a>
             </DropdownMenuItem>
             {isOwn && (
