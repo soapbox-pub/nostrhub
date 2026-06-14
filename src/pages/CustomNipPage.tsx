@@ -11,6 +11,7 @@ import { ApproveButton } from '@/components/ApproveButton';
 import { ExpertApprovers } from '@/components/ExpertApprovers';
 import { CommentsSection } from '@/components/comments/CommentsSection';
 import { UserAvatar } from '@/components/UserAvatar';
+import { CopyButton } from '@/components/git/CopyButton';
 import { RelatedReposCard, UsedByAppsCard } from '@/components/CrossRefCards';
 import { LinkAppNudge } from '@/components/LinkAppNudge';
 import { RevisionsDialog } from '@/components/RevisionsDialog';
@@ -182,7 +183,12 @@ export function CustomNipPage({ naddr, eventId }: { naddr?: string; eventId?: st
                 'lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-8 lg:space-y-0',
             )}
           >
-            <DetailSurface className="min-w-0">
+            <DetailSurface className="relative min-w-0">
+              <CopyButton
+                value={nip.content}
+                label="Copy NIP markdown"
+                className="absolute right-4 top-4 sm:right-6 sm:top-6"
+              />
               <MarkdownContent content={nip.content} />
 
               <p className="mt-8 border-t border-border/60 pt-4 text-sm text-muted-foreground">
