@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { nip19 } from 'nostr-tools';
 import { Save, GitFork, X, Plus, FileText } from 'lucide-react';
 import { MarkdownContent } from '@/components/MarkdownContent';
-import { useSaveNip, buildNipTags, type SaveNipParams } from '@/hooks/useSaveNip';
+import { useSaveNip, buildNipTags, type SaveNipParams, type NipKind } from '@/hooks/useSaveNip';
 import { useDrafts } from '@/hooks/useDrafts';
 import { useToast } from '@/hooks/useToast';
 import { generateIdentifier, parseCustomNip, CUSTOM_NIP_KIND, type CustomNip } from '@/lib/nips';
@@ -22,7 +22,7 @@ export interface NipEditorInitial {
   /** Stable identifier carried over from a resumed draft, so it survives publish. */
   identifier?: string;
   content?: string;
-  kinds?: string[];
+  kinds?: NipKind[];
   fork?: SaveNipParams['fork'];
   forkLabel?: string;
   /** Slug of the draft being resumed, so repeated saves overwrite it. */
@@ -45,8 +45,14 @@ export function NipEditor({ editing, initial }: NipEditorProps) {
 
   const [title, setTitle] = useState(editing?.title ?? initial?.title ?? '');
   const [content, setContent] = useState(editing?.content ?? initial?.content ?? '');
-  const [kinds, setKinds] = useState<string[]>(editing?.kinds ?? initial?.kinds ?? []);
+  const [kinds, setKinds] = useState<NipKind[]>(
+    () =>
+      initial?.kinds ??
+      editing?.kinds.map((k) => ({ kind: k, name: editing.kindNames[k] ?? '' })) ??
+      [],
+  );
   const [kindInput, setKindInput] = useState('');
+  const [kindNameInput, setKindNameInput] = useState('');
 
   // The addressable identifier (`d` tag) is opaque and stable for the whole
   // lifecycle: reuse the existing one when editing or resuming a draft,
@@ -63,13 +69,23 @@ export function NipEditor({ editing, initial }: NipEditorProps) {
   const fork = editing ? undefined : initial?.fork;
 
   const addKind = () => {
-    const k = kindInput.trim();
-    if (!k || !/^\d+$/.test(k)) {
+    const kind = kindInput.trim();
+    const name = kindNameInput.trim();
+    if (!kind || !/^\d+$/.test(kind)) {
       toast({ title: 'Enter a numeric event kind', variant: 'destructive' });
       return;
     }
-    if (!kinds.includes(k)) setKinds([...kinds, k]);
+    if (!name) {
+      toast({ title: 'Enter a name for this kind', variant: 'destructive' });
+      return;
+    }
+    if (kinds.some((k) => k.kind === kind)) {
+      toast({ title: `Kind ${kind} is already added`, variant: 'destructive' });
+      return;
+    }
+    setKinds([...kinds, { kind, name }]);
     setKindInput('');
+    setKindNameInput('');
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -158,7 +174,10 @@ export function NipEditor({ editing, initial }: NipEditorProps) {
 
       <div className="space-y-2">
         <Label htmlFor="kind-input">Event kinds (optional)</Label>
-        <div className="flex gap-2">
+        <p className="text-sm text-muted-foreground">
+          Add each event kind this NIP defines or concerns, with a short human-readable name.
+        </p>
+        <div className="flex flex-col gap-2 sm:flex-row">
           <Input
             id="kind-input"
             value={kindInput}
@@ -169,9 +188,24 @@ export function NipEditor({ editing, initial }: NipEditorProps) {
                 addKind();
               }
             }}
-            placeholder="e.g. 30817"
+            placeholder="Kind, e.g. 37516"
             inputMode="numeric"
-            className="max-w-40"
+            aria-label="Event kind number"
+            className="sm:max-w-40"
+          />
+          <Input
+            id="kind-name-input"
+            value={kindNameInput}
+            onChange={(e) => setKindNameInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                addKind();
+              }
+            }}
+            placeholder="Name, e.g. Geocache Listing"
+            aria-label="Kind name"
+            className="flex-1"
           />
           <Button type="button" variant="outline" onClick={addKind} className="gap-1.5">
             <Plus className="size-4" /> Add kind
@@ -180,12 +214,13 @@ export function NipEditor({ editing, initial }: NipEditorProps) {
         {kinds.length > 0 && (
           <div className="flex flex-wrap gap-2 pt-1">
             {kinds.map((k) => (
-              <Badge key={k} variant="secondary" className="gap-1 font-mono">
-                {k}
+              <Badge key={k.kind} variant="secondary" className="gap-1.5">
+                <span className="font-mono">{k.kind}</span>
+                <span className="text-muted-foreground">{k.name}</span>
                 <button
                   type="button"
-                  onClick={() => setKinds(kinds.filter((x) => x !== k))}
-                  aria-label={`Remove kind ${k}`}
+                  onClick={() => setKinds(kinds.filter((x) => x.kind !== k.kind))}
+                  aria-label={`Remove kind ${k.kind} (${k.name})`}
                   className="hover:text-destructive"
                 >
                   <X className="size-3" />

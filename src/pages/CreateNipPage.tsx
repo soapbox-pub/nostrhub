@@ -62,7 +62,9 @@ const CreateNipPage = () => {
         title: findTag('title') ?? '',
         identifier: findTag('d') ?? '',
         content: t.content,
-        kinds: t.tags.filter(([n]) => n === 'k').map(([, v]) => v).filter(Boolean),
+        kinds: t.tags
+          .filter(([n, v]) => n === 'k' && v)
+          .map(([, kind, name]) => ({ kind, name: name ?? '' })),
         draftSlug: loadedDraft.slug,
       };
     }
@@ -70,7 +72,10 @@ const CreateNipPage = () => {
       return {
         title: `${customForkSource.title} (fork)`,
         content: customForkSource.content,
-        kinds: customForkSource.kinds,
+        kinds: customForkSource.kinds.map((kind) => ({
+          kind,
+          name: customForkSource.kindNames[kind] ?? '',
+        })),
         fork: { type: 'custom', address: customForkSource.address, authorPubkey: customForkSource.author },
         forkLabel: customForkSource.title,
       };

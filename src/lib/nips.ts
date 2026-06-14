@@ -15,6 +15,11 @@ export interface CustomNip {
   title: string;
   /** Event kind numbers this NIP defines/concerns (`k` tags). */
   kinds: string[];
+  /**
+   * Human-readable names for the `k` tags, keyed by kind number (from `k[2]`).
+   * Sparse: older events may omit names, so a number is not guaranteed a name.
+   */
+  kindNames: Record<string, string>;
   content: string;
   author: string;
   createdAt: number;
@@ -39,7 +44,14 @@ export function isValidCustomNip(event: NostrEvent): boolean {
 export function parseCustomNip(event: NostrEvent): CustomNip {
   const identifier = tag(event, 'd') ?? '';
   const title = tag(event, 'title') ?? 'Untitled NIP';
-  const kinds = event.tags.filter(([n]) => n === 'k').map(([, v]) => v).filter(Boolean);
+  const kTags = event.tags.filter(([n, v]) => n === 'k' && v);
+  const kinds = kTags.map(([, v]) => v);
+  // Names are positional metadata (k[2]); older events omit them, so the map
+  // stays sparse — display code must tolerate a missing name for any kind.
+  const kindNames: Record<string, string> = {};
+  for (const [, kind, name] of kTags) {
+    if (name?.trim()) kindNames[kind] = name.trim();
+  }
 
   let fork: CustomNip['fork'];
   const forkA = event.tags.find(([n, , , marker]) => n === 'a' && marker === 'fork');
@@ -55,6 +67,7 @@ export function parseCustomNip(event: NostrEvent): CustomNip {
     identifier,
     title,
     kinds,
+    kindNames,
     content: event.content,
     author: event.pubkey,
     createdAt: event.created_at,

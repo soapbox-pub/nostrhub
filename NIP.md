@@ -17,10 +17,31 @@ Implementation Possibility (NIP). The `content` field holds the NIP body as Mark
 | --------- | -------- | ---------- | --------------------------------------------------------------------------- |
 | `d`       | yes      | no         | Unique identifier (kebab-case slug). Used in the `naddr`.                    |
 | `title`   | yes      | no         | Human-readable NIP title.                                                   |
-| `k`       | no       | yes        | An event kind number this NIP defines or concerns (string).                 |
+| `k`       | no       | yes        | An event kind this NIP defines or concerns: `["k", "<kind>", "<name>"]`.    |
 | `a`       | no       | yes        | Fork reference to a **custom** NIP: `30817:<pubkey>:<d>` with `fork` marker. |
 | `i`       | no       | yes        | Fork reference to an **official** NIP (GitHub URL) with `fork` marker.       |
 | `p`       | no       | yes        | Author of a forked custom NIP, to notify them of the fork.                  |
+
+#### `k` tag — kind number + human-readable name
+
+Each `k` tag carries an event kind number in its first value and a **human-readable
+name** for that kind in its second value:
+
+```jsonc
+["k", "30817", "Custom NIP"]
+["k", "37516", "Geocache Listing"]
+```
+
+The single-letter `k` tag remains relay-indexable on the kind number, so
+`{ kinds: [30817], "#k": ["37516"] }` continues to work — the name is positional
+metadata that relays ignore.
+
+**Publishing.** Clients **MUST** require a non-empty name for every `k` tag a user
+adds, so the ecosystem accumulates a shared, human-readable kind registry.
+
+**Displaying.** Clients **MUST NOT** assume the name is present: older events (and
+events from clients that predate this extension) carry bare `["k", "<kind>"]` tags.
+Render the kind number when no name is available and fall back gracefully.
 
 ### Example
 
@@ -31,8 +52,8 @@ Implementation Possibility (NIP). The `content` field holds the NIP body as Mark
   "tags": [
     ["d", "custom-xyz-events"],
     ["title", "Custom Event Kind for XYZ"],
-    ["k", "31337"],
-    ["k", "31338"]
+    ["k", "31337", "XYZ Listing"],
+    ["k", "31338", "XYZ Reaction"]
   ]
 }
 ```
@@ -74,7 +95,7 @@ Fork of an **official** NIP:
 // All custom NIPs
 nostr.query([{ kinds: [30817], limit: 50 }]);
 
-// Custom NIPs concerning a specific event kind
+// Custom NIPs concerning a specific event kind (the name in `k[2]` is ignored by relays)
 nostr.query([{ kinds: [30817], "#k": ["31337"] }]);
 
 // A specific custom NIP (decode the naddr first)

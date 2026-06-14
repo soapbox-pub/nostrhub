@@ -3,11 +3,19 @@ import type { NostrEvent } from '@nostrify/nostrify';
 import { useNostrPublish } from '@/hooks/useNostrPublish';
 import { CUSTOM_NIP_KIND, type CustomNip } from '@/lib/nips';
 
+/** An event kind a NIP concerns, with a required human-readable name. */
+export interface NipKind {
+  /** Event kind number (as a string). */
+  kind: string;
+  /** Human-readable name, required at publish time (e.g. "Geocache Listing"). */
+  name: string;
+}
+
 export interface SaveNipParams {
   identifier: string;
   title: string;
   content: string;
-  kinds: string[];
+  kinds: NipKind[];
   /** Fork source, if creating a fork. */
   fork?:
     | { type: 'custom'; address: string; authorPubkey: string }
@@ -22,7 +30,8 @@ export function buildNipTags(params: SaveNipParams): string[][] {
     ['d', params.identifier.trim()],
     ['title', params.title.trim()],
     ['alt', `Nostr Implementation Possibility: ${params.title.trim()}`],
-    ...params.kinds.map((k) => ['k', k]),
+    // The human-readable name lives in k[2]; relays still index the kind number.
+    ...params.kinds.map(({ kind, name }) => ['k', kind, name.trim()]),
   ];
 
   // New fork.
