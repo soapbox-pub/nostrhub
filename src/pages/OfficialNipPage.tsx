@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useSeoMeta } from '@unhead/react';
-import { BookOpen, GitFork, AlertCircle } from 'lucide-react';
+import { GitFork, AlertCircle } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { BackLink, DetailHero, HeroExternalLink } from '@/components/DetailHero';
 import { DetailSurface } from '@/components/DetailSurface';
@@ -75,8 +75,6 @@ const OfficialNipPage = () => {
         <article>
           <DetailSurface>
           <DetailHero
-            icon={<BookOpen className="size-7 text-primary" aria-hidden="true" />}
-            kicker={`NIP-${code}`}
             title={title}
             meta={<ExpertApprovers target={target} />}
             primaryAction={<ApproveButton target={target} />}
