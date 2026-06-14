@@ -284,11 +284,33 @@
     opacity: 0.85;
   }
 
-  /* The forest-floor photo and drifting spores only suit the dark theme; in
+  /* The drifting spores and forest-floor photo only suit the dark theme; in
      light mode they wash out and clutter the layout, so hide them entirely. */
-  html:not(.dark) body::before,
   html:not(.dark) body::after {
     display: none;
+  }
+
+  /* Light theme gets a soft brand-tinted gradient in place of the photo: a red
+     glow in the bottom-left flowing diagonally up to a purple glow in the
+     top-right, over the white page. */
+  html:not(.dark) body::before {
+    background:
+      radial-gradient(
+        44rem 44rem at 0% 100%,
+        hsl(0 72% 51% / 0.10),
+        transparent 60%
+      ),
+      radial-gradient(
+        44rem 44rem at 100% 0%,
+        hsl(270 65% 55% / 0.10),
+        transparent 60%
+      ),
+      linear-gradient(
+        45deg,
+        hsl(0 72% 51% / 0.05) 0%,
+        hsl(20 14% 99%) 45%,
+        hsl(270 65% 55% / 0.05) 100%
+      );
   }
 
   @media (prefers-reduced-motion: no-preference) {
