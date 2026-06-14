@@ -88,7 +88,7 @@ function parseArticle(event: NostrEvent): ExpertArticle | null {
   };
 }
 
-const NOTE_WINDOW_DAYS = 30;
+const NOTE_WINDOW_DAYS = 1;
 
 /** Dedupe raw 30023 events to the latest per (author, d) and parse, newest-first. */
 function collectArticles(events: NostrEvent[]): ExpertArticle[] {
