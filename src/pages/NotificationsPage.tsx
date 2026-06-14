@@ -103,7 +103,11 @@ function NotificationRow({ notification }: { notification: Notification }) {
               </>
             )}
             {notification.type === 'reaction' && notification.reaction && (
-              <span className="ml-1">{notification.reaction}</span>
+              <span className="ml-1">
+                {notification.reaction === '+'
+                  ? '\u{1F44D}'
+                  : notification.reaction}
+              </span>
             )}
           </p>
 
