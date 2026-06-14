@@ -14,6 +14,12 @@ export interface UseNostrSearchOptions {
   sinceDays?: number;
   /** Per-search result limit. */
   limit?: number;
+  /**
+   * Drop replies (events carrying an `e` tag). Appends the `-tag:e` NIP-50
+   * token (honored by Ditto) so the relay omits replies, and also enforces it
+   * client-side for relays that ignore the token.
+   */
+  excludeReplies?: boolean;
   enabled?: boolean;
 }
 
@@ -25,13 +31,15 @@ export interface UseNostrSearchOptions {
  *
  * Pass `authors` to scope the search to a trusted set of pubkeys (e.g. the
  * community author set); it is applied both as a relay-side `authors` filter
- * and as a client-side guard.
+ * and as a client-side guard. Pass `excludeReplies` to drop `e`-tagged replies
+ * (relay-side via `-tag:e`, plus a client-side guard) so the limit is spent on
+ * top-level posts rather than replies the caller would discard anyway.
  */
 export function useNostrSearch(options: UseNostrSearchOptions) {
   const { nostr } = useNostr();
   const { config } = useAppContext();
   const searchRelays = config.searchRelays.length > 0 ? config.searchRelays : SEARCH_RELAYS;
-  const { searches, kinds, authors, sinceDays, limit = 20, enabled = true } = options;
+  const { searches, kinds, authors, sinceDays, limit = 20, excludeReplies = false, enabled = true } = options;
 
   return useQuery<NostrEvent[]>({
     queryKey: [
@@ -41,6 +49,7 @@ export function useNostrSearch(options: UseNostrSearchOptions) {
       authors ? [...authors].sort() : null,
       sinceDays ?? null,
       limit,
+      excludeReplies,
       searchRelays,
     ],
     queryFn: async ({ signal }) => {
@@ -53,7 +62,8 @@ export function useNostrSearch(options: UseNostrSearchOptions) {
       const authorSet = hasAuthors ? new Set(authors) : undefined;
 
       const filters: NostrFilter[] = searches.map((search) => {
-        const filter: NostrFilter = { kinds, search, limit };
+        const term = excludeReplies ? `${search} -tag:e` : search;
+        const filter: NostrFilter = { kinds, search: term, limit };
         if (since !== undefined) filter.since = since;
         if (hasAuthors) filter.authors = authors;
         return filter;
@@ -69,6 +79,7 @@ export function useNostrSearch(options: UseNostrSearchOptions) {
         if (!kinds.includes(ev.kind) || seen.has(ev.id)) return false;
         if (since !== undefined && ev.created_at < since) return false;
         if (authorSet && !authorSet.has(ev.pubkey)) return false;
+        if (excludeReplies && ev.tags.some(([n]) => n === 'e')) return false;
         seen.add(ev.id);
         return true;
       });

@@ -108,7 +108,8 @@ function collectArticles(events: NostrEvent[]): ExpertArticle[] {
 
 /**
  * Collapse a newest-first article list to a single entry per author — each
- * expert's most recent piece — preserving the input ordering.
+ * expert's most recent piece — preserving the input ordering. Backstops the
+ * relay-side `distinct:author` search for relays that ignore the token.
  */
 function latestPerAuthor(articles: ExpertArticle[]): ExpertArticle[] {
   const seen = new Set<string>();
@@ -193,9 +194,12 @@ export function useExpertPress() {
       const opts = { signal: AbortSignal.any([signal, AbortSignal.timeout(8000)]) };
 
       const [articleEvents, noteEvents] = await Promise.all([
-        // Overfetch a touch so each expert is represented even when a few
-        // prolific authors would otherwise dominate the newest-first window.
-        nostr.query([{ kinds: [ARTICLE_KIND], authors: experts, limit: 100 }], opts),
+        // `distinct:author` returns each expert's single most recent article
+        // relay-side, keeping the fetch tiny. Newest-first; we only show a few
+        // leads, with a client-side per-author dedupe as a backstop below.
+        nostr
+          .group(searchRelays)
+          .query([{ kinds: [ARTICLE_KIND], authors: experts, search: 'distinct:author', limit: 6 }], opts),
         nostr
           .group(searchRelays)
           // `-tag:e` excludes replies relay-side (Ditto NIP-50 extension), so the
@@ -204,9 +208,9 @@ export function useExpertPress() {
           .query([{ kinds: [1], authors: experts, search: 'sort:hot -tag:e', since: noteSince, limit: 12 }], opts),
       ]);
 
-      // Articles: keep only the latest event per (author, d) address,
-      // newest-first by publish date, then collapse to a single feature per
-      // expert — their most recent piece — so no one author floods the well.
+      // Articles: parse + quality-filter, newest-first. `distinct:author` has
+      // already collapsed to one piece per expert relay-side; the client-side
+      // dedupe backstops relays that ignore the token.
       const articles = latestPerAuthor(collectArticles(articleEvents));
 
       // Notes: top-level posts only (no `e` tags), in hot order.

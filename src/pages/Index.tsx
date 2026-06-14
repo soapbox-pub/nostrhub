@@ -98,7 +98,8 @@ const Index = () => {
     kinds: [1],
     authors: community.data?.authors,
     sinceDays: 2,
-    limit: 20,
+    limit: 10,
+    excludeReplies: true,
     enabled: !community.isLoading && (community.data?.authors.length ?? 0) > 0,
   });
 
@@ -113,7 +114,7 @@ const Index = () => {
   // from the Zapstore relay alongside the user's read relays.
   const releasesQuery = useReleases({
     authors: community.data?.authors,
-    limit: 50,
+    limit: 12,
     enabled: !community.isLoading && hasCommunity,
   });
 
