@@ -152,20 +152,16 @@ export function useDirectoryNips(): DirectoryNips {
       author?: string,
     ): RankedNip => {
       const label = byKey[base.key];
-      const experts = label?.experts ?? [];
-      const all = label?.all ?? [];
-      // An expert authoring a NIP counts as an implicit expert endorsement.
-      const expertAuthored = author ? expertSet.has(author) : false;
-      const authoredBonus =
-        expertAuthored && author && !experts.includes(author) ? 1 : 0;
-      const expertApprovers =
-        authoredBonus > 0 ? [author!, ...experts] : experts;
+      // Approvals only count when they come from someone other than the
+      // author: experts self-labeling their own NIPs is not an endorsement.
+      const experts = (label?.experts ?? []).filter((pk) => pk !== author);
+      const all = (label?.all ?? []).filter((pk) => pk !== author);
       return {
         ...base,
-        expertAuthored,
-        expertApprovers,
-        expertCount: experts.length + authoredBonus,
-        totalCount: all.length + authoredBonus,
+        expertAuthored: author ? expertSet.has(author) : false,
+        expertApprovers: experts,
+        expertCount: experts.length,
+        totalCount: all.length,
       };
     };
 
