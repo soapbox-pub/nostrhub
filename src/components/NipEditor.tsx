@@ -52,7 +52,8 @@ export function NipEditor({ editing, initial }: NipEditorProps) {
       [],
   );
   const [kindInput, setKindInput] = useState('');
-  const [kindNameInput, setKindNameInput] = useState('');
+  // Kind number whose name input should grab focus right after it's added.
+  const [focusKind, setFocusKind] = useState<string | null>(null);
 
   // The addressable identifier (`d` tag) is opaque and stable for the whole
   // lifecycle: reuse the existing one when editing or resuming a draft,
@@ -70,28 +71,34 @@ export function NipEditor({ editing, initial }: NipEditorProps) {
 
   const addKind = () => {
     const kind = kindInput.trim();
-    const name = kindNameInput.trim();
     if (!kind || !/^\d+$/.test(kind)) {
       toast({ title: 'Enter a numeric event kind', variant: 'destructive' });
-      return;
-    }
-    if (!name) {
-      toast({ title: 'Enter a name for this kind', variant: 'destructive' });
       return;
     }
     if (kinds.some((k) => k.kind === kind)) {
       toast({ title: `Kind ${kind} is already added`, variant: 'destructive' });
       return;
     }
-    setKinds([...kinds, { kind, name }]);
+    // Name is filled in afterward via the per-kind input below.
+    setKinds([...kinds, { kind, name: '' }]);
     setKindInput('');
-    setKindNameInput('');
+    setFocusKind(kind);
+  };
+
+  const setKindName = (kind: string, name: string) => {
+    setKinds(kinds.map((k) => (k.kind === kind ? { ...k, name } : k)));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !content.trim()) {
       toast({ title: 'Title and content are required', variant: 'destructive' });
+      return;
+    }
+
+    const unnamed = kinds.find((k) => !k.name.trim());
+    if (unnamed) {
+      toast({ title: `Add a name for kind ${unnamed.kind}`, variant: 'destructive' });
       return;
     }
 
@@ -175,9 +182,9 @@ export function NipEditor({ editing, initial }: NipEditorProps) {
       <div className="space-y-2">
         <Label htmlFor="kind-input">Event kinds (optional)</Label>
         <p className="text-sm text-muted-foreground">
-          Add each event kind this NIP defines or concerns, with a short human-readable name.
+          Add each event kind this NIP defines or concerns, then give it a short human-readable name.
         </p>
-        <div className="flex flex-col gap-2 sm:flex-row">
+        <div className="flex gap-2">
           <Input
             id="kind-input"
             value={kindInput}
@@ -191,21 +198,7 @@ export function NipEditor({ editing, initial }: NipEditorProps) {
             placeholder="Kind, e.g. 37516"
             inputMode="numeric"
             aria-label="Event kind number"
-            className="sm:max-w-40"
-          />
-          <Input
-            id="kind-name-input"
-            value={kindNameInput}
-            onChange={(e) => setKindNameInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                addKind();
-              }
-            }}
-            placeholder="Name, e.g. Geocache Listing"
-            aria-label="Kind name"
-            className="flex-1"
+            className="max-w-40"
           />
           <Button type="button" variant="outline" onClick={addKind} className="gap-1.5">
             <Plus className="size-4" /> Add kind
@@ -214,13 +207,31 @@ export function NipEditor({ editing, initial }: NipEditorProps) {
         {kinds.length > 0 && (
           <div className="flex flex-wrap gap-2 pt-1">
             {kinds.map((k) => (
-              <Badge key={k.kind} variant="secondary" className="gap-1.5">
+              <Badge
+                key={k.kind}
+                variant="secondary"
+                aria-invalid={!k.name.trim()}
+                className="gap-1.5 overflow-visible py-1 has-[input:focus-visible]:border-ring has-[input:focus-visible]:ring-[3px] has-[input:focus-visible]:ring-ring/50"
+              >
                 <span className="font-mono">{k.kind}</span>
-                <span className="text-muted-foreground">{k.name}</span>
+                <input
+                  ref={(el) => {
+                    if (el && focusKind === k.kind) {
+                      el.focus();
+                      setFocusKind(null);
+                    }
+                  }}
+                  value={k.name}
+                  onChange={(e) => setKindName(k.kind, e.target.value)}
+                  placeholder="name…"
+                  aria-label={`Name for kind ${k.kind}`}
+                  size={Math.max(k.name.length, 5)}
+                  className="bg-transparent outline-none placeholder:text-muted-foreground/70"
+                />
                 <button
                   type="button"
                   onClick={() => setKinds(kinds.filter((x) => x.kind !== k.kind))}
-                  aria-label={`Remove kind ${k.kind} (${k.name})`}
+                  aria-label={`Remove kind ${k.kind}`}
                   className="hover:text-destructive"
                 >
                   <X className="size-3" />
