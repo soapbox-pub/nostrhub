@@ -1,5 +1,6 @@
 import { useNostr } from '@nostrify/react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueries } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import type { NostrFilter } from '@nostrify/nostrify';
 import { DITTO_RELAY } from '@/lib/appRelays';
 import { useAppContext } from '@/hooks/useAppContext';
@@ -133,9 +134,24 @@ export function useClientActiveUsers(clientTags: string[]) {
   const { config } = useAppContext();
   const statsRelay = config.statsRelay || DITTO_RELAY;
 
-  return useQuery({
-    queryKey: ['client-active-users', clientTags, statsRelay],
-    queryFn: async (c): Promise<number> => {
+  return useQuery(activeUsersQueryOptions(nostr, statsRelay, clientTags));
+}
+
+/**
+ * Build the shared React Query options for a single app's active-users COUNT.
+ * Factored out so {@link useClientActiveUsers} (per-card) and
+ * {@link useClientActiveUsersBatch} (page-level, for sorting) issue queries
+ * with identical keys — the per-card hook then reads straight from cache
+ * instead of re-counting.
+ */
+function activeUsersQueryOptions(
+  nostr: ReturnType<typeof useNostr>['nostr'],
+  statsRelay: string,
+  clientTags: string[],
+) {
+  return {
+    queryKey: ['client-active-users', clientTags, statsRelay] as const,
+    queryFn: async ({ signal }: { signal: AbortSignal }): Promise<number> => {
       const relay = nostr.relay(statsRelay);
       if (!relay.count) {
         throw new Error('Relay does not support NIP-45 COUNT');
@@ -144,12 +160,46 @@ export function useClientActiveUsers(clientTags: string[]) {
       const now = snapToHour(Math.floor(Date.now() / 1000));
       const result = await relay.count(
         [{ '#client': clientTags, search: DISTINCT_AUTHOR, since: now - MONTH, until: now }],
-        { signal: c.signal },
+        { signal },
       );
 
       return result.count;
     },
     enabled: clientTags.length > 0,
     staleTime: 5 * 60 * 1000,
+  };
+}
+
+/**
+ * Batched variant of {@link useClientActiveUsers} for ranking the apps
+ * directory by popularity. Issues one COUNT query per app (each keyed
+ * identically to the per-card query, so {@link AppCard}'s own hook reads from
+ * cache rather than re-counting) and returns a map of app key → active-user
+ * count plus an overall loading flag.
+ *
+ * @param apps  One entry per app: a stable `key` (the app address) and the
+ *              app's `#client` tag values.
+ */
+export function useClientActiveUsersBatch(
+  apps: Array<{ key: string; clientTags: string[] }>,
+): { counts: Map<string, number>; isLoading: boolean } {
+  const { nostr } = useNostr();
+  const { config } = useAppContext();
+  const statsRelay = config.statsRelay || DITTO_RELAY;
+
+  const results = useQueries({
+    queries: apps.map((app) => activeUsersQueryOptions(nostr, statsRelay, app.clientTags)),
   });
+
+  return useMemo(() => {
+    const counts = new Map<string, number>();
+    let isLoading = false;
+    results.forEach((result, i) => {
+      if (typeof result.data === 'number') {
+        counts.set(apps[i].key, result.data);
+      }
+      if (result.isLoading) isLoading = true;
+    });
+    return { counts, isLoading };
+  }, [results, apps]);
 }

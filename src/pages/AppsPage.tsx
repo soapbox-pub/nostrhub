@@ -13,9 +13,16 @@ import { TIER_ICONS } from '@/lib/tierIcons';
 import { useAppSearch } from '@/hooks/useAppSearch';
 import { useApps } from '@/hooks/useApps';
 import { useAllAppReviews } from '@/hooks/useAppReviews';
+import { useClientActiveUsersBatch } from '@/hooks/useClientMetrics';
 import { useCommunityAuthors } from '@/hooks/useCommunityAuthors';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { APP_PLATFORMS, hasFullAppMetadata, type AppPlatform } from '@/lib/apps';
+import { sanitizeUrl } from '@/lib/sanitizeUrl';
+import {
+  APP_PLATFORMS,
+  clientTagsForApp,
+  hasFullAppMetadata,
+  type AppPlatform,
+} from '@/lib/apps';
 import {
   TIERS,
   TIER_ORDER,
@@ -148,6 +155,23 @@ export function AppsPage() {
     return { visibleRows: visible, hiddenRows: hidden };
   }, [rows, mine]);
 
+  // The default directory view (Hot, no search, not "Your apps") ranks apps by
+  // their active-user count. We only need those counts in that mode, so the
+  // batch is empty otherwise — each entry is one NIP-45 COUNT keyed identically
+  // to AppCard's per-card query, so the cards read the result from cache.
+  const rankByActiveUsers = sortBy === 'hot' && !searching && !mine;
+  const activeUserQueries = useMemo(() => {
+    if (!rankByActiveUsers) return [];
+    return [...visibleRows, ...hiddenRows].map((row) => ({
+      key: row.app.address,
+      clientTags: clientTagsForApp({
+        name: row.app.name,
+        website: sanitizeUrl(row.app.website),
+      }),
+    }));
+  }, [rankByActiveUsers, visibleRows, hiddenRows]);
+  const { counts: activeUsers } = useClientActiveUsersBatch(activeUserQueries);
+
   const filtered = useMemo(() => {
     let result = showHidden ? [...visibleRows, ...hiddenRows] : visibleRows;
     if (platform) {
@@ -176,8 +200,21 @@ export function AppsPage() {
     // user picks an explicit sort.
     const sorted = [...result];
     if (sortBy === 'hot') {
-      // Reviewed apps sorted by count × rating first; unreviewed apps keep
-      // their relay-assigned order (position in the rows array) behind them.
+      if (rankByActiveUsers) {
+        // Default directory view: rank by active users (descending). Apps whose
+        // count hasn't resolved yet (or is zero) keep their relay-assigned order
+        // behind the ranked ones, so the grid stays stable as counts stream in.
+        const withUsers = sorted.filter((r) => (activeUsers.get(r.app.address) ?? 0) > 0);
+        const withoutUsers = sorted.filter((r) => (activeUsers.get(r.app.address) ?? 0) <= 0);
+        withUsers.sort(
+          (a, b) =>
+            (activeUsers.get(b.app.address) ?? 0) - (activeUsers.get(a.app.address) ?? 0),
+        );
+        return [...withUsers, ...withoutUsers];
+      }
+      // Search results: reviewed apps sorted by count × rating first; unreviewed
+      // apps keep their relay-assigned order (position in the rows array) behind
+      // them.
       const reviewed = sorted.filter((r) => r.overall);
       const unreviewed = sorted.filter((r) => !r.overall);
       reviewed.sort((a, b) => {
@@ -196,7 +233,7 @@ export function AppsPage() {
       sorted.sort((a, b) => b.app.createdAt - a.app.createdAt);
     }
     return sorted;
-  }, [visibleRows, hiddenRows, platform, activeTag, tierFilter, sortBy, showHidden, mine, query]);
+  }, [visibleRows, hiddenRows, platform, activeTag, tierFilter, sortBy, showHidden, mine, query, rankByActiveUsers, activeUsers]);
 
   const isLoading =
     active.isLoading ||
