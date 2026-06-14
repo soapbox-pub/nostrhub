@@ -11,7 +11,6 @@ import { ApproveButton } from '@/components/ApproveButton';
 import { ExpertApprovers } from '@/components/ExpertApprovers';
 import { CommentsSection } from '@/components/comments/CommentsSection';
 import { UserAvatar } from '@/components/UserAvatar';
-import { ExpertToggleButton } from '@/components/ExpertToggleButton';
 import { RelatedReposCard, UsedByAppsCard } from '@/components/CrossRefCards';
 import { LinkAppNudge } from '@/components/LinkAppNudge';
 import { useCustomNip } from '@/hooks/useCustomNips';
@@ -108,8 +107,7 @@ export function CustomNipPage({ naddr }: { naddr: string }) {
                   <UserAvatar pubkey={nip.author} size="sm" />
                   <span className="text-sm font-medium text-foreground">{authorName}</span>
                 </Link>
-                <ExpertToggleButton pubkey={nip.author} iconOnly />
-                <ExpertApprovers target={target} className="ml-auto" />
+                <ExpertApprovers target={target} />
               </>
             }
             primaryAction={<ApproveButton target={target} />}
