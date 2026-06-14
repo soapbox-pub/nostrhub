@@ -154,7 +154,6 @@ export function ZapstoreAppPage({ pubkey, identifier }: ZapstoreAppPageProps) {
         <article className="space-y-6">
           <DetailSurface>
             <DetailHero
-              className="border-b-0 pb-0"
               icon={<ShoppingBag className="size-7 text-primary" aria-hidden="true" />}
               image={app.icon}
               title={app.name}

@@ -11,7 +11,6 @@ import { cn } from '@/lib/utils';
  * - brand icon tile: gradient `rounded-2xl` with primary ring + glow
  *   (artwork tiles swap to a bordered, muted treatment so images read well)
  * - title: `font-display text-3xl sm:text-4xl font-bold tracking-tight`
- * - hero ends with `border-b border-border/60 pb-6`
  * - actions: primary (default variant/size) on the left, secondary
  *   (`outline` `sm`) grouped on the right; all buttons keep `rounded-md`
  */
@@ -117,7 +116,7 @@ export function DetailHero({
   const hasTile = Boolean(icon || image);
 
   return (
-    <header className={cn('space-y-4 border-b border-border/60 pb-6', className)}>
+    <header className={cn('space-y-4', className)}>
       <div className={cn(hasTile && 'flex items-start gap-4')}>
         {hasTile && <HeroTile icon={icon} image={image} />}
         <div className="min-w-0 flex-1 space-y-1">

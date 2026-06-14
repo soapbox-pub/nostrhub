@@ -13,7 +13,6 @@ import { UserAvatar } from '@/components/UserAvatar';
 import { ExpertToggleButton } from '@/components/ExpertToggleButton';
 import { RelatedReposCard, UsedByAppsCard } from '@/components/CrossRefCards';
 import { LinkAppNudge } from '@/components/LinkAppNudge';
-import { KindBadge } from '@/components/KindBadge';
 import { useCustomNip } from '@/hooks/useCustomNips';
 import { useDeleteNip } from '@/hooks/useSaveNip';
 import { useAuthor } from '@/hooks/useAuthor';
@@ -25,7 +24,6 @@ import { uniqueRepoRefs } from '@/lib/apps';
 import { cn } from '@/lib/utils';
 import type { NipTarget } from '@/hooks/useNipApprovals';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
@@ -103,16 +101,6 @@ export function CustomNipPage({ naddr }: { naddr: string }) {
           <DetailHero
             icon={<BookOpen className="size-7 text-primary" aria-hidden="true" />}
             title={nip.title}
-            badges={
-              <>
-                <Badge variant="secondary" className="gap-1">
-                  <GitFork className="size-3" /> Community NIP
-                </Badge>
-                {nip.kinds.map((k) => (
-                  <KindBadge key={k} kind={k} />
-                ))}
-              </>
-            }
             meta={
               <>
                 <Link to={`/${nip19.npubEncode(nip.author)}`} className="flex items-center gap-2 hover:text-primary">

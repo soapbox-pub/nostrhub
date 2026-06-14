@@ -136,7 +136,6 @@ export function ZapstoreReleasePage({ pubkey, identifier }: ZapstoreReleasePageP
           <div className="min-w-0 space-y-6">
           <DetailSurface className="space-y-6">
             <DetailHero
-              className="border-b-0 pb-0"
               icon={<Package className="size-7 text-primary" aria-hidden="true" />}
               image={app.data?.icon}
               kicker="Release"

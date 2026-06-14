@@ -149,7 +149,6 @@ export function AppPage({ pubkey, identifier }: AppPageProps) {
           {/* Header: shared detail-page hero — brand tile, title, tier, actions */}
           <DetailSurface>
           <DetailHero
-            className="border-b-0 pb-0"
             icon={<Blocks className="size-7 text-primary" aria-hidden="true" />}
             image={icon}
             title={app.name}
