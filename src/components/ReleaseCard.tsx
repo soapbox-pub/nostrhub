@@ -1,7 +1,8 @@
 import { Package } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { nip19 } from 'nostr-tools';
 import type { ReleaseWithApp } from '@/hooks/useReleases';
-import { releaseDisplayName } from '@/lib/zapstore';
+import { releaseDisplayName, ZAPSTORE_APP_KIND } from '@/lib/zapstore';
 import { useAuthor } from '@/hooks/useAuthor';
 import { UserAvatar } from '@/components/UserAvatar';
 import { shortNpub } from '@/lib/nostr';
@@ -33,13 +34,20 @@ export function ReleaseCard({ item }: ReleaseCardProps) {
   const notes = noteExcerpt(release.notes, 160);
   const channelLabel = CHANNEL_LABELS[release.channel];
 
-  // Prefer linking to the in-app NIP-89 app listing (kind 31990) when one
-  // references this release's Zapstore app. Otherwise fall back to the app's
-  // external Zapstore page, which has no internal detail route here.
+  // Link to the in-app destination, in order of preference:
+  //   1. the NIP-89 app listing (kind 31990) when one references this release's
+  //      Zapstore app — the richest in-app page;
+  //   2. the in-app Zapstore app listing (kind 32267), derived from the app the
+  //      release belongs to;
+  //   3. the release itself (kind 30063) when it isn't tied to an app.
+  // Every destination offers a "View on Zapstore" escape hatch.
   const appId = app?.identifier ?? release.appIdentifier;
-  const zapstoreUrl = appId
-    ? `https://zapstore.dev/apps/${encodeURIComponent(appId)}`
-    : undefined;
+  const internalTo =
+    appNaddr ??
+    (appId
+      ? `/${nip19.naddrEncode({ kind: ZAPSTORE_APP_KIND, pubkey: release.pubkey, identifier: appId })}`
+      : `/${release.naddr}`);
+  const to = internalTo.startsWith('/') ? internalTo : `/${internalTo}`;
 
   const sharedClassName =
     'relative block h-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
@@ -93,20 +101,9 @@ export function ReleaseCard({ item }: ReleaseCardProps) {
         aria-hidden="true"
         className="pointer-events-none absolute -right-8 -top-10 size-32 rounded-full bg-primary/20 opacity-0 blur-2xl transition-opacity duration-300 group-hover:opacity-100"
       />
-      {appNaddr ? (
-        <Link to={`/${appNaddr}`} className={sharedClassName}>
-          {body}
-        </Link>
-      ) : (
-        <a
-          href={zapstoreUrl ?? 'https://zapstore.dev'}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={sharedClassName}
-        >
-          {body}
-        </a>
-      )}
+      <Link to={to} className={sharedClassName}>
+        {body}
+      </Link>
     </Card>
   );
 }

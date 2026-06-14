@@ -116,3 +116,83 @@ export function releaseDisplayName(release: ZapstoreRelease): string {
   // `d` tags are often `app-id@version` — strip the version suffix.
   return release.identifier.split('@')[0] || release.identifier;
 }
+
+/** MIME type for an Android APK package. */
+export const APK_MIME = 'application/vnd.android.package-archive';
+
+/** A parsed kind 3063 downloadable asset (a single binary for one platform). */
+export interface ZapstoreAsset {
+  event: NostrEvent;
+  pubkey: string;
+  /** Sanitized https download URLs (`url` tags) — the first is preferred. */
+  urls: string[];
+  /** MIME type (`m` tag), e.g. `application/vnd.android.package-archive`. */
+  mimeType?: string;
+  /** Platform/architecture tags (`f`), e.g. `android-arm64-v8a`. */
+  architectures: string[];
+  /** Original filename (`filename` tag), e.g. `Treasures.apk`. */
+  filename?: string;
+  /** File size in bytes (`size` tag). */
+  size?: number;
+  /** Version string (`version` tag). */
+  version?: string;
+  /** SHA-256 hash of the file (`x` tag). */
+  hash?: string;
+}
+
+/** Whether an asset is an Android APK (by MIME type, architecture, or filename). */
+export function isApkAsset(asset: ZapstoreAsset): boolean {
+  return (
+    asset.mimeType === APK_MIME ||
+    asset.architectures.some((a) => a.startsWith('android')) ||
+    Boolean(asset.filename?.toLowerCase().endsWith('.apk'))
+  );
+}
+
+/**
+ * Pick the best single asset to surface as a primary "Download" action.
+ * Prefers an APK (the common case for Zapstore), else the first asset.
+ */
+export function primaryAsset(assets: ZapstoreAsset[]): ZapstoreAsset | undefined {
+  return assets.find(isApkAsset) ?? assets[0];
+}
+
+/** Parse a kind 3063 asset event into structured data. */
+export function parseAsset(event: NostrEvent): ZapstoreAsset {
+  const urls = event.tags
+    .filter(([name, value]) => name === 'url' && value)
+    .map(([, value]) => sanitizeUrl(value))
+    .filter((u): u is string => Boolean(u));
+
+  const architectures = event.tags
+    .filter(([name, value]) => name === 'f' && value)
+    .map(([, value]) => value);
+
+  const sizeRaw = firstTag(event, 'size');
+  const size = sizeRaw ? Number(sizeRaw) : undefined;
+
+  return {
+    event,
+    pubkey: event.pubkey,
+    urls,
+    mimeType: firstTag(event, 'm'),
+    architectures,
+    filename: firstTag(event, 'filename'),
+    size: Number.isFinite(size) && (size ?? 0) > 0 ? size : undefined,
+    version: firstTag(event, 'version'),
+    hash: firstTag(event, 'x'),
+  };
+}
+
+/** Human-readable byte size, e.g. "15.5 MB". */
+export function formatAssetSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  const units = ['KB', 'MB', 'GB'];
+  let value = bytes / 1024;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+  return `${value.toFixed(value >= 100 ? 0 : 1)} ${units[unit]}`;
+}

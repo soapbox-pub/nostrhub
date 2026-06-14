@@ -16,6 +16,7 @@ import NipsPage from "./pages/NipsPage";
 import KindPage from "./pages/KindPage";
 import AppsPage from "./pages/AppsPage";
 import SubmitAppPage from "./pages/SubmitAppPage";
+import ReleasesPage from "./pages/ReleasesPage";
 import ArticlesPage from "./pages/ArticlesPage";
 import CreateArticlePage from "./pages/CreateArticlePage";
 import DraftsPage from "./pages/DraftsPage";
@@ -37,6 +38,7 @@ export function AppRouter() {
         <Route path="/apps" element={<AppsPage />} />
         <Route path="/apps/submit" element={<SubmitAppPage />} />
         <Route path="/apps/edit/:naddr" element={<SubmitAppPage />} />
+        <Route path="/releases" element={<ReleasesPage />} />
         <Route path="/plan" element={<PlanGraphPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />

@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react';
 import { useSeoMeta } from '@unhead/react';
 import { nip19 } from 'nostr-tools';
-import { BadgeCheck, Blocks, FileText, FolderGit2, Globe, QrCode, Zap } from 'lucide-react';
+import { BadgeCheck, Blocks, FileText, FolderGit2, Globe, Package, QrCode, Zap } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { UserAvatar } from '@/components/UserAvatar';
 import { DittoIcon } from '@/components/icons/DittoIcon';
 import { FollowQRDialog } from '@/components/FollowQRDialog';
 import { NipCard, NipCardSkeleton } from '@/components/NipCard';
 import { AppCard, AppCardSkeleton } from '@/components/AppCard';
+import { ReleaseCard, ReleaseCardSkeleton } from '@/components/ReleaseCard';
 import { ContributionChart } from '@/components/ContributionChart';
 import { RepoList, RepoListItem, RepoListItemSkeleton } from '@/components/git/RepoListItem';
 import { CopyButton } from '@/components/git/CopyButton';
@@ -17,6 +18,7 @@ import { useExperts } from '@/hooks/useExperts';
 import { useCustomNips } from '@/hooks/useCustomNips';
 import { useGitRepos } from '@/hooks/useGitRepos';
 import { useApps } from '@/hooks/useApps';
+import { useReleases } from '@/hooks/useReleases';
 import { customToRanked, type RankedNip } from '@/hooks/useRankedNips';
 import { shortNpub } from '@/lib/nostr';
 import { sanitizeUrl } from '@/lib/sanitizeUrl';
@@ -53,6 +55,7 @@ export function ProfilePage({ pubkey }: ProfilePageProps) {
   const reposQuery = useGitRepos({ authors: [pubkey] });
   // Show all of this author's own listings, even with incomplete metadata.
   const appsQuery = useApps({ authors: [pubkey], requireFullMetadata: false });
+  const releasesQuery = useReleases({ authors: [pubkey] });
 
   const npub = useMemo(() => {
     try {
@@ -85,6 +88,7 @@ export function ProfilePage({ pubkey }: ProfilePageProps) {
 
   const repos = reposQuery.data ?? [];
   const apps = appsQuery.data ?? [];
+  const releases = releasesQuery.data ?? [];
 
   return (
     <Layout className="max-w-5xl">
@@ -238,6 +242,15 @@ export function ProfilePage({ pubkey }: ProfilePageProps) {
                 </Badge>
               )}
             </TabsTrigger>
+            <TabsTrigger value="releases" className="gap-1.5">
+              <Package className="size-4" aria-hidden="true" />
+              Releases
+              {releasesQuery.data && releases.length > 0 && (
+                <Badge variant="secondary" className="h-5 px-1.5 text-[11px]">
+                  {releases.length}
+                </Badge>
+              )}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="nips" className="mt-4">
@@ -293,6 +306,24 @@ export function ProfilePage({ pubkey }: ProfilePageProps) {
               <div className="grid gap-4 sm:grid-cols-2">
                 {apps.map((app) => (
                   <AppCard key={app.address} app={app} />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="releases" className="mt-4">
+            {releasesQuery.isLoading ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {Array.from({ length: 2 }).map((_, i) => (
+                  <ReleaseCardSkeleton key={i} />
+                ))}
+              </div>
+            ) : releases.length === 0 ? (
+              <EmptyState message={`${displayName} hasn't published any software releases yet.`} />
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {releases.map((item) => (
+                  <ReleaseCard key={item.release.address} item={item} />
                 ))}
               </div>
             )}

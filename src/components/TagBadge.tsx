@@ -7,9 +7,9 @@ interface TagBadgeProps {
   tag: string;
   /**
    * Which discovery page the tag filters. `repos` -> `/repos?tag=…`,
-   * `apps` -> `/apps?tag=…`.
+   * `apps` -> `/apps?tag=…`, `releases` -> `/releases?tag=…`.
    */
-  to: 'repos' | 'apps';
+  to: 'repos' | 'apps' | 'releases';
   className?: string;
 }
 

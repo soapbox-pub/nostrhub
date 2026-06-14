@@ -103,3 +103,42 @@ export function useApp(pubkey: string | undefined, identifier: string | undefine
     staleTime: 5 * 60 * 1000,
   });
 }
+
+/**
+ * Find the NIP-89 app listing (kind 31990) that a publisher's Zapstore app
+ * (kind 32267, identified by `appIdentifier`) is referenced by — the nexus
+ * that ties a Zapstore release to its repos, NIPs, and handled kinds.
+ *
+ * A 31990 event references its Zapstore listing via an `a` tag pointing at the
+ * `32267:<pubkey>:<d>` coordinate. The query is author-scoped: a listing is
+ * only trusted to describe a Zapstore app published by the same author, so
+ * nobody can hijack the association by referencing someone else's coordinate.
+ */
+export function useAppForZapstore(
+  pubkey: string | undefined,
+  appIdentifier: string | undefined,
+) {
+  const { nostr } = useNostr();
+
+  return useQuery<AppInfo | null>({
+    queryKey: ['app-for-zapstore', pubkey, appIdentifier],
+    queryFn: async ({ signal }) => {
+      const coord = `32267:${pubkey}:${appIdentifier}`;
+      const events = await nostr
+        .query(
+          [{ kinds: [APP_HANDLER_KIND], authors: [pubkey!], '#a': [coord] }],
+          { signal: AbortSignal.any([signal, AbortSignal.timeout(8000)]) },
+        )
+        .catch(() => [] as NostrEvent[]);
+
+      // Only honour a listing whose own zapstore ref points back at the app
+      // author's coordinate, mirroring the trust rule used elsewhere.
+      const apps = dedupeAppEvents(events).filter((app) =>
+        app.zapstoreRefs.some((ref) => ref.pubkey === app.pubkey && ref.address === coord),
+      );
+      return apps[0] ?? null;
+    },
+    enabled: Boolean(pubkey && appIdentifier),
+    staleTime: 5 * 60 * 1000,
+  });
+}

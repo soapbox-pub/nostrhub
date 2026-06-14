@@ -295,3 +295,25 @@ export function dedupeAppEvents(events: NostrEvent[]): AppInfo[] {
     .filter((app): app is AppInfo => app !== null)
     .sort((a, b) => b.createdAt - a.createdAt);
 }
+
+/**
+ * Zapstore listings an app may surface in its own sidebar. The app developer
+ * publishes both their kind 32267 Zapstore listing and their kind 31990 NIP-89
+ * listing under the same key, so a zapstore ref is only trusted when it points
+ * at the app author's own coordinate (`ref.pubkey === app.pubkey`). Repo and
+ * NIP refs are nebulous by design (an app can be built from someone else's repo
+ * or implement someone else's NIP) and are surfaced as-is.
+ */
+export function ownZapstoreRefs(app: AppInfo): AppZapstoreRef[] {
+  return app.zapstoreRefs.filter((ref) => ref.pubkey === app.pubkey);
+}
+
+/** Whether the app declares anything worth a sidebar. */
+export function hasSidebarContent(app: AppInfo): boolean {
+  return (
+    ownZapstoreRefs(app).length > 0 ||
+    app.repoRefs.length > 0 ||
+    app.nipRefs.length > 0 ||
+    app.supportedKinds.length > 0
+  );
+}

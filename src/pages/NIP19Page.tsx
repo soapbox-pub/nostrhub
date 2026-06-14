@@ -7,11 +7,14 @@ import { CustomNipPage } from './CustomNipPage';
 import { GitRepoPage } from './GitRepoPage';
 import { NotePage } from './NotePage';
 import { ProfilePage } from './ProfilePage';
+import { ZapstoreAppPage } from './ZapstoreAppPage';
+import { ZapstoreReleasePage } from './ZapstoreReleasePage';
 import { ARTICLE_KIND } from '@/hooks/useExpertPress';
 import { CUSTOM_NIP_KIND } from '@/lib/nips';
 import { APP_HANDLER_KIND } from '@/lib/apps';
 import { GIT_REPO_KIND, GIT_STATE_KIND } from '@/lib/git';
 import { GRAPH_NODE_KIND } from '@/lib/planGraph';
+import { ZAPSTORE_APP_KIND, ZAPSTORE_RELEASE_KIND } from '@/lib/zapstore';
 
 export function NIP19Page() {
   const { nip19: identifier } = useParams<{ nip19: string }>();
@@ -60,6 +63,15 @@ export function NIP19Page() {
       // NIP-89 app handler events get the app detail page.
       if (decoded.data.kind === APP_HANDLER_KIND) {
         return <AppPage pubkey={decoded.data.pubkey} identifier={decoded.data.identifier} />;
+      }
+      // Zapstore app listings (kind 32267) render in-app, with a link out to
+      // the Zapstore web page as an escape hatch.
+      if (decoded.data.kind === ZAPSTORE_APP_KIND) {
+        return <ZapstoreAppPage pubkey={decoded.data.pubkey} identifier={decoded.data.identifier} />;
+      }
+      // Zapstore software releases (kind 30063) get their own detail page.
+      if (decoded.data.kind === ZAPSTORE_RELEASE_KIND) {
+        return <ZapstoreReleasePage pubkey={decoded.data.pubkey} identifier={decoded.data.identifier} />;
       }
       // Plan-graph nodes open on the graph with the node selected.
       if (decoded.data.kind === GRAPH_NODE_KIND) {
