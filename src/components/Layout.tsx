@@ -56,7 +56,7 @@ function Logo({ onClick }: { onClick?: () => void }) {
         alt=""
         width={36}
         height={36}
-        className="size-9 object-contain transition-transform duration-500 group-hover:rotate-[12deg] group-hover:scale-110 drop-shadow-[0_0_10px_hsl(0_80%_62%/0.55)]"
+        className="size-9 object-contain transition-transform duration-500 group-hover:rotate-[12deg] group-hover:scale-110 dark:drop-shadow-[0_0_10px_hsl(0_80%_62%/0.55)]"
         aria-hidden="true"
       />
       <span>
