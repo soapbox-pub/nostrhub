@@ -198,7 +198,10 @@ export function useExpertPress() {
         nostr.query([{ kinds: [ARTICLE_KIND], authors: experts, limit: 100 }], opts),
         nostr
           .group(searchRelays)
-          .query([{ kinds: [1], authors: experts, search: 'sort:hot', since: noteSince, limit: 48 }], opts),
+          // `-tag:e` excludes replies relay-side (Ditto NIP-50 extension), so the
+          // small limit is spent on top-level posts rather than replies we'd drop.
+          // The client-side `e`-tag guard below still covers relays that ignore it.
+          .query([{ kinds: [1], authors: experts, search: 'sort:hot -tag:e', since: noteSince, limit: 12 }], opts),
       ]);
 
       // Articles: keep only the latest event per (author, d) address,
