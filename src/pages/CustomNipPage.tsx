@@ -127,14 +127,6 @@ export function CustomNipPage({ naddr, eventId }: { naddr?: string; eventId?: st
                     </Link>
                   </Button>
                 )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5"
-                  onClick={() => setShowRevisions(true)}
-                >
-                  <History className="size-4" aria-hidden="true" /> View revisions
-                </Button>
                 <Button variant="outline" size="sm" asChild className="gap-1.5">
                   <Link to={`/create?fork=${nip.naddr}`}>
                     <GitFork className="size-4" aria-hidden="true" /> Fork
@@ -192,6 +184,23 @@ export function CustomNipPage({ naddr, eventId }: { naddr?: string; eventId?: st
           >
             <DetailSurface className="min-w-0">
               <MarkdownContent content={nip.content} />
+
+              <p className="mt-8 border-t border-border/60 pt-4 text-sm text-muted-foreground">
+                {isPinned ? 'This revision published' : 'Published'}{' '}
+                {new Date(nip.createdAt * 1000).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                })}
+                {' · '}
+                <button
+                  type="button"
+                  onClick={() => setShowRevisions(true)}
+                  className="font-medium text-primary hover:underline"
+                >
+                  View revisions
+                </button>
+              </p>
 
               <section className="mt-10 space-y-4 border-t border-border/60 pt-6">
                 <h2 className="text-xl font-semibold tracking-tight">Discussion</h2>
