@@ -10,7 +10,7 @@ import { NipCard, NipCardSkeleton } from '@/components/NipCard';
 import { AppCard, AppCardSkeleton } from '@/components/AppCard';
 import { ReleaseCard, ReleaseCardSkeleton } from '@/components/ReleaseCard';
 import { ContributionChart } from '@/components/ContributionChart';
-import { RepoList, RepoListItem, RepoListItemSkeleton } from '@/components/git/RepoListItem';
+import { RepoCard, RepoCardSkeleton } from '@/components/git/RepoCard';
 import { CopyButton } from '@/components/git/CopyButton';
 import { ExpertToggleButton } from '@/components/ExpertToggleButton';
 import { useAuthor } from '@/hooks/useAuthor';
@@ -278,23 +278,19 @@ export function ProfilePage({ pubkey }: ProfilePageProps) {
 
           <TabsContent value="repos" className="mt-4">
             {reposQuery.isLoading ? (
-              <RepoList>
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <RepoListItemSkeleton key={i} />
+              <div className="grid gap-4 sm:grid-cols-2">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <RepoCardSkeleton key={i} />
                 ))}
-              </RepoList>
+              </div>
             ) : repos.length === 0 ? (
               <EmptyState message={`${displayName} hasn't announced any repositories yet.`} />
             ) : (
-              <RepoList>
+              <div className="grid gap-4 sm:grid-cols-2">
                 {repos.map((repo) => (
-                  <RepoListItem
-                    key={`${repo.pubkey}:${repo.identifier}`}
-                    repo={repo}
-                    showAuthor={false}
-                  />
+                  <RepoCard key={`${repo.pubkey}:${repo.identifier}`} repo={repo} />
                 ))}
-              </RepoList>
+              </div>
             )}
           </TabsContent>
 
