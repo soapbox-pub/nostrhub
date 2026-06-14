@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSeoMeta } from '@unhead/react';
 import { nip19 } from 'nostr-tools';
-import { BookOpen, GitFork, AlertCircle, Pencil, Trash2 } from 'lucide-react';
+import { GitFork, AlertCircle, Pencil, Trash2 } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { BackLink, DetailHero } from '@/components/DetailHero';
 import { DetailSurface } from '@/components/DetailSurface';
@@ -99,7 +99,6 @@ export function CustomNipPage({ naddr }: { naddr: string }) {
         <article>
           <DetailSurface>
           <DetailHero
-            icon={<BookOpen className="size-7 text-primary" aria-hidden="true" />}
             title={nip.title}
             meta={
               <>
