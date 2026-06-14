@@ -190,7 +190,11 @@ export function GitRepoPage({ pubkey, identifier, relays }: GitRepoPageProps) {
           <DetailSurface>
           <DetailHero
             title={repo.name}
-            subtitle={<span className="block truncate font-mono">{identifier}</span>}
+            subtitle={
+              repo.name.toLowerCase() !== repo.identifier.toLowerCase() ? (
+                <span className="block truncate font-mono">{repo.identifier}</span>
+              ) : undefined
+            }
             description={repo.description}
             meta={
               <>
