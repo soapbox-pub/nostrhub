@@ -377,5 +377,24 @@
   );
   aspect-ratio: 1 / 1;
   border-radius: 0 !important;
+  /* A CSS `border` is painted inside the box and would be clipped by the
+     polygon, producing a ragged inner band. Instead trace the outline with
+     `drop-shadow`, which follows the clipped silhouette and draws *outside*
+     it. Stacking offsets in several directions approximates a uniform ring. */
+  border: 0 !important;
+}
+
+/* Outline variant: pairs with `avatar-shield` to draw a background-colored
+   border that hugs the shield silhouette via drop-shadow. */
+@utility avatar-shield-outline {
+  filter:
+    drop-shadow(0 -2px 0 var(--background))
+    drop-shadow(0 2px 0 var(--background))
+    drop-shadow(-2px 0 0 var(--background))
+    drop-shadow(2px 0 0 var(--background))
+    drop-shadow(1.4px 1.4px 0 var(--background))
+    drop-shadow(-1.4px 1.4px 0 var(--background))
+    drop-shadow(1.4px -1.4px 0 var(--background))
+    drop-shadow(-1.4px -1.4px 0 var(--background));
 }
 

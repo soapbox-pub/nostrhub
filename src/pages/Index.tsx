@@ -205,7 +205,7 @@ const Index = () => {
                   <UserAvatar key={pubkey} pubkey={pubkey} size="lg" />
                 ))}
                 {extraExperts > 0 && (
-                  <AvatarGroupCount className="avatar-shield text-sm">+{extraExperts}</AvatarGroupCount>
+                  <AvatarGroupCount className="avatar-shield avatar-shield-outline text-sm">+{extraExperts}</AvatarGroupCount>
                 )}
               </AvatarGroup>
             </Link>

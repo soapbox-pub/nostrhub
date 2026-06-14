@@ -35,7 +35,7 @@ export function UserAvatar({
     <Avatar
       size={size}
       title={expert ? 'Nostr Expert' : undefined}
-      className={cn(expert && 'avatar-shield', className)}
+      className={cn(expert && 'avatar-shield avatar-shield-outline', className)}
     >
       <AvatarImage src={metadata?.picture} alt={displayName} />
       <AvatarFallback>{initials}</AvatarFallback>
