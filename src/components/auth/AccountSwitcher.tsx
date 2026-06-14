@@ -1,4 +1,4 @@
-import { ChevronDown, LogOut, Monitor, Moon, Settings, Sun, User, UserPlus } from 'lucide-react';
+import { Bell, ChevronDown, LogOut, Monitor, Moon, Settings, Sun, User, UserPlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { nip19 } from 'nostr-tools';
 import {
@@ -17,10 +17,12 @@ import {
 } from '@/components/ui/select.tsx';
 import { Skeleton } from '@/components/ui/skeleton.tsx';
 import { UserAvatar } from '@/components/UserAvatar';
+import { NotificationDot } from '@/components/NotificationDot';
 import { DittoIcon } from '@/components/icons/DittoIcon';
 import { useLoggedInAccounts, type Account } from '@/hooks/useLoggedInAccounts';
 import { useTheme } from '@/hooks/useTheme';
 import { useActiveProfileTheme } from '@/hooks/useActiveProfileTheme';
+import { useHasUnreadNotifications } from '@/hooks/useHasUnreadNotifications';
 import { type Theme } from '@/contexts/AppContext';
 
 interface AccountSwitcherProps {
@@ -31,6 +33,7 @@ export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
   const { currentUser, otherUsers, isLoading, setLogin, removeLogin } = useLoggedInAccounts();
   const { theme, setTheme } = useTheme();
   const { hasDittoTheme } = useActiveProfileTheme();
+  const hasUnreadNotifications = useHasUnreadNotifications();
 
   if (!currentUser) return null;
 
@@ -47,13 +50,14 @@ export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
-        <button className='flex items-center gap-2 h-10 p-1 pr-2.5 rounded-full hover:bg-accent transition-all text-foreground'>
+        <button className='relative flex items-center gap-2 h-10 p-1 pr-2.5 rounded-full hover:bg-accent transition-all text-foreground'>
           {isCurrentUserPending ? (
             <Skeleton className='w-8 h-8 rounded-full' />
           ) : (
             <UserAvatar pubkey={currentUser.pubkey} />
           )}
           <ChevronDown className='w-4 h-4 text-muted-foreground' />
+          <NotificationDot show={hasUnreadNotifications} className='top-0.5 left-7' />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className='w-56 p-2 animate-scale-in'>
@@ -90,6 +94,15 @@ export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
           </Select>
         </div>
         <DropdownMenuSeparator />
+        <DropdownMenuItem asChild className='flex items-center gap-2 cursor-pointer p-2 rounded-md'>
+          <Link to='/notifications'>
+            <Bell className='w-4 h-4' />
+            <span className='flex-1'>Notifications</span>
+            {hasUnreadNotifications && (
+              <span className='w-2 h-2 rounded-full bg-primary shrink-0' aria-hidden='true' />
+            )}
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuItem asChild className='flex items-center gap-2 cursor-pointer p-2 rounded-md'>
           <Link to={`/${npub}`}>
             <User className='w-4 h-4' />

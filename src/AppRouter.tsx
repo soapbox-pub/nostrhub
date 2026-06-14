@@ -19,6 +19,7 @@ import SubmitAppPage from "./pages/SubmitAppPage";
 import ArticlesPage from "./pages/ArticlesPage";
 import CreateArticlePage from "./pages/CreateArticlePage";
 import PlanGraphPage from "./pages/PlanGraphPage";
+import NotificationsPage from "./pages/NotificationsPage";
 import { DEFAULT_TOPIC } from "./lib/chat";
 
 export function AppRouter() {
@@ -36,6 +37,7 @@ export function AppRouter() {
         <Route path="/apps/edit/:naddr" element={<SubmitAppPage />} />
         <Route path="/plan" element={<PlanGraphPage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/stats" element={<StatsPage />} />
         <Route path="/experts" element={<ExpertsPage />} />
         <Route path="/chat" element={<Navigate to={`/chat/${DEFAULT_TOPIC}`} replace />} />

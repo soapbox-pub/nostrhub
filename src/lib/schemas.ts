@@ -50,18 +50,40 @@ export const AppConfigSchema = z.object({
 // ─── Encrypted settings schema (NIP-78, kind 30078) ───────────────────
 
 /**
+ * Notification read-state.
+ *
+ * `cursor` is a Unix timestamp (seconds) of the most recently *viewed*
+ * notification. Anything newer than the cursor is considered unread.
+ */
+export const NotificationSettingsSchema = z
+  .object({
+    /** Unix timestamp (seconds) of the last viewed notification. */
+    cursor: z.number().optional(),
+  })
+  .passthrough();
+
+/**
  * Cross-device app settings synced via an encrypted kind 30078 event. A subset
  * of AppConfig — device-local secrets (the AI apiKey) are excluded. All fields
  * are optional so partial snapshots validate.
+ *
+ * The schema is intentionally permissive (`.passthrough()`) so that fields
+ * written by a newer client version survive a read-modify-write performed by
+ * an older client.
  */
-export const EncryptedSettingsSchema = z.object({
-  theme: ThemeSchema.optional(),
-  experts: z.array(z.string()).optional(),
-  communityCap: z.number().nullable().optional(),
-  statsProvider: z.string().optional(),
-  useAppBlossomServers: z.boolean().optional(),
-  /** Logical clock: ms timestamp of the last write, used to order cross-device updates. */
-  lastSync: z.number().optional(),
-});
+export const EncryptedSettingsSchema = z
+  .object({
+    theme: ThemeSchema.optional(),
+    experts: z.array(z.string()).optional(),
+    communityCap: z.number().nullable().optional(),
+    statsProvider: z.string().optional(),
+    useAppBlossomServers: z.boolean().optional(),
+    /** Notification read-state. */
+    notifications: NotificationSettingsSchema.optional(),
+    /** Logical clock: ms timestamp of the last write, used to order cross-device updates. */
+    lastSync: z.number().optional(),
+  })
+  .passthrough();
 
+export type NotificationSettings = z.infer<typeof NotificationSettingsSchema>;
 export type EncryptedSettings = z.infer<typeof EncryptedSettingsSchema>;
