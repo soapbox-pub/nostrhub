@@ -6,6 +6,7 @@ import { UserAvatar } from '@/components/UserAvatar';
 import { shortNpub } from '@/lib/nostr';
 import { repoNaddr, isShakespeareRepo, type GitRepoAnnouncement } from '@/lib/git';
 import { EditWithShakespeareButton } from '@/components/git/EditWithShakespeareButton';
+import { CloneUriPill } from '@/components/git/CloneUriPill';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -49,11 +50,13 @@ export function RepoCard({ repo }: { repo: GitRepoAnnouncement }) {
             <p className="line-clamp-2 flex-1 text-sm text-muted-foreground">{repo.description}</p>
           )}
 
-          {isShakespeareRepo(repo) && (
-            <div>
+          {/* Actions: copyable clone URI + optional Shakespeare edit */}
+          <div className="flex flex-wrap items-center gap-2">
+            <CloneUriPill repo={repo} className="max-w-full flex-1 basis-48" />
+            {isShakespeareRepo(repo) && (
               <EditWithShakespeareButton repo={repo} variant="chip" />
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Author + timestamp */}
           <div className="mt-auto flex items-center gap-2 border-t border-border/50 pt-3">
