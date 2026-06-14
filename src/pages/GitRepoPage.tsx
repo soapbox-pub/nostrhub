@@ -6,7 +6,6 @@ import {
   AlertCircle,
   Crown,
   Fingerprint,
-  FolderGit2,
   Globe,
   Radio,
   Users,
@@ -190,7 +189,6 @@ export function GitRepoPage({ pubkey, identifier, relays }: GitRepoPageProps) {
           {/* ——— Header ——— */}
           <DetailSurface>
           <DetailHero
-            icon={<FolderGit2 className="size-7 text-primary" aria-hidden="true" />}
             title={repo.name}
             subtitle={<span className="block truncate font-mono">{identifier}</span>}
             description={repo.description}

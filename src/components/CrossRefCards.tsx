@@ -23,7 +23,6 @@ const CHIP_CLASS =
 function ChipSkeleton() {
   return (
     <div className="flex items-center gap-2.5 rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
-      <Skeleton className="size-7 shrink-0 rounded-lg" />
       <Skeleton className="h-4 w-32" />
     </div>
   );
@@ -71,12 +70,7 @@ export function RepoChip({ repoRef }: { repoRef: AppRepoRef }) {
   const name = data?.repo?.name ?? repoRef.identifier;
 
   const body = (
-    <>
-      <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-muted">
-        <FolderGit2 className="size-4 text-muted-foreground" aria-hidden="true" />
-      </span>
-      <span className="min-w-0 flex-1 truncate text-sm font-medium">{name}</span>
-    </>
+    <span className="min-w-0 flex-1 truncate text-sm font-medium">{name}</span>
   );
 
   if (!to) {
@@ -105,9 +99,6 @@ function OfficialNipChip({ number }: { number: string }) {
 
   return (
     <Link to={`/nip/${number.toLowerCase()}`} className={CHIP_CLASS}>
-      <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-muted">
-        <BookOpen className="size-4 text-muted-foreground" aria-hidden="true" />
-      </span>
       <span className="min-w-0 flex-1 truncate text-sm font-medium">
         <span className="font-mono text-primary">NIP-{number}</span>
         {title && <span className="text-foreground/90"> · {title}</span>}
@@ -134,12 +125,7 @@ function CustomNipChip({ address }: { address: string }) {
   const label = nip?.title ?? address.split(':')[2] ?? address;
 
   const body = (
-    <>
-      <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-muted">
-        <BookOpen className="size-4 text-muted-foreground" aria-hidden="true" />
-      </span>
-      <span className="min-w-0 flex-1 truncate text-sm font-medium">{label}</span>
-    </>
+    <span className="min-w-0 flex-1 truncate text-sm font-medium">{label}</span>
   );
 
   if (!to) {
