@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { nip19 } from 'nostr-tools';
@@ -7,7 +7,7 @@ import { MarkdownContent } from '@/components/MarkdownContent';
 import { useSaveNip, buildNipTags, type SaveNipParams } from '@/hooks/useSaveNip';
 import { useDrafts } from '@/hooks/useDrafts';
 import { useToast } from '@/hooks/useToast';
-import { slugify, parseCustomNip, CUSTOM_NIP_KIND, type CustomNip } from '@/lib/nips';
+import { generateIdentifier, parseCustomNip, CUSTOM_NIP_KIND, type CustomNip } from '@/lib/nips';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -19,6 +19,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 /** Pre-filled values when forking another NIP or resuming a saved draft. */
 export interface NipEditorInitial {
   title?: string;
+  /** Stable identifier carried over from a resumed draft, so it survives publish. */
   identifier?: string;
   content?: string;
   kinds?: string[];
@@ -43,22 +44,21 @@ export function NipEditor({ editing, initial }: NipEditorProps) {
   const { saveDraft, deleteDraft, hasNip44Support } = useDrafts();
 
   const [title, setTitle] = useState(editing?.title ?? initial?.title ?? '');
-  const [identifier, setIdentifier] = useState(editing?.identifier ?? initial?.identifier ?? '');
   const [content, setContent] = useState(editing?.content ?? initial?.content ?? '');
   const [kinds, setKinds] = useState<string[]>(editing?.kinds ?? initial?.kinds ?? []);
   const [kindInput, setKindInput] = useState('');
-  const [identifierEdited, setIdentifierEdited] = useState(!!editing || !!initial?.identifier);
+
+  // The addressable identifier (`d` tag) is opaque and stable for the whole
+  // lifecycle: reuse the existing one when editing or resuming a draft,
+  // otherwise mint a random one ONCE so it survives every draft save → resume
+  // → publish without ever changing or leaking the title.
+  const [identifier] = useState(
+    () => editing?.identifier ?? initial?.identifier ?? generateIdentifier(),
+  );
 
   // The draft slug we're currently editing into, so repeated saves overwrite
   // the same draft instead of piling up new ones.
   const [draftSlug, setDraftSlug] = useState<string | null>(initial?.draftSlug ?? null);
-
-  // Derive the identifier from the title until the user edits it directly.
-  const effectiveIdentifier = useMemo(() => {
-    if (editing) return editing.identifier;
-    if (identifierEdited) return identifier;
-    return slugify(title);
-  }, [editing, identifier, identifierEdited, title]);
 
   const fork = editing ? undefined : initial?.fork;
 
@@ -74,19 +74,19 @@ export function NipEditor({ editing, initial }: NipEditorProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !effectiveIdentifier.trim() || !content.trim()) {
-      toast({ title: 'Title, identifier, and content are required', variant: 'destructive' });
+    if (!title.trim() || !content.trim()) {
+      toast({ title: 'Title and content are required', variant: 'destructive' });
       return;
     }
 
     saveNip(
-      { identifier: effectiveIdentifier, title, content, kinds, fork, original: editing },
+      { identifier, title, content, kinds, fork, original: editing },
       {
         onSuccess: (event) => {
           const naddr = nip19.naddrEncode({
             kind: event.kind,
             pubkey: event.pubkey,
-            identifier: event.tags.find(([n]) => n === 'd')?.[1] ?? effectiveIdentifier,
+            identifier: event.tags.find(([n]) => n === 'd')?.[1] ?? identifier,
           });
           // Seed the detail-page cache with the freshly signed event so
           // navigation is optimistic — relays may not index it for a few
@@ -110,7 +110,7 @@ export function NipEditor({ editing, initial }: NipEditorProps) {
       return;
     }
     const params: SaveNipParams = {
-      identifier: effectiveIdentifier || slugify(title) || 'untitled',
+      identifier,
       title: title || 'Untitled NIP',
       content,
       kinds,
@@ -145,34 +145,15 @@ export function NipEditor({ editing, initial }: NipEditorProps) {
         </Alert>
       )}
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="title">Title</Label>
-          <Input
-            id="title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="e.g. Encrypted Group Metadata"
-            required
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="identifier">Identifier</Label>
-          <Input
-            id="identifier"
-            value={effectiveIdentifier}
-            onChange={(e) => {
-              setIdentifier(e.target.value);
-              setIdentifierEdited(true);
-            }}
-            placeholder="encrypted-group-metadata"
-            disabled={!!editing}
-            required
-          />
-          <p className="text-xs text-muted-foreground">
-            {editing ? 'Identifier is fixed for an existing NIP.' : 'Used in the address; auto-filled from the title.'}
-          </p>
-        </div>
+      <div className="space-y-2">
+        <Label htmlFor="title">Title</Label>
+        <Input
+          id="title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="e.g. Encrypted Group Metadata"
+          required
+        />
       </div>
 
       <div className="space-y-2">

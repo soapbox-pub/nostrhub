@@ -80,3 +80,19 @@ export function slugify(value: string): string {
     .replace(/^-+|-+$/g, '')
     .slice(0, 64);
 }
+
+/**
+ * Generate a random, opaque identifier for a new addressable event's `d` tag.
+ *
+ * We deliberately avoid deriving identifiers from the title: a title-based slug
+ * leaks the title into the address, collides when two items share a title, and
+ * lets anyone guess/squat an address before it's published. A random id keeps
+ * the address stable and unguessable, and is never shown in the UI.
+ */
+export function generateIdentifier(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID();
+  }
+  // Fallback for environments without crypto.randomUUID.
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { nip19 } from 'nostr-tools';
@@ -8,7 +8,7 @@ import { useSaveArticle, articleToParams, buildArticleTags, type SaveArticlePara
 import { useUploadFile } from '@/hooks/useUploadFile';
 import { useDrafts } from '@/hooks/useDrafts';
 import { useToast } from '@/hooks/useToast';
-import { slugify } from '@/lib/nips';
+import { generateIdentifier } from '@/lib/nips';
 import { sanitizeUrl } from '@/lib/sanitizeUrl';
 import { ARTICLE_KIND, type ExpertArticle } from '@/hooks/useExpertPress';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 /** Pre-filled values when resuming a saved article draft. */
 export interface ArticleEditorInitial {
   title?: string;
+  /** Stable identifier carried over from a resumed draft, so it survives publish. */
   identifier?: string;
   summary?: string;
   image?: string;
@@ -47,21 +48,20 @@ export function ArticleEditor({ editing, initialDraft }: ArticleEditorProps) {
   const initial = editing ? articleToParams(editing) : undefined;
 
   const [title, setTitle] = useState(initial?.title ?? initialDraft?.title ?? '');
-  const [identifier, setIdentifier] = useState(initial?.identifier ?? initialDraft?.identifier ?? '');
   const [summary, setSummary] = useState(initial?.summary ?? initialDraft?.summary ?? '');
   const [image, setImage] = useState(initial?.image ?? initialDraft?.image ?? '');
   const [content, setContent] = useState(initial?.content ?? initialDraft?.content ?? '');
-  const [identifierEdited, setIdentifierEdited] = useState(!!editing || !!initialDraft?.identifier);
+
+  // The addressable identifier (`d` tag) is opaque and stable for the whole
+  // lifecycle: reuse the existing one when editing or resuming a draft,
+  // otherwise mint a random one ONCE so it survives every draft save → resume
+  // → publish without ever changing or leaking the title.
+  const [identifier] = useState(
+    () => initial?.identifier ?? initialDraft?.identifier ?? generateIdentifier(),
+  );
 
   // The draft slug we're editing into, so repeated saves overwrite the same draft.
   const [draftSlug, setDraftSlug] = useState<string | null>(initialDraft?.draftSlug ?? null);
-
-  // Derive the identifier from the title until the user edits it directly.
-  const effectiveIdentifier = useMemo(() => {
-    if (editing) return editing.identifier;
-    if (identifierEdited) return identifier;
-    return slugify(title);
-  }, [editing, identifier, identifierEdited, title]);
 
   const handleImageUpload = async (file: File) => {
     try {
@@ -84,14 +84,14 @@ export function ArticleEditor({ editing, initialDraft }: ArticleEditorProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !effectiveIdentifier.trim() || !content.trim()) {
-      toast({ title: 'Title, identifier, and content are required', variant: 'destructive' });
+    if (!title.trim() || !content.trim()) {
+      toast({ title: 'Title and content are required', variant: 'destructive' });
       return;
     }
 
     saveArticle(
       {
-        identifier: effectiveIdentifier,
+        identifier,
         title,
         content,
         summary: summary.trim() || undefined,
@@ -100,7 +100,7 @@ export function ArticleEditor({ editing, initialDraft }: ArticleEditorProps) {
       },
       {
         onSuccess: (event) => {
-          const dTag = event.tags.find(([n]) => n === 'd')?.[1] ?? effectiveIdentifier;
+          const dTag = event.tags.find(([n]) => n === 'd')?.[1] ?? identifier;
           const naddr = nip19.naddrEncode({
             kind: event.kind,
             pubkey: event.pubkey,
@@ -127,7 +127,7 @@ export function ArticleEditor({ editing, initialDraft }: ArticleEditorProps) {
       return;
     }
     const params: SaveArticleParams = {
-      identifier: effectiveIdentifier || slugify(title) || 'untitled',
+      identifier,
       title: title || 'Untitled article',
       content,
       summary: summary.trim() || undefined,
@@ -151,36 +151,15 @@ export function ArticleEditor({ editing, initialDraft }: ArticleEditorProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="title">Title</Label>
-          <Input
-            id="title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="e.g. The State of Nostr Relays"
-            required
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="identifier">Identifier</Label>
-          <Input
-            id="identifier"
-            value={effectiveIdentifier}
-            onChange={(e) => {
-              setIdentifier(e.target.value);
-              setIdentifierEdited(true);
-            }}
-            placeholder="the-state-of-nostr-relays"
-            disabled={!!editing}
-            required
-          />
-          <p className="text-xs text-muted-foreground">
-            {editing
-              ? 'Identifier is fixed for an existing article.'
-              : 'Used in the address; auto-filled from the title.'}
-          </p>
-        </div>
+      <div className="space-y-2">
+        <Label htmlFor="title">Title</Label>
+        <Input
+          id="title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="e.g. The State of Nostr Relays"
+          required
+        />
       </div>
 
       <div className="space-y-2">
