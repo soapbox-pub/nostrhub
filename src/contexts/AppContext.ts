@@ -82,16 +82,6 @@ export interface AppConfig {
    * `search` filter field. Empty falls back to the built-in defaults.
    */
   searchRelays: string[];
-  /**
-   * Dedicated Zapstore relays to fan notification/content queries out to.
-   *
-   * Zapstore traffic (kind 30063 releases, kind 32267 listings) lives primarily
-   * on its own relay(s) and isn't guaranteed to be mirrored onto the user's read
-   * relays, so notifications about activity on a user's own Zapstore content
-   * query these relays alongside the default pool. An empty array disables the
-   * fan-out and relies solely on the configured read relays.
-   */
-  zapstoreRelays: string[];
   /** OpenAI-compatible AI provider config for the in-chat `@ai` assistant. */
   ai: AISettings;
 }

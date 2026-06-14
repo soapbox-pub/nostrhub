@@ -157,14 +157,6 @@ export function NostrSync() {
       }
 
       if (
-        encryptedSettings.zapstoreRelays &&
-        JSON.stringify(encryptedSettings.zapstoreRelays) !== JSON.stringify(current.zapstoreRelays)
-      ) {
-        updates.zapstoreRelays = encryptedSettings.zapstoreRelays;
-        changed = true;
-      }
-
-      if (
         encryptedSettings.useAppBlossomServers !== undefined &&
         encryptedSettings.useAppBlossomServers !== current.useAppBlossomServers
       ) {

@@ -15,7 +15,6 @@ import { AppProvider } from '@/components/AppProvider';
 import { AppConfig } from '@/contexts/AppContext';
 import { APP_RELAYS, DITTO_RELAY } from '@/lib/appRelays';
 import { SEARCH_RELAYS } from '@/lib/searchRelays';
-import { ZAPSTORE_RELAY } from '@/lib/zapstore';
 import { DEFAULT_EXPERTS, DEFAULT_COMMUNITY_CAP, DEFAULT_STATS_PROVIDER } from '@/lib/experts';
 import AppRouter from './AppRouter';
 const head = createHead({
@@ -53,7 +52,6 @@ const defaultConfig: AppConfig = {
   statsProvider: DEFAULT_STATS_PROVIDER,
   statsRelay: DITTO_RELAY,
   searchRelays: SEARCH_RELAYS,
-  zapstoreRelays: [ZAPSTORE_RELAY],
   ai: {
     baseURL: 'https://openrouter.ai/api/v1',
     model: '',

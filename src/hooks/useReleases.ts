@@ -1,11 +1,9 @@
 import { useNostr } from '@nostrify/react';
 import { useQuery } from '@tanstack/react-query';
 import type { NostrEvent, NostrFilter } from '@nostrify/nostrify';
-import { useAppContext } from '@/hooks/useAppContext';
 import { APP_HANDLER_KIND, dedupeAppEvents } from '@/lib/apps';
 import {
   ZAPSTORE_APP_KIND,
-  ZAPSTORE_RELAY,
   ZAPSTORE_RELEASE_KIND,
   isValidRelease,
   parseRelease,
@@ -38,11 +36,9 @@ export interface ReleaseWithApp {
 /**
  * Discover Zapstore software releases (kind 30063), newest first.
  *
- * Zapstore traffic lives primarily on the dedicated Zapstore relay, so the
- * query fans out to it alongside the user's read relays. Results are scoped to
- * the community author set when one is provided — releases are addressable
- * events, so the `d` tag alone is not a trust boundary and we must constrain on
- * authors.
+ * Results are scoped to the community author set when one is provided —
+ * releases are addressable events, so the `d` tag alone is not a trust boundary
+ * and we must constrain on authors.
  *
  * A single app publishes a separate kind 30063 per version (the `d` tag is
  * usually `app-id@version`), so the relay-side address dedupe still leaves
@@ -56,18 +52,12 @@ export interface ReleaseWithApp {
  */
 export function useReleases(options: UseReleasesOptions = {}) {
   const { nostr } = useNostr();
-  const { config } = useAppContext();
   const { authors, limit = 50, enabled = true } = options;
 
   return useQuery<ReleaseWithApp[]>({
     queryKey: ['zapstore-releases', authors ? [...authors].sort() : null, limit],
     queryFn: async ({ signal }) => {
       const timeout = AbortSignal.any([signal, AbortSignal.timeout(8000)]);
-
-      const readRelays = config.relayMetadata.relays
-        .filter((r) => r.read)
-        .map((r) => r.url);
-      const urls = new Set<string>([ZAPSTORE_RELAY, ...readRelays]);
 
       // Over-fetch so collapsing to one release per app still yields enough
       // distinct software to fill the requested limit.
@@ -76,7 +66,6 @@ export function useReleases(options: UseReleasesOptions = {}) {
       if (authors && authors.length > 0) filter.authors = authors;
 
       const events = await nostr
-        .group([...urls].slice(0, 10))
         .query([filter], { signal: timeout })
         .catch(() => [] as NostrEvent[]);
 
@@ -121,7 +110,6 @@ export function useReleases(options: UseReleasesOptions = {}) {
       const apps = new Map<string, ZapstoreApp>();
       if (appIds.length > 0) {
         const appEvents = await nostr
-          .group([...urls].slice(0, 10))
           .query(
             [{ kinds: [ZAPSTORE_APP_KIND], authors: releaseAuthors, '#d': appIds }],
             { signal: AbortSignal.any([signal, AbortSignal.timeout(6000)]) },
@@ -155,7 +143,6 @@ export function useReleases(options: UseReleasesOptions = {}) {
       const naddrByCoord = new Map<string, string>();
       if (zapstoreCoords.length > 0) {
         const handlerEvents = await nostr
-          .group([...urls].slice(0, 10))
           .query(
             // Scope to the release authors: a 31990 listing is only trusted to
             // describe a Zapstore app published by the same author. Without the

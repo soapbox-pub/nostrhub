@@ -40,7 +40,6 @@ export function TestApp({ children }: TestAppProps) {
     statsProvider: '',
     statsRelay: '',
     searchRelays: [],
-    zapstoreRelays: [],
     ai: { baseURL: 'https://openrouter.ai/api/v1', model: '', apiKey: '' },
   };
 

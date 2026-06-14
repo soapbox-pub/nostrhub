@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query';
 import type { NostrEvent } from '@nostrify/nostrify';
 
 import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { useAppContext } from '@/hooks/useAppContext';
 import { useEncryptedSettings } from '@/hooks/useEncryptedSettings';
 import {
   OWNED_CONTENT_KINDS,
@@ -76,42 +75,18 @@ type RawNotification = Omit<Notification, 'isNew' | 'content'> & {
 export function useNotifications() {
   const { nostr } = useNostr();
   const { user } = useCurrentUser();
-  const { config } = useAppContext();
   const { settings, updateSettings } = useEncryptedSettings();
 
   const cursor = settings?.notifications?.cursor ?? 0;
   const pubkey = user?.pubkey;
 
-  // When dedicated Zapstore relays are configured, fan content/activity queries
-  // out to them alongside the user's read relays — Zapstore traffic (kind 30063
-  // releases, 32267 listings) lives primarily there and may not be mirrored
-  // onto the default pool. An empty list disables the fan-out.
-  const zapstoreRelays = useMemo(
-    () => config.zapstoreRelays.map((r) => r.trim()).filter(Boolean),
-    [config.zapstoreRelays],
-  );
-  const relayUrls = useMemo(() => {
-    if (zapstoreRelays.length === 0) return null;
-    const reads = config.relayMetadata.relays
-      .filter((r) => r.read)
-      .map((r) => r.url);
-    return Array.from(new Set<string>([...zapstoreRelays, ...reads])).slice(0, 10);
-  }, [zapstoreRelays, config.relayMetadata.relays]);
-
-  // Pool to query: a relay group when fanning out, otherwise the default pool.
-  const pool = useMemo(
-    () => (relayUrls ? nostr.group(relayUrls) : nostr),
-    [nostr, relayUrls],
-  );
-  const relayKey = relayUrls?.join(',') ?? 'default';
-
   // 1. Fetch all addressable content the user authored, and index it by
   //    coordinate so we can attach the originating content to each notification.
   const contentQuery = useQuery({
-    queryKey: ['notifications-owned-content', pubkey, relayKey],
+    queryKey: ['notifications-owned-content', pubkey],
     queryFn: async ({ signal }) => {
       if (!pubkey) return new Map<string, OwnedContent>();
-      const events = await pool.query(
+      const events = await nostr.query(
         [{ kinds: [...OWNED_CONTENT_KINDS], authors: [pubkey], limit: 300 }],
         { signal: AbortSignal.any([signal, AbortSignal.timeout(5000)]) },
       );
@@ -137,13 +112,13 @@ export function useNotifications() {
 
   // 2. Fetch activity referencing the user's owned-content coordinates.
   const activityQuery = useQuery({
-    queryKey: ['notifications-activity', pubkey, coordinatesKey, relayKey],
+    queryKey: ['notifications-activity', pubkey, coordinatesKey],
     queryFn: async ({ signal }) => {
       if (!pubkey || !byCoordinate) return [];
 
       const querySignal = AbortSignal.any([signal, AbortSignal.timeout(5000)]);
 
-      const filters: Parameters<typeof pool.query>[0] = [];
+      const filters: Parameters<typeof nostr.query>[0] = [];
       if (coordinates.length > 0) {
         filters.push(
           { kinds: [REACTION_KIND], '#a': coordinates, limit: 200 },
@@ -164,7 +139,7 @@ export function useNotifications() {
         );
       }
 
-      const events = await pool.query(filters, { signal: querySignal });
+      const events = await nostr.query(filters, { signal: querySignal });
 
       const knownCoords = new Set(coordinates);
       const seen = new Set<string>();

@@ -11,16 +11,10 @@ import { sanitizeUrl } from '@/lib/sanitizeUrl';
  *   pointing at the individual downloadable assets.
  * - kind 32267 — the app's metadata listing (name, icon, summary, platforms).
  * - kind 3063   — a single downloadable *asset* (a binary for one platform).
- *
- * Releases and app metadata live primarily on the dedicated Zapstore relay, so
- * discovery queries should include it alongside the user's read relays.
  */
 export const ZAPSTORE_RELEASE_KIND = 30063;
 export const ZAPSTORE_APP_KIND = 32267;
 export const ZAPSTORE_ASSET_KIND = 3063;
-
-/** Relay carrying Zapstore app metadata (kind 32267) and releases (kind 30063). */
-export const ZAPSTORE_RELAY = 'wss://relay.zapstore.dev/';
 
 /** Parsed kind 30063 Zapstore release. */
 export interface ZapstoreRelease {

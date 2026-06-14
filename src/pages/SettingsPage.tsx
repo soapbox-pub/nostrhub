@@ -11,7 +11,6 @@ import { useAppContext } from '@/hooks/useAppContext';
 import { useAuthor } from '@/hooks/useAuthor';
 import { useToast } from '@/hooks/useToast';
 import { DEFAULT_EXPERTS, DEFAULT_COMMUNITY_CAP } from '@/lib/experts';
-import { ZAPSTORE_RELAY } from '@/lib/zapstore';
 import { APP_RELAYS } from '@/lib/appRelays';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -594,15 +593,6 @@ function SpecialRelaySettings() {
             </Button>
           </div>
         </div>
-
-        <RelayListSetting
-          label="Zapstore relays"
-          description="Zapstore software releases and app listings live primarily on dedicated relays. These are queried alongside your read relays when checking for activity on your own Zapstore content (notifications)."
-          relays={config.zapstoreRelays}
-          onChange={(next) => updateConfig((c) => ({ ...c, zapstoreRelays: next }))}
-          placeholder={ZAPSTORE_RELAY}
-          inputId="zapstore-relay-input"
-        />
       </CardContent>
     </Card>
   );
