@@ -2,12 +2,47 @@ import type { NostrEvent } from '@nostrify/nostrify';
 import { sanitizeUrl } from '@/lib/sanitizeUrl';
 
 /**
- * Strip URLs and nostr entity references from note text and collapse
- * whitespace, leaving a clean human-readable excerpt for pull quotes,
- * tickers, and preview cards.
+ * Strip common Markdown formatting from text, leaving the readable prose
+ * behind. Handles headings, emphasis, inline/fenced code, links, images,
+ * blockquotes, list markers, and horizontal rules.
+ */
+export function stripMarkdown(content: string): string {
+  return content
+    // Fenced code blocks: keep the inner code, drop the fences.
+    .replace(/```[^\n]*\n?([\s\S]*?)```/g, '$1')
+    .replace(/~~~[^\n]*\n?([\s\S]*?)~~~/g, '$1')
+    // Images: ![alt](url) -> alt
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+    // Links: [text](url) -> text
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    // Reference-style links: [text][ref] -> text
+    .replace(/\[([^\]]*)\]\[[^\]]*\]/g, '$1')
+    // Inline code: `code` -> code
+    .replace(/`([^`]+)`/g, '$1')
+    // Bold / italic / strikethrough markers
+    .replace(/(\*\*\*|___)(.*?)\1/g, '$2')
+    .replace(/(\*\*|__)(.*?)\1/g, '$2')
+    .replace(/(\*|_)(.*?)\1/g, '$2')
+    .replace(/~~(.*?)~~/g, '$1')
+    // Headings: leading # characters
+    .replace(/^[ \t]*#{1,6}[ \t]+/gm, '')
+    // Blockquotes: leading >
+    .replace(/^[ \t]*>+[ \t]?/gm, '')
+    // Unordered list markers: -, *, +
+    .replace(/^[ \t]*[-*+][ \t]+/gm, '')
+    // Ordered list markers: 1.
+    .replace(/^[ \t]*\d+\.[ \t]+/gm, '')
+    // Horizontal rules: ---, ***, ___
+    .replace(/^[ \t]*([-*_])(?:[ \t]*\1){2,}[ \t]*$/gm, '');
+}
+
+/**
+ * Strip Markdown, URLs and nostr entity references from note text and
+ * collapse whitespace, leaving a clean human-readable excerpt for pull
+ * quotes, tickers, and preview cards.
  */
 export function noteExcerpt(content: string, max = 220): string {
-  const stripped = content
+  const stripped = stripMarkdown(content)
     .replace(/https?:\/\/\S+/gi, '')
     .replace(/nostr:[0-9a-z]+/gi, '')
     .replace(/\b(?:npub1|nprofile1|note1|nevent1|naddr1)[0-9a-z]{20,}\b/gi, '')
