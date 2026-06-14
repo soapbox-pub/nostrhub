@@ -1,10 +1,11 @@
-import { useMemo, Fragment, type ReactNode } from 'react';
+import { Children, isValidElement, useMemo, Fragment, type ReactNode } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import { Link } from 'react-router-dom';
 import { nip19 } from 'nostr-tools';
 import { useAuthor } from '@/hooks/useAuthor';
+import { CopyButton } from '@/components/git/CopyButton';
 import { EmbeddedNote } from '@/components/EmbeddedNote';
 import { EmbeddedNaddr } from '@/components/EmbeddedNaddr';
 import { sanitizeUrl } from '@/lib/sanitizeUrl';
@@ -156,6 +157,17 @@ function enrichChildren(children: ReactNode, inlineOnly?: boolean): ReactNode {
   return children;
 }
 
+/** Recursively collect the plain-text content of a React node tree. */
+function extractText(node: ReactNode): string {
+  if (node === null || node === undefined || typeof node === 'boolean') return '';
+  if (typeof node === 'string' || typeof node === 'number') return String(node);
+  if (Array.isArray(node)) return node.map(extractText).join('');
+  if (isValidElement(node)) {
+    return extractText((node.props as { children?: ReactNode }).children);
+  }
+  return '';
+}
+
 function buildComponents(inlineOnly?: boolean): Components {
   return {
     h1: ({ children }) => <h1 className="mt-8 mb-4 scroll-mt-24 text-2xl font-bold tracking-tight first:mt-0">{enrichChildren(children, true)}</h1>,
@@ -192,11 +204,21 @@ function buildComponents(inlineOnly?: boolean): Components {
         <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[0.85em] text-foreground">{children}</code>
       );
     },
-    pre: ({ children }) => (
-      <pre className="my-4 overflow-x-auto rounded-lg border border-border/60 bg-muted/60 p-4 text-sm leading-relaxed">
-        {children}
-      </pre>
-    ),
+    pre: ({ children }) => {
+      const code = extractText(Children.toArray(children)).replace(/\n$/, '');
+      return (
+        <div className="group relative my-4">
+          <pre className="overflow-x-auto rounded-lg border border-border/60 bg-muted/60 p-4 text-sm leading-relaxed">
+            {children}
+          </pre>
+          <CopyButton
+            value={code}
+            label="Copy code"
+            className="absolute right-2 top-2 bg-background/70 opacity-0 backdrop-blur transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
+          />
+        </div>
+      );
+    },
     img: ({ src, alt }) => {
       const safe = sanitizeUrl(typeof src === 'string' ? src : undefined);
       if (!safe) return null;
