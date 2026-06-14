@@ -112,7 +112,7 @@ export function ProfilePage({ pubkey }: ProfilePageProps) {
         {/* Header */}
         <header className="space-y-3 px-1 sm:px-2">
           {/* Action buttons — large glassy circles sitting on the banner line. */}
-          <div className="z-10 -mt-12 flex items-center justify-end gap-2 pr-1 sm:-mt-14 sm:pr-2">
+          <div className="relative z-10 -mt-12 flex items-center justify-end gap-2 pr-1 sm:-mt-14 sm:pr-2">
             <Button
               type="button"
               variant="outline"
