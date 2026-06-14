@@ -97,7 +97,7 @@ const Index = () => {
     searches: ['introducing sort:hot', 'launching sort:hot', 'new release sort:hot'],
     kinds: [1],
     authors: community.data?.authors,
-    sinceDays: 1,
+    sinceDays: 2,
     limit: 20,
     enabled: !community.isLoading && (community.data?.authors.length ?? 0) > 0,
   });
