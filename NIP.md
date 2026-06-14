@@ -135,6 +135,22 @@ nostr.query([{
 }]);
 ```
 
+### Removing an approval
+
+An approval is undone by requesting deletion ([NIP-09](https://github.com/nostr-protocol/nips/blob/master/09.md))
+of the user's own kind-1985 label event(s):
+
+```jsonc
+{
+  "kind": 5,
+  "content": "",
+  "tags": [
+    ["e", "<label-event-id>"],
+    ["k", "1985"]
+  ]
+}
+```
+
 ---
 
 ## Community Chat — Kind `9` ([NIP-C7](https://github.com/nostr-protocol/nips/blob/master/C7.md))

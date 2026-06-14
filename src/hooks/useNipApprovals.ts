@@ -35,6 +35,8 @@ export interface ApprovalData {
   /** Expert approval count — the headline ranking signal. */
   expertCount: number;
   totalCount: number;
+  /** Label event ids keyed by author pubkey (used to delete one's own approval). */
+  eventIdsByAuthor: Record<string, string[]>;
 }
 
 export type ApprovalMap = Record<string, ApprovalData>;
@@ -65,7 +67,7 @@ export function useNipApprovals(targets: NipTarget[], opts: { expertsOnly?: bool
     queryFn: async ({ signal }) => {
       const result: ApprovalMap = {};
       for (const t of targets) {
-        result[nipTargetKey(t)] = { experts: [], all: [], expertCount: 0, totalCount: 0 };
+        result[nipTargetKey(t)] = { experts: [], all: [], expertCount: 0, totalCount: 0, eventIdsByAuthor: {} };
       }
       if (targets.length === 0) return result;
 
@@ -103,6 +105,8 @@ export function useNipApprovals(targets: NipTarget[], opts: { expertsOnly?: bool
 
       // De-dupe per (target, author): one approval per author counts once.
       const seen = new Map<string, Set<string>>();
+      // Track every label event id per (target, author) so a user can delete their own.
+      const eventIds = new Map<string, Map<string, string[]>>();
       for (const ev of events) {
         for (const tagArr of ev.tags) {
           const [name, value] = tagArr;
@@ -112,17 +116,24 @@ export function useNipApprovals(targets: NipTarget[], opts: { expertsOnly?: bool
           if (!key || !(key in result)) continue;
           if (!seen.has(key)) seen.set(key, new Set());
           seen.get(key)!.add(ev.pubkey);
+          if (!eventIds.has(key)) eventIds.set(key, new Map());
+          const byAuthor = eventIds.get(key)!;
+          if (!byAuthor.has(ev.pubkey)) byAuthor.set(ev.pubkey, []);
+          byAuthor.get(ev.pubkey)!.push(ev.id);
         }
       }
 
       for (const [key, authors] of seen.entries()) {
         const all = Array.from(authors);
         const expertApprovers = all.filter((pk) => expertSet.has(pk));
+        const eventIdsByAuthor: Record<string, string[]> = {};
+        for (const [pk, ids] of eventIds.get(key) ?? []) eventIdsByAuthor[pk] = ids;
         result[key] = {
           experts: expertApprovers,
           all,
           expertCount: expertApprovers.length,
           totalCount: all.length,
+          eventIdsByAuthor,
         };
       }
 
@@ -145,6 +156,29 @@ export function useApproveNip() {
         targetTag(target),
       ];
       return publish({ kind: 1985, content: '', tags });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['nip-approvals'] });
+    },
+  });
+}
+
+/**
+ * Remove a `nostrhub.approve` label by requesting deletion (NIP-09 kind 5) of
+ * the user's own kind-1985 label event(s) for a NIP target.
+ */
+export function useUnapproveNip() {
+  const { mutateAsync: publish } = useNostrPublish();
+  const queryClient = useQueryClient();
+
+  return useMutation<NostrEvent, Error, { eventIds: string[] }>({
+    mutationFn: async ({ eventIds }) => {
+      if (eventIds.length === 0) throw new Error('No approval to remove');
+      const tags: string[][] = [
+        ...eventIds.map((id) => ['e', id]),
+        ['k', '1985'],
+      ];
+      return publish({ kind: 5, content: '', tags });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['nip-approvals'] });
