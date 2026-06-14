@@ -284,6 +284,13 @@
     opacity: 0.85;
   }
 
+  /* The forest-floor photo and drifting spores only suit the dark theme; in
+     light mode they wash out and clutter the layout, so hide them entirely. */
+  html:not(.dark) body::before,
+  html:not(.dark) body::after {
+    display: none;
+  }
+
   @media (prefers-reduced-motion: no-preference) {
     body::after {
       animation: spore-drift 90s linear infinite;
