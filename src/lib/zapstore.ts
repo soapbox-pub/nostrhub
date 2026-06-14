@@ -16,6 +16,14 @@ export const ZAPSTORE_RELEASE_KIND = 30063;
 export const ZAPSTORE_APP_KIND = 32267;
 export const ZAPSTORE_ASSET_KIND = 3063;
 
+/**
+ * The Zapstore indexer's own pubkey. It republishes/mirrors releases across the
+ * ecosystem, which crowds out the original publishers in discovery feeds, so we
+ * drop it from the `authors` set before querying releases.
+ */
+export const ZAPSTORE_INDEXER_PUBKEY =
+  '78ce6faa72264387284e647ba6938995735ec8c7d5c5a65737e55130f026307d';
+
 /** Parsed kind 30063 Zapstore release. */
 export interface ZapstoreRelease {
   event: NostrEvent;

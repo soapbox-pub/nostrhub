@@ -4,6 +4,7 @@ import type { NostrEvent, NostrFilter } from '@nostrify/nostrify';
 import { APP_HANDLER_KIND, dedupeAppEvents } from '@/lib/apps';
 import {
   ZAPSTORE_APP_KIND,
+  ZAPSTORE_INDEXER_PUBKEY,
   ZAPSTORE_RELEASE_KIND,
   isValidRelease,
   parseRelease,
@@ -54,8 +55,12 @@ export function useReleases(options: UseReleasesOptions = {}) {
   const { nostr } = useNostr();
   const { authors, limit = 50, enabled = true } = options;
 
+  // Drop the Zapstore indexer's pubkey from the author set before querying — its
+  // mirrored releases would otherwise crowd out the original publishers.
+  const queryAuthors = authors?.filter((pk) => pk !== ZAPSTORE_INDEXER_PUBKEY);
+
   return useQuery<ReleaseWithApp[]>({
-    queryKey: ['zapstore-releases', authors ? [...authors].sort() : null, limit],
+    queryKey: ['zapstore-releases', queryAuthors ? [...queryAuthors].sort() : null, limit],
     queryFn: async ({ signal }) => {
       const timeout = AbortSignal.any([signal, AbortSignal.timeout(8000)]);
 
@@ -63,7 +68,7 @@ export function useReleases(options: UseReleasesOptions = {}) {
       // distinct software to fill the requested limit.
       const fetchLimit = Math.min(limit * 4, 500);
       const filter: NostrFilter = { kinds: [ZAPSTORE_RELEASE_KIND], limit: fetchLimit };
-      if (authors && authors.length > 0) filter.authors = authors;
+      if (queryAuthors && queryAuthors.length > 0) filter.authors = queryAuthors;
 
       const events = await nostr
         .query([filter], { signal: timeout })
@@ -174,7 +179,7 @@ export function useReleases(options: UseReleasesOptions = {}) {
           : undefined,
       }));
     },
-    enabled: enabled && (!authors || authors.length > 0),
+    enabled: enabled && (!queryAuthors || queryAuthors.length > 0),
     staleTime: 5 * 60 * 1000,
   });
 }

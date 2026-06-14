@@ -6,6 +6,7 @@ import { sanitizeUrl } from '@/lib/sanitizeUrl';
 import { APP_PLATFORMS, type AppPlatform } from '@/lib/apps';
 import {
   ZAPSTORE_ASSET_KIND,
+  ZAPSTORE_INDEXER_PUBKEY,
   ZAPSTORE_RELEASE_KIND,
   isValidRelease,
   parseAsset,
@@ -382,6 +383,7 @@ export function useZapstoreReleasesByTag(tag: string | undefined, limit = 60) {
       const apps = Array.from(latest.values())
         .map(parseZapstoreApp)
         .filter((a): a is ZapstoreApp => a !== null)
+        .filter((a) => a.pubkey !== ZAPSTORE_INDEXER_PUBKEY)
         .sort((a, b) => b.createdAt - a.createdAt);
 
       if (apps.length === 0) return [];
