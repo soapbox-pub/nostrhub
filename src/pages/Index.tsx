@@ -186,7 +186,7 @@ const Index = () => {
         />
 
         <h1 className="relative font-display text-5xl font-bold uppercase leading-[0.9] tracking-tighter xs:text-6xl sm:text-8xl">
-          Nostr<span className="text-cosmic">Hub</span>
+          Nostr<span className="text-cosmic pr-[0.08em]">Hub</span>
         </h1>
 
         <p className="relative text-lg text-muted-foreground sm:text-xl">
