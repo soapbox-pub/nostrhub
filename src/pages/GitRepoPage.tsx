@@ -6,7 +6,6 @@ import {
   AlertCircle,
   Crown,
   Fingerprint,
-  Globe,
   Radio,
   Users,
 } from 'lucide-react';
@@ -216,12 +215,8 @@ export function GitRepoPage({ pubkey, identifier, relays }: GitRepoPageProps) {
                 <>
                   {isShakespeareRepo(repo) && <EditWithShakespeareButton repo={repo} />}
                   {repo.webUrls.map((url) => (
-                    <HeroExternalLink
-                      key={url}
-                      href={url}
-                      icon={<Globe className="size-4" aria-hidden="true" />}
-                    >
-                      <span className="max-w-56 truncate">{new URL(url).hostname}</span>
+                    <HeroExternalLink key={url} href={url}>
+                      Open App
                     </HeroExternalLink>
                   ))}
                 </>
