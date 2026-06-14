@@ -34,7 +34,7 @@ const StatsPage = () => {
 
       <section className="mt-10">
         <ClientBarChart
-          title="Unique Users by Client"
+          title="Users by Client"
           description="Distinct authors per client (last 7 days)"
           data={clientUsers7d.data}
           isLoading={clientUsers7d.isLoading}
