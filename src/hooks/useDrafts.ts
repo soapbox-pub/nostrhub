@@ -8,6 +8,7 @@ import {
   draftExpiration,
   newDraftSlug,
   parseDraft,
+  templateToDraft,
   type Draft,
   type DraftEventTemplate,
 } from '@/lib/drafts';
@@ -35,6 +36,25 @@ function unmarkDeleted(pubkey: string, slug: string): void {
 
 function isDeleted(pubkey: string, slug: string): boolean {
   return recentlyDeleted.get(pubkey)?.has(slug) ?? false;
+}
+
+/**
+ * Drafts saved this session, scoped per-pubkey, keyed by slug. A freshly saved
+ * draft can take a few seconds to index, so a refetch fired right after saving
+ * may not return it yet (or returns an older revision). We merge these in — and
+ * prefer the newer of local vs. relay by `updatedAt` — so an optimistically
+ * added/updated draft can't flicker out before the relay catches up.
+ */
+const recentlySaved = new Map<string, Map<string, Draft>>();
+
+function markSaved(pubkey: string, draft: Draft): void {
+  const map = recentlySaved.get(pubkey) ?? new Map<string, Draft>();
+  map.set(draft.slug, draft);
+  recentlySaved.set(pubkey, map);
+}
+
+function listSaved(pubkey: string): Draft[] {
+  return Array.from(recentlySaved.get(pubkey)?.values() ?? []);
 }
 
 export interface SaveDraftParams {
@@ -105,12 +125,24 @@ export function useDrafts() {
         }
       }
 
-      return drafts.sort((a, b) => b.updatedAt - a.updatedAt);
+      // Merge in drafts saved this session that the relay hasn't surfaced yet
+      // (or has an older revision of), preferring whichever copy is newer.
+      const bySlug = new Map<string, Draft>();
+      for (const d of drafts) bySlug.set(d.slug, d);
+      for (const local of listSaved(user.pubkey)) {
+        if (isDeleted(user.pubkey, local.slug)) continue;
+        const relayCopy = bySlug.get(local.slug);
+        if (!relayCopy || local.updatedAt >= relayCopy.updatedAt) {
+          bySlug.set(local.slug, local);
+        }
+      }
+
+      return Array.from(bySlug.values()).sort((a, b) => b.updatedAt - a.updatedAt);
     },
   });
 
   // ── Mutation: save (create or overwrite) a draft ───────────────────────
-  const save = useMutation<SaveDraftResult, Error, SaveDraftParams>({
+  const save = useMutation<SaveDraftResult, Error, SaveDraftParams, { slug: string; previous?: Draft[] }>({
     mutationFn: async ({ template, slug: existingSlug }) => {
       if (!user) throw new Error('You must be logged in to save a draft');
       if (!user.signer.nip44) {
@@ -133,7 +165,56 @@ export function useDrafts() {
 
       return { slug, event };
     },
-    onSuccess: () => {
+    onMutate: async (params) => {
+      const key = [DRAFTS_QUERY_KEY, user?.pubkey];
+      await queryClient.cancelQueries({ queryKey: key });
+
+      // Resolve the slug now so the optimistic entry and the eventual relay
+      // event share it. Generate it once and write it back onto `params` so
+      // `mutationFn` reuses the same slug rather than minting a new one.
+      const slug = params.slug || newDraftSlug();
+      params.slug = slug;
+
+      // A save un-deletes the slug (e.g. re-saving after an earlier delete).
+      if (user) unmarkDeleted(user.pubkey, slug);
+
+      const previous = queryClient.getQueryData<Draft[]>(key);
+
+      // Synthesize the draft from the template so it shows up (or updates its
+      // timestamp / title) immediately, before the relay round-trip lands.
+      const optimistic = templateToDraft(params.template, slug);
+      // Record it so a refetch fired before the relay indexes it can't drop it.
+      if (user) markSaved(user.pubkey, optimistic);
+
+      queryClient.setQueryData<Draft[]>(key, (old) => {
+        const rest = (old ?? []).filter((d) => d.slug !== slug);
+        return [optimistic, ...rest].sort((a, b) => b.updatedAt - a.updatedAt);
+      });
+
+      return { slug, previous };
+    },
+    onError: (_err, params, context) => {
+      // Roll back: forget the optimistic save and restore the pre-save list.
+      const slug = context?.slug ?? params.slug;
+      if (user && slug) recentlySaved.get(user.pubkey)?.delete(slug);
+      if (context?.previous) {
+        queryClient.setQueryData<Draft[]>([DRAFTS_QUERY_KEY, user?.pubkey], context.previous);
+      }
+    },
+    onSuccess: ({ slug, event }) => {
+      // Replace the optimistic entry's id/timestamp with the real signed event,
+      // both in the cache and in the recently-saved guard.
+      const reconcile = (d: Draft): Draft =>
+        d.slug === slug ? { ...d, eventId: event.id, updatedAt: event.created_at } : d;
+      if (user) {
+        const saved = recentlySaved.get(user.pubkey)?.get(slug);
+        if (saved) markSaved(user.pubkey, reconcile(saved));
+      }
+      queryClient.setQueryData<Draft[]>([DRAFTS_QUERY_KEY, user?.pubkey], (old) =>
+        (old ?? []).map(reconcile),
+      );
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: [DRAFTS_QUERY_KEY, user?.pubkey] });
     },
   });
@@ -157,8 +238,11 @@ export function useDrafts() {
       await queryClient.cancelQueries({ queryKey: key });
 
       // Suppress this slug so a stale relay refetch can't resurrect it before
-      // the deletion propagates.
-      if (user) markDeleted(user.pubkey, slug);
+      // the deletion propagates, and forget any optimistic save of it.
+      if (user) {
+        markDeleted(user.pubkey, slug);
+        recentlySaved.get(user.pubkey)?.delete(slug);
+      }
 
       const previous = queryClient.getQueryData<Draft[]>(key);
       // Optimistically drop it from the list.

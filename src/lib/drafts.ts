@@ -94,6 +94,23 @@ export function parseDraft(event: NostrEvent, plaintext: string): Draft | null {
   };
 }
 
+/**
+ * Build a `Draft` view-model from an unsigned template, for optimistic UI
+ * before the relay round-trip lands. The `eventId` is a synthetic `pending:`
+ * placeholder until the real signed event id replaces it.
+ */
+export function templateToDraft(template: DraftEventTemplate, slug: string): Draft {
+  const title = tag(template.tags, 'title')?.trim() || 'Untitled draft';
+  return {
+    slug,
+    kind: template.kind,
+    template,
+    title,
+    updatedAt: Math.floor(Date.now() / 1000),
+    eventId: `pending:${slug}`,
+  };
+}
+
 /** Where to resume a draft of a given kind. */
 export function draftResumeHref(draft: Draft): string {
   if (draft.kind === ARTICLE_KIND) return `/articles/create?draft=${encodeURIComponent(draft.slug)}`;
