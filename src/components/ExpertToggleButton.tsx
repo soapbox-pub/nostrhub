@@ -10,13 +10,20 @@ interface ExpertToggleButtonProps {
   /** Render as a compact icon-only button. */
   iconOnly?: boolean;
   className?: string;
+  /** Override the icon size/classes (e.g. to match larger sibling buttons). */
+  iconClassName?: string;
 }
 
 /**
  * Inline control to add/remove a pubkey from the user's Nostr Experts list,
  * usable anywhere an author is displayed.
  */
-export function ExpertToggleButton({ pubkey, iconOnly = false, className }: ExpertToggleButtonProps) {
+export function ExpertToggleButton({
+  pubkey,
+  iconOnly = false,
+  className,
+  iconClassName,
+}: ExpertToggleButtonProps) {
   const { isExpert, toggleExpert } = useExperts();
   const { user } = useCurrentUser();
   const { toast } = useToast();
@@ -46,7 +53,7 @@ export function ExpertToggleButton({ pubkey, iconOnly = false, className }: Expe
       title={expert ? 'Remove from experts' : 'Add to experts'}
       className={cn(iconOnly && 'size-8', className)}
     >
-      <GraduationCap className={cn('size-4', expert && 'text-primary')} />
+      <GraduationCap className={cn('size-4', expert && 'text-primary', iconClassName)} />
       {!iconOnly && <span>{expert ? 'Expert' : 'Make Expert'}</span>}
     </Button>
   );

@@ -138,7 +138,12 @@ export function ProfilePage({ pubkey }: ProfilePageProps) {
                 <DittoIcon className="size-8" />
               </a>
             </Button>
-            <ExpertToggleButton pubkey={pubkey} />
+            <ExpertToggleButton
+              pubkey={pubkey}
+              iconOnly
+              className="size-14 rounded-full border-border/40 bg-background/50 p-0 shadow-md backdrop-blur-sm"
+              iconClassName="size-7"
+            />
           </div>
 
           {/* Avatar bleeds up into the banner; identity below on mobile, beside on sm+. */}
