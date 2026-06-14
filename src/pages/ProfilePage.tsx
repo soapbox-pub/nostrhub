@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useSeoMeta } from '@unhead/react';
 import { nip19 } from 'nostr-tools';
-import { BadgeCheck, Blocks, FileText, FolderGit2, Globe, Package, QrCode, Zap } from 'lucide-react';
+import { BadgeCheck, Blocks, FileText, FolderGit2, Globe, Package, QrCode } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { UserAvatar } from '@/components/UserAvatar';
 import { DittoIcon } from '@/components/icons/DittoIcon';
@@ -31,6 +31,23 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 interface ProfilePageProps {
   /** Hex pubkey of the profile owner. */
   pubkey: string;
+}
+
+/**
+ * Format a website URL for display: strip the `https://` prefix, and omit a
+ * trailing slash only when the path is exactly `/` (e.g. `alexgleason.me/` →
+ * `alexgleason.me`, but `example.com/123/` is left unchanged).
+ */
+function formatWebsite(url: string): string {
+  let display = url.replace(/^https:\/\//, '');
+  try {
+    if (new URL(url).pathname === '/') {
+      display = display.replace(/\/$/, '');
+    }
+  } catch {
+    // Leave display as-is if the URL can't be parsed.
+  }
+  return display;
 }
 
 function EmptyState({ message }: { message: string }) {
@@ -69,7 +86,6 @@ export function ProfilePage({ pubkey }: ProfilePageProps) {
   const handle = metadata?.nip05;
   const about = metadata?.about;
   const website = sanitizeUrl(metadata?.website);
-  const lightning = metadata?.lud16 || metadata?.lud06;
   const banner = sanitizeUrl(metadata?.banner);
   const expert = isExpert(pubkey);
 
@@ -191,25 +207,17 @@ export function ProfilePage({ pubkey }: ProfilePageProps) {
             </p>
           )}
 
-          {(website || lightning) && (
+          {website && (
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
-              {website && (
-                <a
-                  href={website}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-primary hover:underline"
-                >
-                  <Globe className="size-4" aria-hidden="true" />
-                  <span className="max-w-64 truncate">{website.replace(/^https:\/\//, '')}</span>
-                </a>
-              )}
-              {lightning && (
-                <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-                  <Zap className="size-4 text-nebula" aria-hidden="true" />
-                  <span className="max-w-64 truncate">{lightning}</span>
-                </span>
-              )}
+              <a
+                href={website}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-primary hover:underline"
+              >
+                <Globe className="size-4" aria-hidden="true" />
+                <span className="max-w-64 truncate">{formatWebsite(website)}</span>
+              </a>
             </div>
           )}
         </header>
