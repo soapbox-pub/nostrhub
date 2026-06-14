@@ -3,6 +3,7 @@ import { useNostr } from '@nostrify/react';
 import { useQuery } from '@tanstack/react-query';
 import { CLIENTS, type ClientDef } from '@/lib/clients';
 import { DITTO_RELAY } from '@/lib/appRelays';
+import { useAppContext } from '@/hooks/useAppContext';
 
 export interface ClientCount {
   client: ClientDef;
@@ -18,11 +19,13 @@ export interface ClientCount {
  */
 export function useClientCounts(baseFilter: NostrFilter) {
   const { nostr } = useNostr();
+  const { config } = useAppContext();
+  const statsRelay = config.statsRelay || DITTO_RELAY;
 
   return useQuery({
-    queryKey: ['client-counts', JSON.stringify(baseFilter)],
+    queryKey: ['client-counts', JSON.stringify(baseFilter), statsRelay],
     queryFn: async (c): Promise<ClientCount[]> => {
-      const relay = nostr.relay(DITTO_RELAY);
+      const relay = nostr.relay(statsRelay);
       if (!relay.count) {
         throw new Error('Relay does not support NIP-45 COUNT');
       }

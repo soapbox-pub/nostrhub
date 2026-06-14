@@ -2,6 +2,7 @@ import { useNostr } from '@nostrify/react';
 import { useQuery } from '@tanstack/react-query';
 import type { NostrEvent } from '@nostrify/nostrify';
 import { SEARCH_RELAYS } from '@/lib/searchRelays';
+import { useAppContext } from '@/hooks/useAppContext';
 import {
   APP_CATEGORY_TAGS,
   APP_HANDLER_KIND,
@@ -29,12 +30,14 @@ import {
  */
 export function useAppSearch(query: string, authors?: string[]) {
   const { nostr } = useNostr();
+  const { config } = useAppContext();
+  const searchRelays = config.searchRelays.length > 0 ? config.searchRelays : SEARCH_RELAYS;
   const search = query.trim();
   const isBrowse = search === 'sort:hot';
   const allow = authors ? new Set(authors) : null;
 
   return useQuery<AppInfo[]>({
-    queryKey: ['app-search', search, allow ? allow.size : null],
+    queryKey: ['app-search', search, allow ? allow.size : null, searchRelays],
     queryFn: async ({ signal }) => {
       const timeout = AbortSignal.any([signal, AbortSignal.timeout(8000)]);
 
@@ -43,7 +46,7 @@ export function useAppSearch(query: string, authors?: string[]) {
       // Always fire the search query. For browse, also fire the recency
       // backfill in parallel so there's no extra round-trip if we need it.
       const searchPromise = nostr
-        .group(SEARCH_RELAYS)
+        .group(searchRelays)
         .query([{ kinds: [APP_HANDLER_KIND], search, limit: 50, ...authorScope }], { signal: timeout })
         .catch(() => [] as NostrEvent[]);
 

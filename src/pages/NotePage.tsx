@@ -10,12 +10,15 @@ import { UserAvatar } from '@/components/UserAvatar';
 import { useAuthor } from '@/hooks/useAuthor';
 import { shortNpub } from '@/lib/nostr';
 import { SEARCH_RELAYS } from '@/lib/searchRelays';
+import { useAppContext } from '@/hooks/useAppContext';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
 /** A single note (kind 1) page, addressed by note1/nevent1 id. */
 export function NotePage({ id }: { id: string }) {
   const { nostr } = useNostr();
+  const { config } = useAppContext();
+  const searchRelays = config.searchRelays.length > 0 ? config.searchRelays : SEARCH_RELAYS;
 
   const { data: event, isLoading } = useQuery<NostrEvent | null>({
     queryKey: ['note', id],
@@ -26,7 +29,7 @@ export function NotePage({ id }: { id: string }) {
       // The app pool first; fall back to the search relays, since notes
       // discovered via NIP-50 may only live there.
       const fromPool = await nostr.query([filter], opts);
-      const events = fromPool.length > 0 ? fromPool : await nostr.group(SEARCH_RELAYS).query([filter], opts);
+      const events = fromPool.length > 0 ? fromPool : await nostr.group(searchRelays).query([filter], opts);
 
       return events[0] ?? null;
     },

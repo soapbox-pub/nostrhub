@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { shortNpub } from '@/lib/nostr';
 import { cn } from '@/lib/utils';
 import { SEARCH_RELAYS } from '@/lib/searchRelays';
+import { useAppContext } from '@/hooks/useAppContext';
 
 interface EmbeddedNoteProps {
   eventId: string;
@@ -20,6 +21,8 @@ interface EmbeddedNoteProps {
 
 function useEvent(eventId: string, relays?: string[], authorHint?: string) {
   const { nostr } = useNostr();
+  const { config } = useAppContext();
+  const searchRelays = config.searchRelays.length > 0 ? config.searchRelays : SEARCH_RELAYS;
   return useQuery<NostrEvent | null>({
     queryKey: ['nostr', 'event', eventId],
     queryFn: async ({ signal }) => {
@@ -36,7 +39,7 @@ function useEvent(eventId: string, relays?: string[], authorHint?: string) {
         sources.push(() => nostr.group(relays).query([filter], opts));
       }
       sources.push(() => nostr.query([filter], opts));
-      sources.push(() => nostr.group(SEARCH_RELAYS).query([filter], opts));
+      sources.push(() => nostr.group(searchRelays).query([filter], opts));
 
       for (const fetch of sources) {
         const events = await fetch().catch(() => []);

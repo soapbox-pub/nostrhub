@@ -2,6 +2,7 @@ import { useNostr } from '@nostrify/react';
 import { useQuery } from '@tanstack/react-query';
 import type { NostrEvent, NostrFilter } from '@nostrify/nostrify';
 import { SEARCH_RELAYS } from '@/lib/searchRelays';
+import { useAppContext } from '@/hooks/useAppContext';
 
 export interface UseNostrSearchOptions {
   /** Human-readable NIP-50 search strings; each becomes its own filter. */
@@ -28,6 +29,8 @@ export interface UseNostrSearchOptions {
  */
 export function useNostrSearch(options: UseNostrSearchOptions) {
   const { nostr } = useNostr();
+  const { config } = useAppContext();
+  const searchRelays = config.searchRelays.length > 0 ? config.searchRelays : SEARCH_RELAYS;
   const { searches, kinds, authors, sinceDays, limit = 20, enabled = true } = options;
 
   return useQuery<NostrEvent[]>({
@@ -38,6 +41,7 @@ export function useNostrSearch(options: UseNostrSearchOptions) {
       authors ? [...authors].sort() : null,
       sinceDays ?? null,
       limit,
+      searchRelays,
     ],
     queryFn: async ({ signal }) => {
       const since =
@@ -55,7 +59,7 @@ export function useNostrSearch(options: UseNostrSearchOptions) {
         return filter;
       });
 
-      const group = nostr.group(SEARCH_RELAYS);
+      const group = nostr.group(searchRelays);
       const events = await group.query(filters, {
         signal: AbortSignal.any([signal, AbortSignal.timeout(8000)]),
       });

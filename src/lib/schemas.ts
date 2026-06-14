@@ -44,6 +44,9 @@ export const AppConfigSchema = z.object({
   experts: z.array(z.string()),
   communityCap: z.number().nullable(),
   statsProvider: z.string(),
+  statsRelay: z.string(),
+  searchRelays: z.array(z.string()),
+  zapstoreRelays: z.array(z.string()),
   ai: AISettingsSchema,
 }) satisfies z.ZodType<AppConfig>;
 
@@ -78,6 +81,9 @@ export const EncryptedSettingsSchema = z
     communityCap: z.number().nullable().optional(),
     statsProvider: z.string().optional(),
     useAppBlossomServers: z.boolean().optional(),
+    statsRelay: z.string().optional(),
+    searchRelays: z.array(z.string()).optional(),
+    zapstoreRelays: z.array(z.string()).optional(),
     /** Notification read-state. */
     notifications: NotificationSettingsSchema.optional(),
     /** Logical clock: ms timestamp of the last write, used to order cross-device updates. */

@@ -4,12 +4,14 @@ import { useSeoMeta } from '@unhead/react';
 import { X, Plus, RotateCcw, Sun, Moon, Monitor } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { UserAvatar } from '@/components/UserAvatar';
+import { RelayInfoCard } from '@/components/RelayInfoCard';
 import { shortNpub } from '@/lib/nostr';
 import { useExperts } from '@/hooks/useExperts';
 import { useAppContext } from '@/hooks/useAppContext';
 import { useAuthor } from '@/hooks/useAuthor';
 import { useToast } from '@/hooks/useToast';
 import { DEFAULT_EXPERTS, DEFAULT_COMMUNITY_CAP } from '@/lib/experts';
+import { ZAPSTORE_RELAY } from '@/lib/zapstore';
 import { APP_RELAYS } from '@/lib/appRelays';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -393,43 +395,31 @@ function RelaySettings() {
         {relays.length > 0 ? (
           <ul className="space-y-2">
             {relays.map((relay) => (
-              <li
-                key={relay.url}
-                className="flex flex-col gap-3 rounded-lg border border-border/60 bg-card px-3 py-2 sm:flex-row sm:items-center"
-              >
-                <p className="min-w-0 flex-1 truncate text-sm font-medium" title={relay.url}>
-                  {relay.url}
-                </p>
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      id={`read-${relay.url}`}
-                      checked={relay.read}
-                      onCheckedChange={() => togglePermission(relay.url, 'read')}
-                    />
-                    <Label htmlFor={`read-${relay.url}`} className="text-xs">
-                      Read
-                    </Label>
+              <li key={relay.url}>
+                <RelayInfoCard url={relay.url} onRemove={() => removeRelay(relay.url)}>
+                  <div className="mt-3 flex items-center gap-4 border-t border-border/40 pt-3">
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id={`read-${relay.url}`}
+                        checked={relay.read}
+                        onCheckedChange={() => togglePermission(relay.url, 'read')}
+                      />
+                      <Label htmlFor={`read-${relay.url}`} className="text-xs">
+                        Read
+                      </Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id={`write-${relay.url}`}
+                        checked={relay.write}
+                        onCheckedChange={() => togglePermission(relay.url, 'write')}
+                      />
+                      <Label htmlFor={`write-${relay.url}`} className="text-xs">
+                        Write
+                      </Label>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      id={`write-${relay.url}`}
-                      checked={relay.write}
-                      onCheckedChange={() => togglePermission(relay.url, 'write')}
-                    />
-                    <Label htmlFor={`write-${relay.url}`} className="text-xs">
-                      Write
-                    </Label>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => removeRelay(relay.url)}
-                    aria-label={`Remove ${relay.url}`}
-                  >
-                    <X className="size-4" />
-                  </Button>
-                </div>
+                </RelayInfoCard>
               </li>
             ))}
           </ul>
@@ -453,6 +443,166 @@ function RelaySettings() {
             <RotateCcw className="size-4" /> Reset to defaults
           </Button>
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * Editable list of relays rendered as NIP-11 info cards with an add field.
+ * Used for the search and Zapstore relay lists.
+ */
+function RelayListSetting({
+  label,
+  description,
+  relays,
+  onChange,
+  placeholder,
+  inputId,
+}: {
+  label: string;
+  description: string;
+  relays: string[];
+  onChange: (next: string[]) => void;
+  placeholder: string;
+  inputId: string;
+}) {
+  const { toast } = useToast();
+  const [input, setInput] = useState('');
+
+  const add = () => {
+    const url = normalizeRelayUrl(input);
+    if (!url) {
+      toast({ title: 'Enter a valid relay URL', variant: 'destructive' });
+      return;
+    }
+    if (relays.includes(url)) {
+      toast({ title: 'Relay already added' });
+      return;
+    }
+    onChange([...relays, url]);
+    setInput('');
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="space-y-0.5">
+        <Label htmlFor={inputId}>{label}</Label>
+        <p className="text-sm text-muted-foreground">{description}</p>
+      </div>
+
+      {relays.length > 0 && (
+        <div className="space-y-2">
+          {relays.map((url) => (
+            <RelayInfoCard
+              key={url}
+              url={url}
+              onRemove={() => onChange(relays.filter((r) => r !== url))}
+            />
+          ))}
+        </div>
+      )}
+
+      <div className="flex gap-2">
+        <Input
+          id={inputId}
+          type="text"
+          value={input}
+          placeholder={placeholder}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              add();
+            }
+          }}
+          className="max-w-80"
+        />
+        <Button variant="outline" onClick={add}>
+          <Plus className="size-4" />
+          Add
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/** Specialized relays: NIP-50 search, NIP-45 stats, and Zapstore content. */
+function SpecialRelaySettings() {
+  const { config, updateConfig } = useAppContext();
+  const { toast } = useToast();
+  const [statsDraft, setStatsDraft] = useState(config.statsRelay);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Specialized Relays</CardTitle>
+        <CardDescription>
+          Beyond your general read/write relays, NostrHub fans certain queries out to dedicated
+          relays. Each relay's NIP-11 information is shown below.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <RelayListSetting
+          label="Search relays"
+          description="Relays that implement NIP-50 full-text search. Used for app, NIP, and profile search."
+          relays={config.searchRelays}
+          onChange={(next) => updateConfig((c) => ({ ...c, searchRelays: next }))}
+          placeholder="wss://relay.example.com"
+          inputId="search-relay-input"
+        />
+
+        <div className="space-y-3">
+          <div className="space-y-0.5">
+            <Label htmlFor="stats-relay-input">Stats relay</Label>
+            <p className="text-sm text-muted-foreground">
+              A relay supporting NIP-45 <code className="text-xs">COUNT</code> and the{' '}
+              <code className="text-xs">distinct:author</code> search extension, used for network
+              statistics and client metrics. Leave empty to disable.
+            </p>
+          </div>
+          {config.statsRelay && <RelayInfoCard url={config.statsRelay} />}
+          <div className="flex gap-2">
+            <Input
+              id="stats-relay-input"
+              type="text"
+              value={statsDraft}
+              placeholder="wss://relay.example.com"
+              onChange={(e) => setStatsDraft(e.target.value)}
+              className="max-w-80"
+            />
+            <Button
+              variant="outline"
+              onClick={() => {
+                const trimmed = statsDraft.trim();
+                if (trimmed === '') {
+                  updateConfig((c) => ({ ...c, statsRelay: '' }));
+                  toast({ title: 'Stats relay cleared' });
+                  return;
+                }
+                const url = normalizeRelayUrl(trimmed);
+                if (!url) {
+                  toast({ title: 'Enter a valid relay URL', variant: 'destructive' });
+                  return;
+                }
+                setStatsDraft(url);
+                updateConfig((c) => ({ ...c, statsRelay: url }));
+                toast({ title: 'Stats relay updated' });
+              }}
+            >
+              Save
+            </Button>
+          </div>
+        </div>
+
+        <RelayListSetting
+          label="Zapstore relays"
+          description="Zapstore software releases and app listings live primarily on dedicated relays. These are queried alongside your read relays when checking for activity on your own Zapstore content (notifications)."
+          relays={config.zapstoreRelays}
+          onChange={(next) => updateConfig((c) => ({ ...c, zapstoreRelays: next }))}
+          placeholder={ZAPSTORE_RELAY}
+          inputId="zapstore-relay-input"
+        />
       </CardContent>
     </Card>
   );
@@ -524,9 +674,10 @@ const SettingsPage = () => {
       </div>
       <div className="mt-6 space-y-6">
         <AppearanceSettings />
-        <RelaySettings />
         <ExpertsSettings />
         <CommunitySettings />
+        <RelaySettings />
+        <SpecialRelaySettings />
         <AiSettings />
       </div>
     </Layout>

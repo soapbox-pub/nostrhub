@@ -38,6 +38,9 @@ export function TestApp({ children }: TestAppProps) {
     experts: [],
     communityCap: 1000,
     statsProvider: '',
+    statsRelay: '',
+    searchRelays: [],
+    zapstoreRelays: [],
     ai: { baseURL: 'https://openrouter.ai/api/v1', model: '', apiKey: '' },
   };
 

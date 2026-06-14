@@ -141,6 +141,30 @@ export function NostrSync() {
       }
 
       if (
+        encryptedSettings.statsRelay !== undefined &&
+        encryptedSettings.statsRelay !== current.statsRelay
+      ) {
+        updates.statsRelay = encryptedSettings.statsRelay;
+        changed = true;
+      }
+
+      if (
+        encryptedSettings.searchRelays &&
+        JSON.stringify(encryptedSettings.searchRelays) !== JSON.stringify(current.searchRelays)
+      ) {
+        updates.searchRelays = encryptedSettings.searchRelays;
+        changed = true;
+      }
+
+      if (
+        encryptedSettings.zapstoreRelays &&
+        JSON.stringify(encryptedSettings.zapstoreRelays) !== JSON.stringify(current.zapstoreRelays)
+      ) {
+        updates.zapstoreRelays = encryptedSettings.zapstoreRelays;
+        changed = true;
+      }
+
+      if (
         encryptedSettings.useAppBlossomServers !== undefined &&
         encryptedSettings.useAppBlossomServers !== current.useAppBlossomServers
       ) {

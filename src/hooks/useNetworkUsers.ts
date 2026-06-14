@@ -1,6 +1,7 @@
 import { useNostr } from '@nostrify/react';
 import { useQuery } from '@tanstack/react-query';
 import { DITTO_RELAY } from '@/lib/appRelays';
+import { useAppContext } from '@/hooks/useAppContext';
 import { DAY, HOUR, MONTH } from '@/lib/timeRanges';
 
 /**
@@ -62,11 +63,13 @@ function dailyBuckets(days: number): Array<{ since: number; until: number; label
  */
 export function useNetworkUsers(days = 30) {
   const { nostr } = useNostr();
+  const { config } = useAppContext();
+  const statsRelay = config.statsRelay || DITTO_RELAY;
 
   return useQuery({
-    queryKey: ['network-users', days],
+    queryKey: ['network-users', days, statsRelay],
     queryFn: async (c): Promise<NetworkUsers> => {
-      const relay = nostr.relay(DITTO_RELAY);
+      const relay = nostr.relay(statsRelay);
       if (!relay.count) {
         throw new Error('Relay does not support NIP-45 COUNT');
       }

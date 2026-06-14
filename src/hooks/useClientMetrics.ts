@@ -2,6 +2,7 @@ import { useNostr } from '@nostrify/react';
 import { useQuery } from '@tanstack/react-query';
 import type { NostrFilter } from '@nostrify/nostrify';
 import { DITTO_RELAY } from '@/lib/appRelays';
+import { useAppContext } from '@/hooks/useAppContext';
 
 const HOUR = 3600;
 const DAY = 86400;
@@ -72,11 +73,13 @@ function dailyBuckets(days: number): Array<{ since: number; until: number; label
  */
 export function useClientMetrics(clientTags: string[]) {
   const { nostr } = useNostr();
+  const { config } = useAppContext();
+  const statsRelay = config.statsRelay || DITTO_RELAY;
 
   return useQuery({
-    queryKey: ['client-metrics', clientTags],
+    queryKey: ['client-metrics', clientTags, statsRelay],
     queryFn: async (c): Promise<ClientMetrics> => {
-      const relay = nostr.relay(DITTO_RELAY);
+      const relay = nostr.relay(statsRelay);
       if (!relay.count) {
         throw new Error('Relay does not support NIP-45 COUNT');
       }
@@ -127,11 +130,13 @@ export function useClientMetrics(clientTags: string[]) {
  */
 export function useClientActiveUsers(clientTags: string[]) {
   const { nostr } = useNostr();
+  const { config } = useAppContext();
+  const statsRelay = config.statsRelay || DITTO_RELAY;
 
   return useQuery({
-    queryKey: ['client-active-users', clientTags],
+    queryKey: ['client-active-users', clientTags, statsRelay],
     queryFn: async (c): Promise<number> => {
-      const relay = nostr.relay(DITTO_RELAY);
+      const relay = nostr.relay(statsRelay);
       if (!relay.count) {
         throw new Error('Relay does not support NIP-45 COUNT');
       }

@@ -5,6 +5,7 @@ import type { NostrEvent } from '@nostrify/nostrify';
 import { useExperts } from '@/hooks/useExperts';
 import { sanitizeUrl } from '@/lib/sanitizeUrl';
 import { SEARCH_RELAYS } from '@/lib/searchRelays';
+import { useAppContext } from '@/hooks/useAppContext';
 
 /** NIP-23 long-form article kind. */
 export const ARTICLE_KIND = 30023;
@@ -182,9 +183,11 @@ export function useCommunityArticles(authors: string[] | undefined) {
 export function useExpertPress() {
   const { nostr } = useNostr();
   const { experts } = useExperts();
+  const { config } = useAppContext();
+  const searchRelays = config.searchRelays.length > 0 ? config.searchRelays : SEARCH_RELAYS;
 
   return useQuery<ExpertPress>({
-    queryKey: ['expert-press', [...experts].sort()],
+    queryKey: ['expert-press', [...experts].sort(), searchRelays],
     queryFn: async ({ signal }) => {
       const noteSince = Math.floor(Date.now() / 1000) - NOTE_WINDOW_DAYS * 86400;
       const opts = { signal: AbortSignal.any([signal, AbortSignal.timeout(8000)]) };
@@ -194,7 +197,7 @@ export function useExpertPress() {
         // prolific authors would otherwise dominate the newest-first window.
         nostr.query([{ kinds: [ARTICLE_KIND], authors: experts, limit: 100 }], opts),
         nostr
-          .group(SEARCH_RELAYS)
+          .group(searchRelays)
           .query([{ kinds: [1], authors: experts, search: 'sort:hot', since: noteSince, limit: 48 }], opts),
       ]);
 

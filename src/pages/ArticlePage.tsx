@@ -13,6 +13,7 @@ import { ARTICLE_KIND } from '@/hooks/useExpertPress';
 import { sanitizeUrl } from '@/lib/sanitizeUrl';
 import { shortNpub } from '@/lib/nostr';
 import { SEARCH_RELAYS } from '@/lib/searchRelays';
+import { useAppContext } from '@/hooks/useAppContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
@@ -28,6 +29,8 @@ const tag = (event: NostrEvent, name: string): string | undefined =>
 /** Long-form article page (NIP-23, kind 30023), addressed by naddr. */
 export function ArticlePage({ pubkey, identifier }: ArticlePageProps) {
   const { nostr } = useNostr();
+  const { config } = useAppContext();
+  const searchRelays = config.searchRelays.length > 0 ? config.searchRelays : SEARCH_RELAYS;
   const queryClient = useQueryClient();
   const author = useAuthor(pubkey);
   const metadata = author.data?.metadata;
@@ -41,7 +44,7 @@ export function ArticlePage({ pubkey, identifier }: ArticlePageProps) {
       // Try the app pool first; fall back to the search relays, where
       // articles surfaced through NIP-50 discovery are guaranteed to live.
       const fromPool = await nostr.query([filter], opts);
-      const events = fromPool.length > 0 ? fromPool : await nostr.group(SEARCH_RELAYS).query([filter], opts);
+      const events = fromPool.length > 0 ? fromPool : await nostr.group(searchRelays).query([filter], opts);
 
       const fetched = events.sort((a, b) => b.created_at - a.created_at)[0] ?? null;
       // A freshly-published article may not be indexed yet; keep any

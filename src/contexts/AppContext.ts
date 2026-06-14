@@ -70,6 +70,28 @@ export interface AppConfig {
   communityCap: number | null;
   /** Hex pubkey of the NIP-85 trusted-assertions provider used for network stats. */
   statsProvider: string;
+  /**
+   * Relay that serves network statistics (NIP-45 COUNT, NIP-50 `distinct:author`
+   * search extension). Used by the stats/metrics hooks. Empty disables those
+   * features' dedicated relay (they fall back to the default pool).
+   */
+  statsRelay: string;
+  /**
+   * Relays that implement NIP-50 full-text `search`. Search queries fan out to
+   * these instead of the default pool, since most general relays ignore the
+   * `search` filter field. Empty falls back to the built-in defaults.
+   */
+  searchRelays: string[];
+  /**
+   * Dedicated Zapstore relays to fan notification/content queries out to.
+   *
+   * Zapstore traffic (kind 30063 releases, kind 32267 listings) lives primarily
+   * on its own relay(s) and isn't guaranteed to be mirrored onto the user's read
+   * relays, so notifications about activity on a user's own Zapstore content
+   * query these relays alongside the default pool. An empty array disables the
+   * fan-out and relies solely on the configured read relays.
+   */
+  zapstoreRelays: string[];
   /** OpenAI-compatible AI provider config for the in-chat `@ai` assistant. */
   ai: AISettings;
 }

@@ -19,6 +19,8 @@ export const OWNED_CONTENT_KINDS = [
   ARTICLE_KIND, // 30023 — long-form article
   GIT_REPO_KIND, // 30617 — git repo announcement
   GRAPH_NODE_KIND, // 32473 — strategy graph node
+  ZAPSTORE_APP_KIND, // 32267 — Zapstore app listing
+  ZAPSTORE_RELEASE_KIND, // 30063 — Zapstore software release
 ] as const;
 
 export type OwnedContentKind = (typeof OWNED_CONTENT_KINDS)[number];
@@ -30,6 +32,8 @@ export const CONTENT_KIND_LABEL: Record<number, string> = {
   [ARTICLE_KIND]: 'article',
   [GIT_REPO_KIND]: 'repo',
   [GRAPH_NODE_KIND]: 'strategy node',
+  [ZAPSTORE_APP_KIND]: 'app',
+  [ZAPSTORE_RELEASE_KIND]: 'release',
 };
 
 /** A resolved piece of the current user's content, keyed by its coordinate. */
@@ -60,6 +64,7 @@ export function toOwnedContent(event: NostrEvent): OwnedContent | null {
   const title =
     firstTag(event, 'title') ||
     firstTag(event, 'name') ||
+    firstTag(event, 'version') || // Zapstore releases (30063) carry a version
     firstTag(event, 'alt') ||
     dTag ||
     CONTENT_KIND_LABEL[event.kind] ||
