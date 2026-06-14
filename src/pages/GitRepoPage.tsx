@@ -22,10 +22,11 @@ import { LinkAppNudge } from '@/components/LinkAppNudge';
 import { useGitRepo } from '@/hooks/useGitRepo';
 import { useAuthor } from '@/hooks/useAuthor';
 import { useAppsForRepo } from '@/hooks/useAppsForRepo';
-import { shortNpub } from '@/lib/nostr';
+import { shortNpub, formatRelayName } from '@/lib/nostr';
 import { GIT_REPO_KIND, isShakespeareRepo, type GitRepoAnnouncement } from '@/lib/git';
 import { uniqueNipRefs } from '@/lib/apps';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
@@ -102,13 +103,18 @@ function RepoSidebar({ repo }: { repo: GitRepoAnnouncement }) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ul className="space-y-1.5">
+            <div className="flex flex-wrap gap-1.5">
               {repo.relays.map((relay) => (
-                <li key={relay} className="truncate font-mono text-xs text-muted-foreground" title={relay}>
-                  {relay}
-                </li>
+                <Badge
+                  key={relay}
+                  variant="secondary"
+                  className="max-w-full truncate font-mono text-xs font-normal"
+                  title={relay}
+                >
+                  {formatRelayName(relay)}
+                </Badge>
               ))}
-            </ul>
+            </div>
           </CardContent>
         </Card>
       )}

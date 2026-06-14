@@ -9,3 +9,31 @@ export function shortNpub(pubkey: string): string {
     return `${pubkey.slice(0, 8)}…`;
   }
 }
+
+/**
+ * Human-friendly relay label for display.
+ *
+ * - `wss://` is the default scheme and is dropped (`wss://relay.example/` →
+ *   `relay.example`); any other scheme (e.g. `ws://`) is kept so the distinction
+ *   stays visible.
+ * - An empty path (just `/`) is trimmed; a real path is preserved
+ *   (`wss://host/relay` → `host/relay`).
+ */
+export function formatRelayName(url: string): string {
+  const raw = url.trim();
+
+  try {
+    const parsed = new URL(raw);
+    const scheme = parsed.protocol === 'wss:' ? '' : `${parsed.protocol}//`;
+    // host already includes a non-default port; drop an empty ("/") path.
+    const path = parsed.pathname === '/' ? '' : parsed.pathname;
+    return `${scheme}${parsed.host}${path}${parsed.search}`;
+  } catch {
+    // Best-effort string fallback for anything URL can't parse.
+    let s = raw.replace(/^wss:\/\//i, '');
+    if (s.endsWith('/') && !s.slice(0, -1).includes('/')) s = s.slice(0, -1);
+    return s;
+  }
+}
+
+
