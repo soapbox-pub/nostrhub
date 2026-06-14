@@ -43,6 +43,11 @@ export function NIP19Page() {
       return <NotePage id={decoded.data} />;
 
     case 'nevent':
+      // A pinned custom-NIP revision (kind 30817) renders the NIP detail page
+      // bound to that exact event id, so a specific version can be viewed.
+      if (decoded.data.kind === CUSTOM_NIP_KIND) {
+        return <CustomNipPage eventId={decoded.data.id} />;
+      }
       return <NotePage id={decoded.data.id} />;
 
     case 'naddr': {

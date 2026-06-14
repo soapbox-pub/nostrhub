@@ -3,6 +3,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { nip19 } from 'nostr-tools';
 import type { NostrFilter } from '@nostrify/nostrify';
 import { CUSTOM_NIP_KIND, isValidCustomNip, parseCustomNip, type CustomNip } from '@/lib/nips';
+import { DITTO_RELAY } from '@/lib/appRelays';
+import { useAppContext } from '@/hooks/useAppContext';
 
 export interface UseCustomNipsOptions {
   /** Restrict to these author pubkeys (e.g. the community author set). */
@@ -106,6 +108,41 @@ export function useCustomNip(naddr: string | undefined) {
       return parseCustomNip(event);
     },
     enabled: !!naddr,
+    staleTime: 60 * 1000,
+  });
+}
+
+/**
+ * Fetch a single, version-pinned custom NIP by its raw event id.
+ *
+ * Historical versions of an addressable event are only retained by Ditto-style
+ * relays, so we query the configured stats/Ditto relay directly (the app pool
+ * and most relays only keep the latest). Used by the `nevent` route to render a
+ * specific revision instead of the current `naddr` version.
+ */
+export function useCustomNipByEventId(eventId: string | undefined) {
+  const { nostr } = useNostr();
+  const { config } = useAppContext();
+  const revisionsRelay = config.statsRelay || DITTO_RELAY;
+
+  return useQuery<CustomNip | null>({
+    queryKey: ['custom-nip-by-id', eventId ?? '', revisionsRelay],
+    queryFn: async ({ signal }) => {
+      if (!eventId) return null;
+
+      const opts = { signal: AbortSignal.any([signal, AbortSignal.timeout(6000)]) };
+      const filter: NostrFilter = { ids: [eventId], limit: 1 };
+
+      // Try the app pool first, then fall back to the revisions relay where
+      // historical versions live.
+      const fromPool = await nostr.query([filter], opts);
+      const events =
+        fromPool.length > 0 ? fromPool : await nostr.relay(revisionsRelay).query([filter], opts);
+
+      const event = events.find(isValidCustomNip);
+      return event ? parseCustomNip(event) : null;
+    },
+    enabled: !!eventId,
     staleTime: 60 * 1000,
   });
 }

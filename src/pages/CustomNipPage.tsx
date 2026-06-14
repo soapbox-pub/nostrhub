@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSeoMeta } from '@unhead/react';
 import { nip19 } from 'nostr-tools';
-import { GitFork, AlertCircle, Pencil, Trash2 } from 'lucide-react';
+import { GitFork, AlertCircle, Pencil, Trash2, History } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { BackLink, DetailHero } from '@/components/DetailHero';
 import { DetailSurface } from '@/components/DetailSurface';
@@ -13,7 +13,9 @@ import { CommentsSection } from '@/components/comments/CommentsSection';
 import { UserAvatar } from '@/components/UserAvatar';
 import { RelatedReposCard, UsedByAppsCard } from '@/components/CrossRefCards';
 import { LinkAppNudge } from '@/components/LinkAppNudge';
-import { useCustomNip } from '@/hooks/useCustomNips';
+import { RevisionsDialog } from '@/components/RevisionsDialog';
+import { CUSTOM_NIP_KIND } from '@/lib/nips';
+import { useCustomNip, useCustomNipByEventId } from '@/hooks/useCustomNips';
 import { useDeleteNip } from '@/hooks/useSaveNip';
 import { useAuthor } from '@/hooks/useAuthor';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -38,14 +40,20 @@ import {
 } from '@/components/ui/alert-dialog';
 
 /** Detail view for a community-authored NIP (kind 30817), routed via its naddr. */
-export function CustomNipPage({ naddr }: { naddr: string }) {
-  const { data: nip, isLoading, isError } = useCustomNip(naddr);
+export function CustomNipPage({ naddr, eventId }: { naddr?: string; eventId?: string }) {
+  // When `eventId` is set we render a version-pinned revision (from a nevent);
+  // otherwise we resolve the latest version from the naddr.
+  const isPinned = !!eventId;
+  const naddrQuery = useCustomNip(isPinned ? undefined : naddr);
+  const pinnedQuery = useCustomNipByEventId(eventId);
+  const { data: nip, isLoading, isError } = isPinned ? pinnedQuery : naddrQuery;
   const { user } = useCurrentUser();
   const author = useAuthor(nip?.author);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { mutateAsync: deleteNip, isPending: isDeleting } = useDeleteNip();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showRevisions, setShowRevisions] = useState(false);
   const authorName =
     author.data?.metadata?.name || author.data?.metadata?.display_name || (nip ? shortNpub(nip.author) : '');
   const appsForNip = useAppsForCustomNip(nip?.address);
@@ -119,6 +127,14 @@ export function CustomNipPage({ naddr }: { naddr: string }) {
                     </Link>
                   </Button>
                 )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => setShowRevisions(true)}
+                >
+                  <History className="size-4" aria-hidden="true" /> View revisions
+                </Button>
                 <Button variant="outline" size="sm" asChild className="gap-1.5">
                   <Link to={`/create?fork=${nip.naddr}`}>
                     <GitFork className="size-4" aria-hidden="true" /> Fork
@@ -137,6 +153,18 @@ export function CustomNipPage({ naddr }: { naddr: string }) {
               </>
             }
           >
+            {isPinned && (
+              <Alert>
+                <History className="size-4" />
+                <AlertDescription>
+                  You're viewing a past revision of this NIP.{' '}
+                  <Link to={`/${nip.naddr}`} className="font-medium text-primary hover:underline">
+                    View the latest version
+                  </Link>
+                  .
+                </AlertDescription>
+              </Alert>
+            )}
             {nip.fork && (
               <p className="text-sm text-muted-foreground">
                 Forked from{' '}
@@ -191,6 +219,14 @@ export function CustomNipPage({ naddr }: { naddr: string }) {
             )}
           </div>
         </article>
+      )}
+
+      {nip && (
+        <RevisionsDialog
+          open={showRevisions}
+          onOpenChange={setShowRevisions}
+          target={{ kind: CUSTOM_NIP_KIND, pubkey: nip.author, identifier: nip.identifier }}
+        />
       )}
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
