@@ -7,6 +7,7 @@ import { BackLink, DetailHero, HeroExternalLink } from '@/components/DetailHero'
 import { DetailSurface } from '@/components/DetailSurface';
 import { MarkdownContent } from '@/components/MarkdownContent';
 import { ApproveButton } from '@/components/ApproveButton';
+import { ExpertApprovers } from '@/components/ExpertApprovers';
 import { CommentsSection } from '@/components/comments/CommentsSection';
 import { RelatedReposCard, UsedByAppsCard } from '@/components/CrossRefCards';
 import { LinkAppNudge } from '@/components/LinkAppNudge';
@@ -77,6 +78,7 @@ const OfficialNipPage = () => {
             icon={<BookOpen className="size-7 text-primary" aria-hidden="true" />}
             kicker={`NIP-${code}`}
             title={title}
+            meta={<ExpertApprovers target={target} />}
             primaryAction={<ApproveButton target={target} />}
             actions={
               <>

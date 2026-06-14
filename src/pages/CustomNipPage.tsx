@@ -8,6 +8,7 @@ import { BackLink, DetailHero } from '@/components/DetailHero';
 import { DetailSurface } from '@/components/DetailSurface';
 import { MarkdownContent } from '@/components/MarkdownContent';
 import { ApproveButton } from '@/components/ApproveButton';
+import { ExpertApprovers } from '@/components/ExpertApprovers';
 import { CommentsSection } from '@/components/comments/CommentsSection';
 import { UserAvatar } from '@/components/UserAvatar';
 import { ExpertToggleButton } from '@/components/ExpertToggleButton';
@@ -108,6 +109,7 @@ export function CustomNipPage({ naddr }: { naddr: string }) {
                   <span className="text-sm font-medium text-foreground">{authorName}</span>
                 </Link>
                 <ExpertToggleButton pubkey={nip.author} iconOnly />
+                <ExpertApprovers target={target} className="ml-auto" />
               </>
             }
             primaryAction={<ApproveButton target={target} />}
