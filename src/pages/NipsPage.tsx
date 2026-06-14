@@ -90,7 +90,7 @@ export function NipsPage() {
                 onClick={() => setSource(source === 'mine' ? undefined : 'mine')}
               >
                 <User className="size-3" aria-hidden="true" />
-                Your NIPs
+                My NIPs
                 {source === 'mine' && <X className="size-3" aria-hidden="true" />}
               </FilterPill>
             )}
@@ -102,7 +102,7 @@ export function NipsPage() {
                   active={active}
                   onClick={() => setSource(active ? undefined : value)}
                 >
-                  {value === 'official' ? 'Official' : 'Community drafts'}
+                  {value === 'official' ? 'Official' : 'Community'}
                   {active && <X className="size-3" aria-hidden="true" />}
                 </FilterPill>
               );

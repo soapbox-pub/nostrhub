@@ -130,10 +130,21 @@ export function useDirectoryNips(): DirectoryNips {
 
   const labeledCustomQuery = useLabeledCustomNips(labels, knownAddresses);
 
-  const official = useMemo<RankedNip[]>(
-    () => (officialNips ?? []).map(officialToRanked),
-    [officialNips],
-  );
+  const official = useMemo<RankedNip[]>(() => {
+    const byKey = labels?.byKey ?? {};
+    return (officialNips ?? []).map((nip) => {
+      const base = officialToRanked(nip);
+      const label = byKey[base.key];
+      if (!label) return base;
+      // Official NIPs have no author, so every approval counts.
+      return {
+        ...base,
+        expertApprovers: label.experts ?? [],
+        expertCount: label.experts?.length ?? 0,
+        totalCount: label.all?.length ?? 0,
+      };
+    });
+  }, [officialNips, labels]);
 
   // Index official NIPs by number for label lookups.
   const officialByNumber = useMemo(() => {
