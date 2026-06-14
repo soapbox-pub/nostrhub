@@ -157,10 +157,12 @@ export function CustomNipPage({ naddr, eventId }: { naddr?: string; eventId?: st
               <Alert>
                 <History className="size-4" />
                 <AlertDescription>
-                  You're viewing a past revision of this NIP.{' '}
-                  <Link to={`/${nip.naddr}`} className="font-medium text-primary hover:underline">
-                    View the latest version
-                  </Link>.
+                  <span>
+                    You're viewing a past revision of this NIP.{' '}
+                    <Link to={`/${nip.naddr}`} className="font-medium text-primary hover:underline">
+                      View the latest version
+                    </Link>.
+                  </span>
                 </AlertDescription>
               </Alert>
             )}
