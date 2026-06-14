@@ -315,6 +315,11 @@ const Index = () => {
             <Department
               title="Latest Releases"
               subtitle="Fresh software shipped to Zapstore by the community."
+              action={
+                <Button asChild variant="outline" size="sm" className="rounded-full">
+                  <Link to="/apps">Browse all apps</Link>
+                </Button>
+              }
             />
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {releasesLoading ? (
