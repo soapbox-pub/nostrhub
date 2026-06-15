@@ -4,7 +4,7 @@ import { NostrContext } from '@nostrify/react';
 import { NUser, useNostrLogin } from '@nostrify/react/login';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAppContext } from '@/hooks/useAppContext';
-import { SEARCH_RELAYS } from '@/lib/appRelays';
+import { getEffectiveRelays, SEARCH_RELAYS } from '@/lib/appRelays';
 
 interface NostrProviderProps {
   children: React.ReactNode;
@@ -20,7 +20,12 @@ const NostrProvider: React.FC<NostrProviderProps> = (props) => {
   // Use refs so the pool callbacks always see the latest data without
   // recreating the pool. The refs are written from effects (never during
   // render) to satisfy React's purity rules.
-  const relayMetadataRef = useRef(config.relayMetadata);
+  //
+  // `effectiveRelays` is the merged relay set derived from the app-default
+  // relays and the user's NIP-65 list, gated by `useAppRelays`/`useUserRelays`.
+  const effectiveRelaysRef = useRef(
+    getEffectiveRelays(config.relayMetadata, config.useAppRelays, config.useUserRelays),
+  );
 
   // Stable ref to the current user's signer for NIP-42 AUTH.
   // The `open()` callback reads from this ref when a relay sends an AUTH
@@ -64,7 +69,7 @@ const NostrProvider: React.FC<NostrProviderProps> = (props) => {
       }
 
       // Route to all read relays
-      const readRelays = relayMetadataRef.current.relays
+      const readRelays = effectiveRelaysRef.current.relays
         .filter(r => r.read)
         .map(r => r.url);
 
@@ -75,8 +80,8 @@ const NostrProvider: React.FC<NostrProviderProps> = (props) => {
       return routes;
     },
     eventRouter(_event: NostrEvent) {
-      // Get write relays from metadata
-      const writeRelays = relayMetadataRef.current.relays
+      // Get write relays from the effective relay set
+      const writeRelays = effectiveRelaysRef.current.relays
         .filter(r => r.write)
         .map(r => r.url);
 
@@ -115,11 +120,16 @@ const NostrProvider: React.FC<NostrProviderProps> = (props) => {
     signerRef.current = currentSigner;
   }, [currentSigner]);
 
-  // Invalidate Nostr queries when relay metadata changes.
+  // Recompute the effective relay set and invalidate Nostr queries when the
+  // relay config (NIP-65 list or the app/user relay toggles) changes.
   useEffect(() => {
-    relayMetadataRef.current = config.relayMetadata;
+    effectiveRelaysRef.current = getEffectiveRelays(
+      config.relayMetadata,
+      config.useAppRelays,
+      config.useUserRelays,
+    );
     queryClient.invalidateQueries({ queryKey: ['nostr'] });
-  }, [config.relayMetadata, queryClient]);
+  }, [config.relayMetadata, config.useAppRelays, config.useUserRelays, queryClient]);
 
   const contextValue = useMemo(() => ({ nostr: pool }), [pool]);
 

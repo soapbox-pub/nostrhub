@@ -30,6 +30,8 @@ export function TestApp({ children }: TestAppProps) {
       ],
       updatedAt: 0,
     },
+    useAppRelays: true,
+    useUserRelays: true,
     blossomServerMetadata: {
       servers: ['https://blossom.primal.net/'],
       updatedAt: 0,

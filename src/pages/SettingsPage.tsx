@@ -9,6 +9,9 @@ import { shortNpub } from '@/lib/nostr';
 import { useExperts } from '@/hooks/useExperts';
 import { useAppContext } from '@/hooks/useAppContext';
 import { useAuthor } from '@/hooks/useAuthor';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useEncryptedSettings } from '@/hooks/useEncryptedSettings';
+import { useNostrPublish } from '@/hooks/useNostrPublish';
 import { useToast } from '@/hooks/useToast';
 import { DEFAULT_EXPERTS, DEFAULT_COMMUNITY_CAP } from '@/lib/experts';
 import { APP_RELAYS } from '@/lib/appRelays';
@@ -323,15 +326,55 @@ function normalizeRelayUrl(input: string): string | null {
 
 function RelaySettings() {
   const { config, updateConfig } = useAppContext();
+  const { user } = useCurrentUser();
+  const { updateSettings } = useEncryptedSettings();
+  const { mutate: publishEvent } = useNostrPublish();
   const { toast } = useToast();
   const relays = config.relayMetadata.relays;
   const [input, setInput] = useState('');
+
+  const useAppRelays = config.useAppRelays;
+  const useUserRelays = config.useUserRelays;
+
+  // Publish the user's NIP-65 relay list (kind 10002) so their relays sync
+  // across devices and clients.
+  const publishRelayList = (next: { url: string; read: boolean; write: boolean }[]) => {
+    if (!user) return;
+    const tags = next.map((r) => {
+      if (r.read && r.write) return ['r', r.url];
+      return ['r', r.url, r.read ? 'read' : 'write'];
+    });
+    publishEvent({ kind: 10002, content: '', tags });
+  };
 
   const setRelays = (next: { url: string; read: boolean; write: boolean }[]) => {
     updateConfig((c) => ({
       ...c,
       relayMetadata: { relays: next, updatedAt: Math.floor(Date.now() / 1000) },
     }));
+    publishRelayList(next);
+  };
+
+  const handleToggleAppRelays = (enabled: boolean) => {
+    updateConfig((c) => ({ ...c, useAppRelays: enabled }));
+    if (user) updateSettings.mutate({ useAppRelays: enabled });
+    toast({
+      title: enabled ? 'App relays enabled' : 'App relays disabled',
+      description: enabled
+        ? "NostrHub's default relays will be used."
+        : 'Only your personal relays will be used.',
+    });
+  };
+
+  const handleToggleUserRelays = (enabled: boolean) => {
+    updateConfig((c) => ({ ...c, useUserRelays: enabled }));
+    if (user) updateSettings.mutate({ useUserRelays: enabled });
+    toast({
+      title: enabled ? 'Your relays enabled' : 'Your relays disabled',
+      description: enabled
+        ? 'Your personal NIP-65 relays will be used alongside app relays.'
+        : 'Your personal relays will not be used.',
+    });
   };
 
   const handleAdd = () => {
@@ -366,81 +409,126 @@ function RelaySettings() {
       <CardHeader>
         <CardTitle>Relays</CardTitle>
         <CardDescription>
-          The relays NostrHub reads from and publishes to. These are stored only on this device and
-          are not synced from or to your Nostr relay list. Disable <span className="text-foreground">Read</span>{' '}
-          to stop fetching from a relay, or <span className="text-foreground">Write</span> to stop
-          publishing to it.
+          Choose which relays NostrHub reads from and publishes to. By default only{' '}
+          <span className="text-foreground">App relays</span> are used. Enable{' '}
+          <span className="text-foreground">Your relays</span> to also connect to your
+          personal NIP-65 relay list.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                handleAdd();
-              }
-            }}
-            placeholder="wss://relay.example.com"
-            aria-label="Add a relay URL"
+      <CardContent className="space-y-6">
+        {/* App relays toggle */}
+        <div className="flex items-start justify-between gap-4 rounded-lg border border-border px-4 py-3">
+          <div className="space-y-0.5">
+            <Label htmlFor="use-app-relays" className="text-sm font-medium">
+              App relays
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              NostrHub's default relays. Recommended for reliable discovery.
+            </p>
+            <ul className="mt-1.5 space-y-0.5">
+              {APP_RELAYS.relays.map((r) => (
+                <li key={r.url} className="font-mono text-xs text-muted-foreground/80">
+                  {r.url}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <Switch
+            id="use-app-relays"
+            checked={useAppRelays}
+            onCheckedChange={handleToggleAppRelays}
           />
-          <Button onClick={handleAdd} className="gap-1.5 sm:w-auto">
-            <Plus className="size-4" /> Add
-          </Button>
         </div>
 
-        {relays.length > 0 ? (
-          <ul className="space-y-2">
-            {relays.map((relay) => (
-              <li key={relay.url}>
-                <RelayInfoCard url={relay.url} onRemove={() => removeRelay(relay.url)}>
-                  <div className="mt-3 flex items-center gap-4 border-t border-border/40 pt-3">
-                    <div className="flex items-center gap-2">
-                      <Switch
-                        id={`read-${relay.url}`}
-                        checked={relay.read}
-                        onCheckedChange={() => togglePermission(relay.url, 'read')}
-                      />
-                      <Label htmlFor={`read-${relay.url}`} className="text-xs">
-                        Read
-                      </Label>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Switch
-                        id={`write-${relay.url}`}
-                        checked={relay.write}
-                        onCheckedChange={() => togglePermission(relay.url, 'write')}
-                      />
-                      <Label htmlFor={`write-${relay.url}`} className="text-xs">
-                        Write
-                      </Label>
-                    </div>
-                  </div>
-                </RelayInfoCard>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
-            No relays configured. NostrHub can't load or publish content until you add at least one.
-          </p>
-        )}
+        {/* User relays toggle */}
+        <div className="flex items-start justify-between gap-4 rounded-lg border border-border px-4 py-3">
+          <div className="space-y-0.5">
+            <Label htmlFor="use-user-relays" className="text-sm font-medium">
+              Your relays
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Your personal NIP-65 relay list. Disabled by default.
+            </p>
+          </div>
+          <Switch
+            id="use-user-relays"
+            checked={useUserRelays}
+            onCheckedChange={handleToggleUserRelays}
+          />
+        </div>
 
-        <div className="flex items-center justify-between border-t border-border/60 pt-4">
-          <p className="text-sm text-muted-foreground">{relays.length} relay(s)</p>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="gap-1.5"
-            onClick={() => {
-              setRelays(APP_RELAYS.relays.map((r) => ({ ...r })));
-              toast({ title: 'Relays reset to defaults' });
-            }}
-          >
-            <RotateCcw className="size-4" /> Reset to defaults
-          </Button>
+        {/* Personal relay list editor */}
+        <div className={useUserRelays ? '' : 'opacity-40'}>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleAdd();
+                }
+              }}
+              placeholder="wss://relay.example.com"
+              aria-label="Add a relay URL"
+            />
+            <Button onClick={handleAdd} className="gap-1.5 sm:w-auto">
+              <Plus className="size-4" /> Add
+            </Button>
+          </div>
+
+          {relays.length > 0 ? (
+            <ul className="mt-4 space-y-2">
+              {relays.map((relay) => (
+                <li key={relay.url}>
+                  <RelayInfoCard url={relay.url} onRemove={() => removeRelay(relay.url)}>
+                    <div className="mt-3 flex items-center gap-4 border-t border-border/40 pt-3">
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          id={`read-${relay.url}`}
+                          checked={relay.read}
+                          onCheckedChange={() => togglePermission(relay.url, 'read')}
+                        />
+                        <Label htmlFor={`read-${relay.url}`} className="text-xs">
+                          Read
+                        </Label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          id={`write-${relay.url}`}
+                          checked={relay.write}
+                          onCheckedChange={() => togglePermission(relay.url, 'write')}
+                        />
+                        <Label htmlFor={`write-${relay.url}`} className="text-xs">
+                          Write
+                        </Label>
+                      </div>
+                    </div>
+                  </RelayInfoCard>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-4 rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+              No personal relays configured. Add relays above
+              {useAppRelays ? ' or keep App relays enabled.' : '.'}
+            </p>
+          )}
+
+          <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-4">
+            <p className="text-sm text-muted-foreground">{relays.length} relay(s)</p>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => {
+                setRelays(APP_RELAYS.relays.map((r) => ({ ...r })));
+                toast({ title: 'Relays reset to defaults' });
+              }}
+            >
+              <RotateCcw className="size-4" /> Reset to defaults
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

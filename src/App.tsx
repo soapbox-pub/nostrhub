@@ -13,7 +13,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { NostrLoginProvider } from '@nostrify/react/login';
 import { AppProvider } from '@/components/AppProvider';
 import { AppConfig } from '@/contexts/AppContext';
-import { APP_RELAYS, DITTO_RELAY } from '@/lib/appRelays';
+import { DITTO_RELAY } from '@/lib/appRelays';
 import { SEARCH_RELAYS } from '@/lib/searchRelays';
 import { DEFAULT_EXPERTS, DEFAULT_COMMUNITY_CAP, DEFAULT_STATS_PROVIDER } from '@/lib/experts';
 import AppRouter from './AppRouter';
@@ -38,7 +38,12 @@ const defaultConfig: AppConfig = {
   appName: "NostrHub",
   appId: "nostrhub",
   theme: "dark",
-  relayMetadata: APP_RELAYS,
+  relayMetadata: {
+    relays: [],
+    updatedAt: 0,
+  },
+  useAppRelays: true,
+  useUserRelays: false,
   blossomServerMetadata: {
     servers: [
       'https://blossom.ditto.pub/',

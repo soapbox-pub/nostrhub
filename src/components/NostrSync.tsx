@@ -9,10 +9,13 @@ import { parseBlossomServerList } from '@/lib/appBlossom';
  * NostrSync - Syncs the user's Nostr data into AppContext when logged in.
  *
  * Syncs:
+ * - NIP-65 relay list (kind 10002) — the user's personal relays. These are
+ *   only *used* when `useUserRelays` is enabled, but we keep `relayMetadata`
+ *   in sync so the toggle has data to merge.
  * - BUD-03 Blossom server list (kind 10063)
- * - Encrypted app settings (kind 30078) — theme mode, experts, community cap, etc.
+ * - Encrypted app settings (kind 30078) — theme mode, experts, community cap,
+ *   relay toggles, etc.
  *
- * Note: The NIP-65 relay list is intentionally NOT synced (locally configured only).
  * The Ditto profile theme (kind 16767) is applied live by <DittoThemeInjector/>,
  * not copied into config here.
  */
@@ -25,6 +28,56 @@ export function NostrSync() {
     isLoading: settingsLoading,
     recentlyWritten,
   } = useEncryptedSettings();
+
+  // ─── NIP-65 relay list (kind 10002) ─────────────────────────────────
+  useEffect(() => {
+    if (!user) return;
+
+    const syncRelayListFromNostr = async () => {
+      try {
+        const events = await nostr.query(
+          [{ kinds: [10002], authors: [user.pubkey], limit: 1 }],
+          { signal: AbortSignal.timeout(5000) }
+        );
+
+        if (events.length > 0) {
+          const event = events[0];
+          if (event.created_at > config.relayMetadata.updatedAt) {
+            const fetchedRelays = event.tags
+              .filter(([name]) => name === 'r')
+              .map(([, url, marker]) => ({
+                url: url.replace(/\/+$/, ''),
+                read: !marker || marker === 'read',
+                write: !marker || marker === 'write',
+              }))
+              .filter((r) => {
+                try {
+                  new URL(r.url);
+                  return true;
+                } catch {
+                  return false;
+                }
+              });
+
+            if (fetchedRelays.length > 0) {
+              console.log('Syncing relay list from Nostr:', fetchedRelays);
+              updateConfig((current) => ({
+                ...current,
+                relayMetadata: {
+                  relays: fetchedRelays,
+                  updatedAt: event.created_at,
+                },
+              }));
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Failed to sync relay list from Nostr:', error);
+      }
+    };
+
+    syncRelayListFromNostr();
+  }, [user, config.relayMetadata.updatedAt, nostr, updateConfig]);
 
   // ─── Blossom server list (kind 10063) ───────────────────────────────
   useEffect(() => {
@@ -161,6 +214,22 @@ export function NostrSync() {
         encryptedSettings.useAppBlossomServers !== current.useAppBlossomServers
       ) {
         updates.useAppBlossomServers = encryptedSettings.useAppBlossomServers;
+        changed = true;
+      }
+
+      if (
+        encryptedSettings.useAppRelays !== undefined &&
+        encryptedSettings.useAppRelays !== current.useAppRelays
+      ) {
+        updates.useAppRelays = encryptedSettings.useAppRelays;
+        changed = true;
+      }
+
+      if (
+        encryptedSettings.useUserRelays !== undefined &&
+        encryptedSettings.useUserRelays !== current.useUserRelays
+      ) {
+        updates.useUserRelays = encryptedSettings.useUserRelays;
         changed = true;
       }
 
