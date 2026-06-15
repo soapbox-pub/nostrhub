@@ -439,7 +439,7 @@ function RelaySettings() {
           <ul className={cn('space-y-2', !useAppRelays && 'opacity-40')}>
             {APP_RELAYS.relays.map((r) => (
               <li key={r.url}>
-                <RelayInfoCard url={r.url} className="border-0 bg-transparent p-0" />
+                <RelayInfoCard url={r.url} className="border-0 bg-muted/40 p-3" />
               </li>
             ))}
           </ul>
@@ -485,13 +485,13 @@ function RelaySettings() {
             </div>
 
             {relays.length > 0 ? (
-              <ul className="divide-y divide-border/50">
+              <ul className="space-y-2">
                 {relays.map((relay) => (
-                  <li key={relay.url} className="py-3 first:pt-0 last:pb-0">
+                  <li key={relay.url}>
                     <RelayInfoCard
                       url={relay.url}
                       onRemove={() => removeRelay(relay.url)}
-                      className="border-0 bg-transparent p-0"
+                      className="border-0 bg-muted/40 p-3"
                     >
                       <div className="mt-3 flex items-center gap-4">
                         <div className="flex items-center gap-2">
@@ -591,13 +591,13 @@ function RelayListSetting({
       </div>
 
       {relays.length > 0 && (
-        <ul className="divide-y divide-border/50">
+        <ul className="space-y-2">
           {relays.map((url) => (
-            <li key={url} className="py-3 first:pt-0 last:pb-0">
+            <li key={url}>
               <RelayInfoCard
                 url={url}
                 onRemove={() => onChange(relays.filter((r) => r !== url))}
-                className="border-0 bg-transparent p-0"
+                className="border-0 bg-muted/40 p-3"
               />
             </li>
           ))}
@@ -665,7 +665,7 @@ function SpecialRelaySettings() {
             </p>
           </div>
           {config.statsRelay && (
-            <RelayInfoCard url={config.statsRelay} className="border-0 bg-transparent p-0" />
+            <RelayInfoCard url={config.statsRelay} className="border-0 bg-muted/40 p-3" />
           )}
           <div className="flex gap-2">
             <Input
