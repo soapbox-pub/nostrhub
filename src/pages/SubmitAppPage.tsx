@@ -359,34 +359,38 @@ function NipPicker({
       {/* Scroll list */}
       <div className="max-h-56 overflow-y-auto rounded-lg border border-border/60 bg-background">
         {showSearch ? (
-          searchResults.isLoading ? (
-            <div className="space-y-1 p-2">
-              {[1, 2, 3].map((i) => <Skeleton key={i} className="h-9 w-full rounded-md" />)}
-            </div>
-          ) : (searchResults.data?.length ?? 0) === 0 ? (
-            <p className="px-4 py-6 text-center text-sm text-muted-foreground">
-              No NIPs found for "{debouncedQuery}"
-            </p>
-          ) : (
-            <div className="p-1.5 space-y-0.5">
-              {/* Custom NIP results */}
-              {searchResults.data!.map((nip) => (
-                <PickRow
-                  key={nip.address}
-                  icon={<BookOpen className="size-3.5" />}
-                  label={nip.title}
-                  sublabel={`custom · ${nip.identifier}`}
-                  selected={selectedCustomAddrs.has(nip.address)}
-                  onToggle={() => toggleCustom(nip)}
-                />
-              ))}
-              {/* Official NIP matches by number/title from local list */}
-              {(officialNips.data ?? [])
-                .filter((n) => !n.deprecated &&
-                  (n.number.toLowerCase().includes(debouncedQuery.toLowerCase()) ||
-                   n.title.toLowerCase().includes(debouncedQuery.toLowerCase())))
-                .slice(0, 8)
-                .map((n) => (
+          // Official matches come from the locally-cached index; custom matches
+          // come from the relay (NIP-50) search. Either source can be empty
+          // independently, so we only show the empty state when both are.
+          (() => {
+            const q = debouncedQuery.toLowerCase();
+            const officialMatches = (officialNips.data ?? [])
+              .filter((n) => !n.deprecated &&
+                (n.number.toLowerCase().includes(q) ||
+                 n.title.toLowerCase().includes(q)))
+              .slice(0, 8);
+            const customMatches = searchResults.data ?? [];
+
+            if (searchResults.isLoading && officialMatches.length === 0) {
+              return (
+                <div className="space-y-1 p-2">
+                  {[1, 2, 3].map((i) => <Skeleton key={i} className="h-9 w-full rounded-md" />)}
+                </div>
+              );
+            }
+
+            if (officialMatches.length === 0 && customMatches.length === 0) {
+              return (
+                <p className="px-4 py-6 text-center text-sm text-muted-foreground">
+                  No NIPs found for "{debouncedQuery}"
+                </p>
+              );
+            }
+
+            return (
+              <div className="p-1.5 space-y-0.5">
+                {/* Official NIP matches by number/title from local list */}
+                {officialMatches.map((n) => (
                   <PickRow
                     key={n.number}
                     icon={<BookOpen className="size-3.5" />}
@@ -396,8 +400,20 @@ function NipPicker({
                     onToggle={() => toggleOfficial(n.number)}
                   />
                 ))}
-            </div>
-          )
+                {/* Custom NIP results */}
+                {customMatches.map((nip) => (
+                  <PickRow
+                    key={nip.address}
+                    icon={<BookOpen className="size-3.5" />}
+                    label={nip.title}
+                    sublabel={`custom · ${nip.identifier}`}
+                    selected={selectedCustomAddrs.has(nip.address)}
+                    onToggle={() => toggleCustom(nip)}
+                  />
+                ))}
+              </div>
+            );
+          })()
         ) : (
           /* Browse: your own custom NIPs + the full official NIPs list */
           (myNips.isLoading || officialNips.isLoading) ? (
