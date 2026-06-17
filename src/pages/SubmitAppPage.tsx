@@ -399,27 +399,52 @@ function NipPicker({
             </div>
           )
         ) : (
-          /* Browse: your own custom NIPs */
-          myNips.isLoading ? (
+          /* Browse: your own custom NIPs + the full official NIPs list */
+          (myNips.isLoading || officialNips.isLoading) ? (
             <div className="space-y-1 p-2">
               {[1, 2, 3].map((i) => <Skeleton key={i} className="h-9 w-full rounded-md" />)}
             </div>
-          ) : (myNips.data?.length ?? 0) === 0 ? (
-            <p className="px-4 py-6 text-center text-sm text-muted-foreground">
-              You haven't published any custom NIPs yet. Search to add official NIPs.
-            </p>
           ) : (
             <div className="p-1.5 space-y-0.5">
-              {myNips.data!.map((nip) => (
-                <PickRow
-                  key={nip.address}
-                  icon={<BookOpen className="size-3.5" />}
-                  label={nip.title}
-                  sublabel={`custom · ${nip.identifier}`}
-                  selected={selectedCustomAddrs.has(nip.address)}
-                  onToggle={() => toggleCustom(nip)}
-                />
-              ))}
+              {(myNips.data?.length ?? 0) > 0 && (
+                <>
+                  <p className="px-2 pb-1 pt-1.5 text-xs font-medium text-muted-foreground">Your custom NIPs</p>
+                  {myNips.data!.map((nip) => (
+                    <PickRow
+                      key={nip.address}
+                      icon={<BookOpen className="size-3.5" />}
+                      label={nip.title}
+                      sublabel={`custom · ${nip.identifier}`}
+                      selected={selectedCustomAddrs.has(nip.address)}
+                      onToggle={() => toggleCustom(nip)}
+                    />
+                  ))}
+                </>
+              )}
+
+              {(officialNips.data?.length ?? 0) > 0 && (
+                <>
+                  <p className="px-2 pb-1 pt-1.5 text-xs font-medium text-muted-foreground">Official NIPs</p>
+                  {officialNips.data!
+                    .filter((n) => !n.deprecated)
+                    .map((n) => (
+                      <PickRow
+                        key={n.number}
+                        icon={<BookOpen className="size-3.5" />}
+                        label={`NIP-${n.number}: ${n.title}`}
+                        sublabel="official"
+                        selected={selectedOfficialNums.has(n.number)}
+                        onToggle={() => toggleOfficial(n.number)}
+                      />
+                    ))}
+                </>
+              )}
+
+              {(myNips.data?.length ?? 0) === 0 && (officialNips.data?.length ?? 0) === 0 && (
+                <p className="px-4 py-6 text-center text-sm text-muted-foreground">
+                  No NIPs available. Try searching by number or title.
+                </p>
+              )}
             </div>
           )
         )}
