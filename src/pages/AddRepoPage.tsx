@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useSeoMeta } from '@unhead/react';
+import { useQueryClient } from '@tanstack/react-query';
 import { nip19 } from 'nostr-tools';
 import {
   AlertCircle,
@@ -26,7 +27,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useMirrorRepo } from '@/hooks/useMirrorRepo';
 import { useCreateRepo } from '@/hooks/useCreateRepo';
 import { usePublishRepo } from '@/hooks/usePublishRepo';
-import { useGitRepo } from '@/hooks/useGitRepo';
+import { useGitRepo, seedOptimisticRepo, type GitRepoData } from '@/hooks/useGitRepo';
 import { useAppContext } from '@/hooks/useAppContext';
 import { useToast } from '@/hooks/useToast';
 import { slugify } from '@/lib/nips';
@@ -35,6 +36,7 @@ import {
   graspCloneUrl,
   DEFAULT_GRASP_SERVERS,
   GIT_REPO_KIND,
+  parseRepoAnnouncement,
 } from '@/lib/git';
 import { cloneRepoSnapshot, findReadme, looksBinary } from '@/lib/repoBrowser';
 import { Button } from '@/components/ui/button';
@@ -245,6 +247,7 @@ const AddRepoPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { config } = useAppContext();
+  const queryClient = useQueryClient();
 
   // --- edit mode (route: /repos/edit/:naddr) ---
   const { naddr: editNaddr } = useParams<{ naddr: string }>();
@@ -443,7 +446,7 @@ const AddRepoPage = () => {
     if (isEditMode) {
       if (!existingAnnouncement) return;
       try {
-        await publishRepo({
+        const event = await publishRepo({
           identifier: existingAnnouncement.identifier,
           name: name.trim(),
           description: description.trim() || undefined,
@@ -453,6 +456,26 @@ const AddRepoPage = () => {
           webUrls,
           earliestCommit: existingAnnouncement.earliestCommit,
         });
+
+        // Optimistically reflect the edit everywhere the old version is cached,
+        // preserving the repo's state (branches/tags) which the announcement
+        // doesn't carry. Relays still serve the stale event for a moment, so we
+        // write the fresh data into the live query as well as the optimistic one.
+        const updated: GitRepoData = {
+          repo: parseRepoAnnouncement(event),
+          state: existingRepo.data?.state ?? null,
+        };
+        seedOptimisticRepo(queryClient, updated);
+        queryClient.setQueriesData<GitRepoData>(
+          {
+            predicate: (q) =>
+              q.queryKey[0] === 'git-repo' &&
+              q.queryKey[1] === existingAnnouncement.pubkey &&
+              q.queryKey[2] === existingAnnouncement.identifier,
+          },
+          updated,
+        );
+
         toast({ title: 'Repository updated' });
         navigate(`/${repoNaddr(user.pubkey, existingAnnouncement.identifier, existingAnnouncement.relays)}`);
       } catch (error) {

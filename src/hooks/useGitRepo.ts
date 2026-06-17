@@ -100,11 +100,20 @@ export function useGitRepo({ pubkey, identifier, relays }: UseGitRepoOptions) {
         state: stateEvent ? parseRepoState(stateEvent) : null,
       };
 
-      // Until relays have indexed a freshly-published repo, fall back to the
-      // optimistic copy seeded at publish time so the page renders immediately.
-      if (!result.repo) {
-        const seeded = queryClient.getQueryData<GitRepoData>(optimisticKey(pubkey, identifier));
-        if (seeded?.repo) return seeded;
+      // Prefer a freshly-published copy until relays have indexed it. This
+      // covers two cases: a brand-new repo relays don't have yet, and an edit
+      // where relays still serve the previous (stale) announcement. We trust
+      // the optimistic copy only when it's newer than what relays returned.
+      const seeded = queryClient.getQueryData<GitRepoData>(optimisticKey(pubkey, identifier));
+      if (seeded?.repo && seeded.repo.createdAt >= (result.repo?.createdAt ?? 0)) {
+        return {
+          repo: seeded.repo,
+          // Keep any fresher state from relays; otherwise reuse the seeded one.
+          state:
+            result.state && result.state.createdAt > (seeded.state?.createdAt ?? 0)
+              ? result.state
+              : seeded.state ?? result.state,
+        };
       }
 
       return result;
