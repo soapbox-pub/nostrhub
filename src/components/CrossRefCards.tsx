@@ -1,12 +1,14 @@
 import { Link } from 'react-router-dom';
 import { nip19 } from 'nostr-tools';
-import { Blocks, BookOpen, FolderGit2, LayoutGrid } from 'lucide-react';
+import { Blocks, BookOpen, FolderGit2, GitFork, LayoutGrid } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { UserAvatar } from '@/components/UserAvatar';
 import { useCustomNipByAddress } from '@/hooks/useCustomNips';
 import { useGitRepo } from '@/hooks/useGitRepo';
 import { useOfficialNips } from '@/hooks/useOfficialNips';
 import { sanitizeUrl } from '@/lib/sanitizeUrl';
+import type { CustomNip } from '@/lib/nips';
 import type { AppInfo, AppNipRef, AppRepoRef } from '@/lib/apps';
 
 /**
@@ -168,6 +170,50 @@ export function RelatedReposCard({ repoRefs }: { repoRefs: AppRepoRef[] }) {
       </CardHeader>
       <CardContent className="space-y-1.5">
         {repoRefs.map((repoRef) => <RepoChip key={repoRef.address} repoRef={repoRef} />)}
+      </CardContent>
+    </Card>
+  );
+}
+
+/** A compact fork row — links to the forked community NIP, with author avatar. */
+function ForkChip({ fork }: { fork: CustomNip }) {
+  return (
+    <Link to={`/${fork.naddr}`} className={CHIP_CLASS}>
+      <UserAvatar pubkey={fork.author} size="sm" />
+      <span className="min-w-0 flex-1 truncate text-sm font-medium">{fork.title}</span>
+    </Link>
+  );
+}
+
+/**
+ * Sidebar card: expert-authored forks of this NIP. The count in the title
+ * reflects only forks authored by the configured expert set (a meaningful
+ * curation signal), matching how approvals and ranking are scoped.
+ */
+export function ExpertForksCard({
+  forks,
+  isLoading,
+}: {
+  forks: CustomNip[];
+  isLoading?: boolean;
+}) {
+  if (!isLoading && forks.length === 0) return null;
+  return (
+    <Card className="gap-2">
+      <CardHeader>
+        <SidebarCardTitle icon={<GitFork className="size-4" aria-hidden="true" />}>
+          Forks
+          {!isLoading && (
+            <span className="ml-auto font-mono text-foreground" aria-label={`${forks.length} forks`}>
+              {forks.length}
+            </span>
+          )}
+        </SidebarCardTitle>
+      </CardHeader>
+      <CardContent className="space-y-1.5">
+        {isLoading
+          ? <ChipSkeleton />
+          : forks.map((fork) => <ForkChip key={fork.address} fork={fork} />)}
       </CardContent>
     </Card>
   );

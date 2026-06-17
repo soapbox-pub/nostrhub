@@ -9,10 +9,11 @@ import { MarkdownContent } from '@/components/MarkdownContent';
 import { ApproveButton } from '@/components/ApproveButton';
 import { ExpertApprovers } from '@/components/ExpertApprovers';
 import { CommentsSection } from '@/components/comments/CommentsSection';
-import { RelatedReposCard, UsedByAppsCard } from '@/components/CrossRefCards';
+import { RelatedReposCard, UsedByAppsCard, ExpertForksCard } from '@/components/CrossRefCards';
 import { LinkAppNudge } from '@/components/LinkAppNudge';
 import { useOfficialNip } from '@/hooks/useOfficialNips';
 import { useAppsForOfficialNip } from '@/hooks/useAppsForNip';
+import { useForksOfOfficialNip } from '@/hooks/useForksOfNip';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { uniqueRepoRefs } from '@/lib/apps';
 import { cn } from '@/lib/utils';
@@ -40,9 +41,13 @@ const OfficialNipPage = () => {
   const apps = appsForNip.data ?? [];
   const repoRefs = uniqueRepoRefs(apps);
 
+  // Expert-authored forks of this NIP (curation signal).
+  const forksQuery = useForksOfOfficialNip(code || undefined);
+  const forks = forksQuery.data ?? [];
+
   // Official NIPs have no owner, so nudge any logged-in user to link an app
   // they've built that implements this NIP.
-  const showSidebar = apps.length > 0 || Boolean(user);
+  const showSidebar = apps.length > 0 || forks.length > 0 || forksQuery.isLoading || Boolean(user);
 
   const title = useMemo(
     () => (data ? extractTitle(data.content, `NIP-${code}`) : `NIP-${code}`),
@@ -120,6 +125,7 @@ const OfficialNipPage = () => {
                   linkedApps={apps}
                 />
                 <UsedByAppsCard apps={apps} />
+                <ExpertForksCard forks={forks} isLoading={forksQuery.isLoading} />
                 <RelatedReposCard repoRefs={repoRefs} />
               </aside>
             )}
