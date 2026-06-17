@@ -364,10 +364,21 @@ function NipPicker({
           // independently, so we only show the empty state when both are.
           (() => {
             const q = debouncedQuery.toLowerCase();
+            // Strip a leading "nip-"/"nip " prefix so "NIP-01" matches number "01".
+            const numQuery = q.replace(/^nip[-\s]*/i, '').trim();
+            // Drop leading zeros so "1" matches "01" and vice-versa.
+            const numQueryStripped = numQuery.replace(/^0+/, '');
             const officialMatches = (officialNips.data ?? [])
-              .filter((n) => !n.deprecated &&
-                (n.number.toLowerCase().includes(q) ||
-                 n.title.toLowerCase().includes(q)))
+              .filter((n) => {
+                if (n.deprecated) return false;
+                const num = n.number.toLowerCase();
+                const numStripped = num.replace(/^0+/, '');
+                return (
+                  n.title.toLowerCase().includes(q) ||
+                  (numQuery.length > 0 &&
+                    (num.includes(numQuery) || numStripped === numQueryStripped))
+                );
+              })
               .slice(0, 8);
             const customMatches = searchResults.data ?? [];
 
