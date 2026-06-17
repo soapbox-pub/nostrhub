@@ -73,26 +73,59 @@ export function useGitRepo({ pubkey, identifier, relays }: UseGitRepoOptions) {
         .filter((r) => r.read)
         .map((r) => r.url);
 
-      const urls = new Set<string>();
-      for (const url of [...(relays ?? []), ...GIT_DISCOVERY_RELAYS, ...readRelays]) {
-        const normalized = normalizeRelayUrl(url);
-        if (normalized) urls.add(normalized);
-      }
+      const dedupe = (input: string[]): string[] => {
+        const out = new Set<string>();
+        for (const url of input) {
+          const normalized = normalizeRelayUrl(url);
+          if (normalized) out.add(normalized);
+        }
+        return [...out];
+      };
 
-      const events = await nostr.group([...urls].slice(0, 10)).query(
-        [{ kinds: [GIT_REPO_KIND, GIT_STATE_KIND], authors: [pubkey], '#d': [identifier] }],
-        { signal: AbortSignal.any([signal, AbortSignal.timeout(8000)]) },
+      // Phase 1: the app/user read relays (plus any naddr relay hints). These
+      // are fast and carry most traffic. Phase 2 (GRASP discovery relays) is a
+      // fallback only used when the announcement isn't found on the app relays,
+      // since GRASP servers are slower and would otherwise be cut off by the
+      // pool's short post-EOSE window.
+      const primaryRelays = dedupe([...(relays ?? []), ...readRelays]);
+      const fallbackRelays = dedupe(GIT_DISCOVERY_RELAYS).filter(
+        (url) => !primaryRelays.includes(url),
       );
 
-      // Addressable events: keep only the newest per kind.
-      let repoEvent: (typeof events)[number] | undefined;
-      let stateEvent: (typeof events)[number] | undefined;
-      for (const ev of events) {
-        if (ev.kind === GIT_REPO_KIND && isValidRepoAnnouncement(ev)) {
-          if (!repoEvent || ev.created_at > repoEvent.created_at) repoEvent = ev;
-        } else if (ev.kind === GIT_STATE_KIND) {
-          if (!stateEvent || ev.created_at > stateEvent.created_at) stateEvent = ev;
+      let repoEvent: NostrEvent | undefined;
+      let stateEvent: NostrEvent | undefined;
+
+      const collect = async (urls: string[]) => {
+        if (urls.length === 0) return;
+        // Collect with a generous EOSE window so slow GRASP relays that hold
+        // the only copy of the announcement aren't cut off prematurely.
+        const reqSignal = AbortSignal.any([signal, AbortSignal.timeout(8000)]);
+        try {
+          for await (const msg of nostr.group(urls.slice(0, 10)).req(
+            [{ kinds: [GIT_REPO_KIND, GIT_STATE_KIND], authors: [pubkey], '#d': [identifier] }],
+            { signal: reqSignal, eoseTimeout: 4000 },
+          )) {
+            if (msg[0] === 'EOSE' || msg[0] === 'CLOSED') break;
+            if (msg[0] !== 'EVENT') continue;
+            const ev = msg[2];
+            // Addressable events: keep only the newest per kind.
+            if (ev.kind === GIT_REPO_KIND && isValidRepoAnnouncement(ev)) {
+              if (!repoEvent || ev.created_at > repoEvent.created_at) repoEvent = ev;
+            } else if (ev.kind === GIT_STATE_KIND) {
+              if (!stateEvent || ev.created_at > stateEvent.created_at) stateEvent = ev;
+            }
+          }
+        } catch {
+          // Aborted or relay error — keep whatever was collected so far.
         }
+      };
+
+      await collect(primaryRelays);
+
+      // Fall through to GRASP discovery relays only if the announcement (the
+      // event that actually renders the page) wasn't found on the app relays.
+      if (!repoEvent) {
+        await collect(fallbackRelays);
       }
 
       const result: GitRepoData = {
