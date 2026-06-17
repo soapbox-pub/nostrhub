@@ -7,6 +7,7 @@ import { CustomNipPage } from './CustomNipPage';
 import { GitRepoPage } from './GitRepoPage';
 import { NotePage } from './NotePage';
 import { ProfilePage } from './ProfilePage';
+import { Nip05ProfileRoute } from './Nip05ProfileRoute';
 import { ZapstoreAppPage } from './ZapstoreAppPage';
 import { ZapstoreReleasePage } from './ZapstoreReleasePage';
 import { ARTICLE_KIND } from '@/hooks/useExpertPress';
@@ -15,12 +16,19 @@ import { APP_HANDLER_KIND } from '@/lib/apps';
 import { GIT_REPO_KIND, GIT_STATE_KIND } from '@/lib/git';
 import { GRAPH_NODE_KIND } from '@/lib/planGraph';
 import { ZAPSTORE_APP_KIND, ZAPSTORE_RELEASE_KIND } from '@/lib/zapstore';
+import { looksLikeNip05 } from '@/lib/nip05';
 
 export function NIP19Page() {
   const { nip19: identifier } = useParams<{ nip19: string }>();
 
   if (!identifier) {
     return <NotFound />;
+  }
+
+  // NIP-05 identifiers (`user@domain.com`) and bare domains (`domain.com`,
+  // treated as `_@domain.com`) resolve to a profile over the network.
+  if (looksLikeNip05(identifier)) {
+    return <Nip05ProfileRoute identifier={identifier} />;
   }
 
   let decoded;

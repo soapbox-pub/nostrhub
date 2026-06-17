@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSeoMeta } from '@unhead/react';
-import { nip19 } from 'nostr-tools';
 import { formatDistanceToNow } from 'date-fns';
 import {
   AlertCircle,
@@ -25,6 +24,7 @@ import { UsedByAppsCard, RelatedNipsCard } from '@/components/CrossRefCards';
 import { LinkAppNudge } from '@/components/LinkAppNudge';
 import { useGitRepo, useDeleteRepo } from '@/hooks/useGitRepo';
 import { useAuthor } from '@/hooks/useAuthor';
+import { useProfileUrl } from '@/hooks/useProfileUrl';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useToast } from '@/hooks/useToast';
 import { useAppsForRepo } from '@/hooks/useAppsForRepo';
@@ -68,11 +68,11 @@ function PersonRow({ pubkey, owner = false }: { pubkey: string; owner?: boolean 
   const author = useAuthor(pubkey);
   const metadata = author.data?.metadata;
   const name = metadata?.name || metadata?.display_name || shortNpub(pubkey);
-  const npub = nip19.npubEncode(pubkey);
+  const profileUrl = useProfileUrl(pubkey, metadata);
 
   return (
     <Link
-      to={`/${npub}`}
+      to={profileUrl}
       className="group flex items-center gap-2.5 rounded-lg px-2 py-1.5 -mx-2 transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <UserAvatar pubkey={pubkey} size="sm" />
@@ -177,6 +177,7 @@ function RepoSidebar({ repo }: { repo: GitRepoAnnouncement }) {
 export function GitRepoPage({ pubkey, identifier, relays }: GitRepoPageProps) {
   const { data, isLoading, isError } = useGitRepo({ pubkey, identifier, relays });
   const author = useAuthor(pubkey);
+  const authorUrl = useProfileUrl(pubkey, author.data?.metadata);
   const { user } = useCurrentUser();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -284,7 +285,7 @@ export function GitRepoPage({ pubkey, identifier, relays }: GitRepoPageProps) {
             meta={
               <>
                 <Link
-                  to={`/${nip19.npubEncode(pubkey)}`}
+                  to={authorUrl}
                   className="flex items-center gap-2 hover:text-primary"
                 >
                   <UserAvatar pubkey={pubkey} size="sm" />

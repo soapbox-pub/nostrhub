@@ -266,6 +266,37 @@ export function repoNaddr(pubkey: string, identifier: string, relays?: string[])
   });
 }
 
+/**
+ * Build the internal `/{owner}/{repo}` URL for a repository, mirroring NIP-34's
+ * `nostr://<npub|nip05>/<identifier>` clone-URI convention.
+ *
+ * The `owner` segment is a verified NIP-05 identifier when `nip05Verified` is
+ * `true` (`_@domain.com` collapses to `domain.com`), otherwise it falls back to
+ * the npub — so an attacker can't hijack repo links by spoofing someone else's
+ * NIP-05 in their kind-0 metadata. The `repo` segment is the percent-encoded
+ * `d` tag value (NIP-34 requires percent-encoding for identifiers in URIs).
+ *
+ * The resulting path is resolved by the `/:owner/:repo` route.
+ *
+ * **Precondition:** `pubkey` must be a valid 64-char lowercase hex string.
+ */
+export function getRepoUrl(
+  pubkey: string,
+  identifier: string,
+  nip05?: string,
+  nip05Verified = false,
+): string {
+  let owner: string;
+  if (nip05Verified && nip05) {
+    owner = nip05.startsWith('_@') ? nip05.slice(2) : nip05;
+  } else {
+    owner = nip19.npubEncode(pubkey);
+  }
+  // `@` is a valid path-segment character (RFC 3986 sub-delims), so leave the
+  // owner readable; only the `d` identifier needs percent-encoding (NIP-34).
+  return `/${owner}/${encodeURIComponent(identifier)}`;
+}
+
 /** Shorten a commit id for display. */
 export function shortCommit(commit: string): string {
   return commit.slice(0, 8);
