@@ -234,9 +234,27 @@ export function parseRepoState(event: NostrEvent): GitRepoState {
   };
 }
 
-/** Build the `nostr://npub.../<identifier>` clone URI understood by ngit. */
-export function nostrCloneUri(pubkey: string, identifier: string): string {
-  return `nostr://${nip19.npubEncode(pubkey)}/${identifier}`;
+/**
+ * Build the `nostr://<npub|nip05>/<identifier>` clone URI understood by ngit.
+ *
+ * Per NIP-34 the owner segment may be an npub **or** a NIP-05 identifier. When
+ * `nip05Verified` is `true` the verified handle is used (`_@domain.com`
+ * collapses to `domain.com`); otherwise it falls back to the npub so a spoofed
+ * NIP-05 in kind-0 metadata can't redirect clones to the wrong owner.
+ */
+export function nostrCloneUri(
+  pubkey: string,
+  identifier: string,
+  nip05?: string,
+  nip05Verified = false,
+): string {
+  let owner: string;
+  if (nip05Verified && nip05) {
+    owner = nip05.startsWith('_@') ? nip05.slice(2) : nip05;
+  } else {
+    owner = nip19.npubEncode(pubkey);
+  }
+  return `nostr://${owner}/${identifier}`;
 }
 
 /**
@@ -249,10 +267,16 @@ export function isShakespeareRepo(repo: GitRepoAnnouncement): boolean {
 
 /**
  * Build a `https://shakespeare.diy/clone?url=...` link that opens the repo in
- * Shakespeare, using the repo's `nostr://` clone URI (npub + d tag).
+ * Shakespeare, using the repo's `nostr://` clone URI. Prefers a verified
+ * NIP-05 owner segment, falling back to the npub.
  */
-export function shakespeareEditUrl(pubkey: string, identifier: string): string {
-  const nostrUri = nostrCloneUri(pubkey, identifier);
+export function shakespeareEditUrl(
+  pubkey: string,
+  identifier: string,
+  nip05?: string,
+  nip05Verified = false,
+): string {
+  const nostrUri = nostrCloneUri(pubkey, identifier, nip05, nip05Verified);
   return `https://shakespeare.diy/clone?url=${encodeURIComponent(nostrUri)}`;
 }
 

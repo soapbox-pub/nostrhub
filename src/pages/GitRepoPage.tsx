@@ -17,6 +17,7 @@ import { BackLink, DetailHero, HeroExternalLink } from '@/components/DetailHero'
 import { DetailSurface } from '@/components/DetailSurface';
 import { UserAvatar } from '@/components/UserAvatar';
 import { CopyButton } from '@/components/git/CopyButton';
+import { ShareRepoMenu } from '@/components/git/ShareRepoMenu';
 import { EditWithShakespeareButton } from '@/components/git/EditWithShakespeareButton';
 import { RepoFileBrowser } from '@/components/git/RepoFileBrowser';
 import { CommentsSection } from '@/components/comments/CommentsSection';
@@ -241,8 +242,9 @@ export function GitRepoPage({ pubkey, identifier, relays }: GitRepoPageProps) {
         <article className="space-y-8">
           {/* ——— Header ——— */}
           <DetailSurface className="relative">
-          {isOwner && (
-            <div className="absolute right-4 top-4 sm:right-6 sm:top-6">
+          <div className="absolute right-4 top-4 flex items-center gap-1 sm:right-6 sm:top-6">
+            <ShareRepoMenu repo={repo} />
+            {isOwner && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
@@ -272,8 +274,8 @@ export function GitRepoPage({ pubkey, identifier, relays }: GitRepoPageProps) {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-            </div>
-          )}
+            )}
+          </div>
           <DetailHero
             title={repo.name}
             subtitle={

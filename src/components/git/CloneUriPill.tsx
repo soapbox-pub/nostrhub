@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Check, Copy } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { nostrCloneUri, type GitRepoAnnouncement } from '@/lib/git';
+import { type GitRepoAnnouncement } from '@/lib/git';
+import { useNostrCloneUri } from '@/hooks/useNostrCloneUri';
 
 /**
  * Pill-shaped, fully-clickable button that copies the repo's `nostr://` clone
@@ -15,7 +16,7 @@ export function CloneUriPill({
   repo: GitRepoAnnouncement;
   className?: string;
 }) {
-  const uri = nostrCloneUri(repo.pubkey, repo.identifier);
+  const uri = useNostrCloneUri(repo.pubkey, repo.identifier);
   const [copied, setCopied] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 

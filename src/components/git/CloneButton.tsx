@@ -1,6 +1,7 @@
 import { Check, ChevronDown, Code2, Copy } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { nostrCloneUri, type GitRepoAnnouncement } from '@/lib/git';
+import { type GitRepoAnnouncement } from '@/lib/git';
+import { useNostrCloneUri } from '@/hooks/useNostrCloneUri';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -46,7 +47,7 @@ function UrlRow({ value, label }: { value: string; label: string }) {
  * until needed. Nostr URI first; HTTPS mirrors behind a tab.
  */
 export function CloneButton({ repo }: { repo: GitRepoAnnouncement }) {
-  const cloneUri = nostrCloneUri(repo.pubkey, repo.identifier);
+  const cloneUri = useNostrCloneUri(repo.pubkey, repo.identifier);
   const hasHttps = repo.cloneUrls.length > 0;
 
   return (
