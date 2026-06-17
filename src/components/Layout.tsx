@@ -31,12 +31,12 @@ interface LayoutProps {
 const NAV_ITEMS = [
   { to: '/nips', label: 'NIPs' },
   { to: '/apps', label: 'Apps' },
+  { to: '/repos', label: 'Repos' },
   { to: '/plan', label: 'Plan' },
 ];
 
 /** Secondary destinations surfaced in the footer to keep the header uncluttered. */
 const FOOTER_NAV_ITEMS = [
-  { to: '/repos', label: 'Repos' },
   { to: '/releases', label: 'Releases' },
   { to: '/articles', label: 'Articles' },
   { to: '/chat', label: 'Chat' },
