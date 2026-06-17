@@ -12,6 +12,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { NostrLoginProvider } from '@nostrify/react/login';
 import { AppProvider } from '@/components/AppProvider';
+import { PlausibleProvider } from '@/components/PlausibleProvider';
 import { AppConfig } from '@/contexts/AppContext';
 import { DITTO_RELAY } from '@/lib/appRelays';
 import { SEARCH_RELAYS } from '@/lib/searchRelays';
@@ -64,26 +65,31 @@ const defaultConfig: AppConfig = {
     apiKey: '',
   },
   gitCorsProxy: 'https://proxy.shakespeare.diy/?url={href}',
+  plausibleDomain: import.meta.env.VITE_PLAUSIBLE_DOMAIN || '',
+  plausibleEndpoint: import.meta.env.VITE_PLAUSIBLE_ENDPOINT || '',
+  analyticsEnabled: true,
 };
 
 export function App() {
   return (
     <UnheadProvider head={head}>
       <AppProvider storageKey="nostr:app-config" defaultConfig={defaultConfig}>
-        <QueryClientProvider client={queryClient}>
-          <NostrLoginProvider storageKey='nostr:login'>
-            <NostrProvider>
-              <NostrSync />
-              <DittoThemeInjector />
-              <TooltipProvider>
-                <Toaster />
-                <Suspense>
-                  <AppRouter />
-                </Suspense>
-              </TooltipProvider>
-            </NostrProvider>
-          </NostrLoginProvider>
-        </QueryClientProvider>
+        <PlausibleProvider>
+          <QueryClientProvider client={queryClient}>
+            <NostrLoginProvider storageKey='nostr:login'>
+              <NostrProvider>
+                <NostrSync />
+                <DittoThemeInjector />
+                <TooltipProvider>
+                  <Toaster />
+                  <Suspense>
+                    <AppRouter />
+                  </Suspense>
+                </TooltipProvider>
+              </NostrProvider>
+            </NostrLoginProvider>
+          </QueryClientProvider>
+        </PlausibleProvider>
       </AppProvider>
     </UnheadProvider>
   );

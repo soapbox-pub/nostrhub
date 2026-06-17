@@ -50,6 +50,9 @@ export const AppConfigSchema = z.object({
   searchRelays: z.array(z.string()),
   ai: AISettingsSchema,
   gitCorsProxy: z.string(),
+  plausibleDomain: z.string(),
+  plausibleEndpoint: z.string(),
+  analyticsEnabled: z.boolean(),
 }) satisfies z.ZodType<AppConfig>;
 
 // ─── Encrypted settings schema (NIP-78, kind 30078) ───────────────────
@@ -88,6 +91,8 @@ export const EncryptedSettingsSchema = z
     statsRelay: z.string().optional(),
     searchRelays: z.array(z.string()).optional(),
     gitCorsProxy: z.string().optional(),
+    /** Privacy-friendly analytics opt-out toggle. */
+    analyticsEnabled: z.boolean().optional(),
     /** Notification read-state. */
     notifications: NotificationSettingsSchema.optional(),
     /** Logical clock: ms timestamp of the last write, used to order cross-device updates. */

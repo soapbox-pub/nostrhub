@@ -34,6 +34,13 @@ export default defineConfig(() => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      // The package only declares a "module" field (no "main"/"exports"),
+      // which Vite's import-analysis can't resolve from a bare specifier in
+      // dev/test. Point directly at the ESM entry so it resolves everywhere.
+      "@plausible-analytics/tracker": path.resolve(
+        __dirname,
+        "./node_modules/@plausible-analytics/tracker/plausible.js",
+      ),
     },
   },
 }));

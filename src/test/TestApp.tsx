@@ -44,6 +44,9 @@ export function TestApp({ children }: TestAppProps) {
     searchRelays: [],
     ai: { baseURL: 'https://openrouter.ai/api/v1', model: '', apiKey: '' },
     gitCorsProxy: '',
+    plausibleDomain: '',
+    plausibleEndpoint: '',
+    analyticsEnabled: true,
   };
 
   return (

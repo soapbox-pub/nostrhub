@@ -756,6 +756,60 @@ function AppearanceSettings() {
   );
 }
 
+function PrivacySettings() {
+  const { config, updateConfig } = useAppContext();
+  const { user } = useCurrentUser();
+  const { updateSettings } = useEncryptedSettings();
+  const { toast } = useToast();
+
+  // The opt-out toggle is only meaningful when analytics are actually
+  // configured for this build. With no domain, no tracker ever loads.
+  if (!config.plausibleDomain) return null;
+
+  const enabled = config.analyticsEnabled;
+
+  const handleToggle = (next: boolean) => {
+    updateConfig((c) => ({ ...c, analyticsEnabled: next }));
+    if (user) updateSettings.mutate({ analyticsEnabled: next });
+    toast({
+      title: next ? 'Analytics enabled' : 'Analytics disabled',
+      description: next
+        ? 'Anonymous, privacy-friendly usage stats help improve NostrHub.'
+        : 'Reload the page to fully stop any analytics already loaded this session.',
+    });
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Privacy &amp; Analytics</CardTitle>
+        <CardDescription>
+          NostrHub uses <span className="text-foreground">Plausible</span>, a privacy-friendly,
+          cookie-free analytics service. It collects no personal data and never tracks you across
+          sites. You can opt out at any time.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-0.5">
+            <Label htmlFor="analytics-toggle" className="text-sm font-medium">
+              Anonymous usage analytics
+            </Label>
+            <p className="text-sm text-muted-foreground">
+              Help improve NostrHub by sharing anonymous, aggregated usage statistics.
+            </p>
+          </div>
+          <Switch
+            id="analytics-toggle"
+            checked={enabled}
+            onCheckedChange={handleToggle}
+          />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 const SettingsPage = () => {
   useSeoMeta({
     title: 'Settings | NostrHub',
@@ -775,6 +829,7 @@ const SettingsPage = () => {
         <RelaySettings />
         <SpecialRelaySettings />
         <AiSettings />
+        <PrivacySettings />
       </div>
     </Layout>
   );

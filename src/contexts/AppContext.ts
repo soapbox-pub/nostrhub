@@ -105,6 +105,24 @@ export interface AppConfig {
    * CORS-enabled GRASP hosts). Mirrors Shakespeare's `corsProxy`.
    */
   gitCorsProxy: string;
+  /**
+   * Plausible Analytics domain, baked in at build time from
+   * `VITE_PLAUSIBLE_DOMAIN`. Empty string disables analytics entirely
+   * (no tracker is ever loaded), regardless of `analyticsEnabled`.
+   */
+  plausibleDomain: string;
+  /**
+   * Plausible Analytics API endpoint, baked in at build time from
+   * `VITE_PLAUSIBLE_ENDPOINT`. Empty string uses Plausible Cloud's default
+   * endpoint. Set this when self-hosting Plausible.
+   */
+  plausibleEndpoint: string;
+  /**
+   * User opt-out switch for privacy-friendly analytics. Defaults to `true`
+   * (opted in). When `false`, the Plausible tracker is never initialized even
+   * if `plausibleDomain` is configured. Persisted locally per device.
+   */
+  analyticsEnabled: boolean;
 }
 
 export interface AppContextType {
