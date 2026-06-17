@@ -1,6 +1,8 @@
 import { useNostr } from '@nostrify/react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { NostrEvent } from '@nostrify/nostrify';
 import { useAppContext } from '@/hooks/useAppContext';
+import { useNostrPublish } from '@/hooks/useNostrPublish';
 import { getEffectiveRelays } from '@/lib/appRelays';
 import {
   GIT_DISCOVERY_RELAYS,
@@ -123,4 +125,51 @@ export function seedOptimisticRepo(
 ): void {
   if (!data.repo) return;
   queryClient.setQueryData(optimisticKey(data.repo.pubkey, data.repo.identifier), data);
+}
+
+export interface DeleteRepoParams {
+  /** The repository announcement (kind 30617) to delete. */
+  repo: GitRepoAnnouncement;
+  /** The repository state event (kind 30618), if one exists. */
+  state?: GitRepoState | null;
+}
+
+/**
+ * Request deletion of a NIP-34 repository via a NIP-09 kind-5 event.
+ *
+ * A repo is up to two addressable events — the announcement (30617) and its
+ * state (30618) — so the deletion request references both `a` coordinates
+ * (plus the underlying `e` ids) so honoring relays drop both. Only the repo
+ * owner can produce a valid deletion, since the kind-5 event must be signed by
+ * the same pubkey that authored the targeted events.
+ *
+ * Note: this only requests relays to drop the Nostr events. It cannot
+ * un-provision a bare repo already pushed to a GRASP server.
+ */
+export function useDeleteRepo() {
+  const { mutateAsync: publish } = useNostrPublish();
+  const queryClient = useQueryClient();
+
+  return useMutation<NostrEvent, Error, DeleteRepoParams>({
+    mutationFn: async ({ repo, state }) => {
+      const { pubkey, identifier, event } = repo;
+      const tags: string[][] = [
+        ['a', `${GIT_REPO_KIND}:${pubkey}:${identifier}`],
+        ['e', event.id],
+        ['k', GIT_REPO_KIND.toString()],
+      ];
+      if (state) {
+        tags.push(['a', `${GIT_STATE_KIND}:${pubkey}:${identifier}`]);
+        tags.push(['e', state.event.id]);
+        tags.push(['k', GIT_STATE_KIND.toString()]);
+      }
+      return publish({ kind: 5, content: '', tags });
+    },
+    onSuccess: (_event, { repo }) => {
+      // Drop the optimistic copy so the deleted repo can't resurface from cache.
+      queryClient.removeQueries({ queryKey: optimisticKey(repo.pubkey, repo.identifier) });
+      queryClient.invalidateQueries({ queryKey: ['git-repos'] });
+      queryClient.invalidateQueries({ queryKey: ['git-repo'] });
+    },
+  });
 }

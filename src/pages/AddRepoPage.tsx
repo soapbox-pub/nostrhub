@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useMemo, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useSeoMeta } from '@unhead/react';
+import { nip19 } from 'nostr-tools';
 import {
   AlertCircle,
   ArrowLeft,
@@ -12,6 +13,7 @@ import {
   Link2,
   Loader2,
   Plus,
+  Save,
   Send,
   Server,
   Tags,
@@ -23,10 +25,17 @@ import { LoginArea } from '@/components/auth/LoginArea';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useMirrorRepo } from '@/hooks/useMirrorRepo';
 import { useCreateRepo } from '@/hooks/useCreateRepo';
+import { usePublishRepo } from '@/hooks/usePublishRepo';
+import { useGitRepo } from '@/hooks/useGitRepo';
 import { useAppContext } from '@/hooks/useAppContext';
 import { useToast } from '@/hooks/useToast';
 import { slugify } from '@/lib/nips';
-import { repoNaddr, graspCloneUrl, DEFAULT_GRASP_SERVERS } from '@/lib/git';
+import {
+  repoNaddr,
+  graspCloneUrl,
+  DEFAULT_GRASP_SERVERS,
+  GIT_REPO_KIND,
+} from '@/lib/git';
 import { cloneRepoSnapshot, findReadme, looksBinary } from '@/lib/repoBrowser';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -237,6 +246,32 @@ const AddRepoPage = () => {
   const { toast } = useToast();
   const { config } = useAppContext();
 
+  // --- edit mode (route: /repos/edit/:naddr) ---
+  const { naddr: editNaddr } = useParams<{ naddr: string }>();
+  const isEditMode = Boolean(editNaddr);
+
+  /** Decoded pubkey + identifier of the repo being edited, or null if invalid. */
+  const editTarget = useMemo(() => {
+    if (!editNaddr) return null;
+    try {
+      const decoded = nip19.decode(editNaddr);
+      if (decoded.type !== 'naddr' || decoded.data.kind !== GIT_REPO_KIND) return null;
+      return {
+        pubkey: decoded.data.pubkey,
+        identifier: decoded.data.identifier,
+        relays: decoded.data.relays,
+      };
+    } catch {
+      return null;
+    }
+  }, [editNaddr]);
+
+  const existingRepo = useGitRepo({
+    pubkey: editTarget?.pubkey ?? '',
+    identifier: editTarget?.identifier ?? '',
+    relays: editTarget?.relays,
+  });
+
   const [mode, setMode] = useState<RepoMode>('create');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -261,10 +296,25 @@ const AddRepoPage = () => {
 
   const { mutateAsync: mirrorRepo, isPending: isMirroring } = useMirrorRepo();
   const { mutateAsync: createRepo, isPending: isCreating } = useCreateRepo();
-  const isPending = isMirroring || isCreating;
+  const { mutateAsync: publishRepo, isPending: isSaving } = usePublishRepo();
+  const isPending = isMirroring || isCreating || isSaving;
+
+  // Prefill the form from the existing announcement when editing. Keyed to the
+  // loaded event id so it runs once per revision, not on every render.
+  const [prefilledFrom, setPrefilledFrom] = useState<string | null>(null);
+  const existingAnnouncement = existingRepo.data?.repo;
+  if (isEditMode && existingAnnouncement && prefilledFrom !== existingAnnouncement.event.id) {
+    setPrefilledFrom(existingAnnouncement.event.id);
+    setName(existingAnnouncement.name);
+    setIdentifier(existingAnnouncement.identifier);
+    setIdentifierTouched(true);
+    setDescription(existingAnnouncement.description ?? '');
+    setWebUrls(existingAnnouncement.webUrls);
+    setHashtags(existingAnnouncement.hashtags);
+  }
 
   useSeoMeta({
-    title: 'Add a repository | NostrHub',
+    title: isEditMode ? 'Edit repository | NostrHub' : 'Add a repository | NostrHub',
     description: 'Create a fresh git repository on Nostr, or announce an existing one.',
   });
 
@@ -373,10 +423,10 @@ const AddRepoPage = () => {
   const validate = (): boolean => {
     const next: Record<string, string> = {};
     if (!name.trim()) next.name = 'Give your repository a name.';
-    if (selectedGrasp.length === 0) {
+    if (!isEditMode && selectedGrasp.length === 0) {
       next.grasp = 'Pick at least one GRASP server to host the repository.';
     }
-    if (mode === 'existing' && !existingUrl.trim()) {
+    if (!isEditMode && mode === 'existing' && !existingUrl.trim()) {
       next.cloneUrls = 'A source clone URL is required.';
     }
     setErrors(next);
@@ -387,6 +437,33 @@ const AddRepoPage = () => {
     e.preventDefault();
     if (!user || !validate()) return;
     const id = identifier.trim() || slugify(name);
+
+    // Edit mode: republish the announcement, preserving the immutable bits
+    // (clone URLs, relays, earliest-commit fingerprint) of the original.
+    if (isEditMode) {
+      if (!existingAnnouncement) return;
+      try {
+        await publishRepo({
+          identifier: existingAnnouncement.identifier,
+          name: name.trim(),
+          description: description.trim() || undefined,
+          cloneUrls: existingAnnouncement.cloneUrls,
+          relays: existingAnnouncement.relays,
+          hashtags,
+          webUrls,
+          earliestCommit: existingAnnouncement.earliestCommit,
+        });
+        toast({ title: 'Repository updated' });
+        navigate(`/${repoNaddr(user.pubkey, existingAnnouncement.identifier, existingAnnouncement.relays)}`);
+      } catch (error) {
+        toast({
+          title: 'Failed to update repository',
+          description: error instanceof Error ? error.message : undefined,
+          variant: 'destructive',
+        });
+      }
+      return;
+    }
 
     try {
       if (mode === 'create') {
@@ -421,20 +498,51 @@ const AddRepoPage = () => {
     }
   };
 
+  /** Why the edit form can't be shown yet (or at all), if anything. */
+  const editGuard: 'invalid' | 'loading' | 'missing' | 'forbidden' | null = !isEditMode
+    ? null
+    : !editTarget
+      ? 'invalid'
+      : user && user.pubkey !== editTarget.pubkey
+        ? 'forbidden'
+        : existingRepo.isLoading
+          ? 'loading'
+          : !existingAnnouncement
+            ? 'missing'
+            : null;
+
+  const backTo = isEditMode && editTarget ? `/${editNaddr}` : '/repos';
+  const backLabel = isEditMode ? 'Back to repository' : 'Back to Repositories';
+
   return (
     <Layout>
       <Button variant="ghost" asChild className="mb-4 -ml-2">
-        <Link to="/repos"><ArrowLeft className="mr-1.5 size-4" /> Back to Repositories</Link>
+        <Link to={backTo}><ArrowLeft className="mr-1.5 size-4" /> {backLabel}</Link>
       </Button>
 
       <div className="mb-6 space-y-2">
-        <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
-          Add a <span className="text-cosmic">repository</span>
-        </h1>
-        <p className="max-w-prose text-muted-foreground">
-          Publish a git repository to Nostr as a{' '}
-          <span className="font-mono text-sm">kind:30617</span> event so it outlives any single forge.
-        </p>
+        {isEditMode ? (
+          <>
+            <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
+              Edit <span className="text-cosmic">repository</span>
+            </h1>
+            <p className="max-w-prose text-muted-foreground">
+              Update your repository's details. This republishes its{' '}
+              <span className="font-mono text-sm">kind:30617</span> announcement; the code and clone
+              URLs stay put.
+            </p>
+          </>
+        ) : (
+          <>
+            <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
+              Add a <span className="text-cosmic">repository</span>
+            </h1>
+            <p className="max-w-prose text-muted-foreground">
+              Publish a git repository to Nostr as a{' '}
+              <span className="font-mono text-sm">kind:30617</span> event so it outlives any single forge.
+            </p>
+          </>
+        )}
       </div>
 
       {!user ? (
@@ -442,35 +550,57 @@ const AddRepoPage = () => {
           <CardContent className="space-y-4 pt-6">
             <Alert>
               <AlertCircle className="size-4" />
-              <AlertDescription>You must be logged in to add a repository.</AlertDescription>
+              <AlertDescription>
+                You must be logged in to {isEditMode ? 'edit' : 'add'} a repository.
+              </AlertDescription>
             </Alert>
             <LoginArea className="max-w-60" />
           </CardContent>
         </Card>
+      ) : editGuard === 'loading' ? (
+        <Card>
+          <CardContent className="space-y-3 pt-6">
+            <Loader2 className="size-5 animate-spin text-muted-foreground" aria-hidden="true" />
+            <p className="text-sm text-muted-foreground">Loading repository…</p>
+          </CardContent>
+        </Card>
+      ) : editGuard ? (
+        <Alert variant="destructive">
+          <AlertCircle className="size-4" />
+          <AlertDescription>
+            {editGuard === 'invalid'
+              ? "That isn't a valid repository link."
+              : editGuard === 'forbidden'
+                ? 'Only the account that published this repository can edit it.'
+                : "Couldn't find this repository. Its announcement may not have reached your relays yet."}
+          </AlertDescription>
+        </Alert>
       ) : (
         <Card>
           <CardContent className="pt-6">
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Path: two distinct cards (create vs. existing). */}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2" role="radiogroup" aria-label="How to add the repository">
-                <ModeCard
-                  active={mode === 'create'}
-                  onClick={() => { setMode('create'); setErrors({}); }}
-                  icon={Plus}
-                  title="Create new"
-                  blurb="Start a fresh repo. NostrHub initializes it and pushes it to a GRASP server for you."
-                />
-                <ModeCard
-                  active={mode === 'existing'}
-                  onClick={() => { setMode('existing'); setErrors({}); }}
-                  icon={Link2}
-                  title="Add existing"
-                  blurb="Have a repo elsewhere? NostrHub clones it and mirrors it onto a GRASP server."
-                />
-              </div>
+              {/* Path: two distinct cards (create vs. existing). Hidden when editing. */}
+              {!isEditMode && (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2" role="radiogroup" aria-label="How to add the repository">
+                  <ModeCard
+                    active={mode === 'create'}
+                    onClick={() => { setMode('create'); setErrors({}); }}
+                    icon={Plus}
+                    title="Create new"
+                    blurb="Start a fresh repo. NostrHub initializes it and pushes it to a GRASP server for you."
+                  />
+                  <ModeCard
+                    active={mode === 'existing'}
+                    onClick={() => { setMode('existing'); setErrors({}); }}
+                    icon={Link2}
+                    title="Add existing"
+                    blurb="Have a repo elsewhere? NostrHub clones it and mirrors it onto a GRASP server."
+                  />
+                </div>
+              )}
 
               {/* Add existing: progressive disclosure — clone URL first. */}
-              {mode === 'existing' && !existingRevealed && (
+              {!isEditMode && mode === 'existing' && !existingRevealed && (
                 <div className="space-y-1.5">
                   <Label htmlFor="clone-url" className="flex items-center gap-1.5">
                     <Link2 className="size-3.5 text-muted-foreground" aria-hidden="true" /> Clone URL
@@ -508,11 +638,11 @@ const AddRepoPage = () => {
                 </div>
               )}
 
-              {/* The rest of the form: always for 'create', after the probe for 'existing'. */}
-              {(mode === 'create' || existingRevealed) && (
+              {/* The rest of the form: always for 'create' or edit, after the probe for 'existing'. */}
+              {(isEditMode || mode === 'create' || existingRevealed) && (
                 <>
                   {/* Source (existing mode): what we're mirroring. */}
-                  {mode === 'existing' && (
+                  {!isEditMode && mode === 'existing' && (
                     <div className="space-y-1.5">
                       <Label className="flex items-center gap-1.5">
                         <Link2 className="size-3.5 text-muted-foreground" aria-hidden="true" /> Source
@@ -556,7 +686,8 @@ const AddRepoPage = () => {
                     />
                   </div>
 
-                  {/* Where to host it — both modes push to a GRASP server. */}
+                  {/* Where to host it — both modes push to a GRASP server. Not editable after publishing. */}
+                  {!isEditMode && (
                   <div className="space-y-1.5">
                     <Label className="flex items-center gap-1.5">
                       <Server className="size-3.5 text-muted-foreground" aria-hidden="true" />
@@ -633,6 +764,7 @@ const AddRepoPage = () => {
                       )}
                     </p>
                   </div>
+                  )}
 
               {/* Topics */}
               <div className="space-y-1.5">
@@ -678,10 +810,13 @@ const AddRepoPage = () => {
                       onChange={(e) => handleIdentifierChange(e.target.value)}
                       placeholder="my-project"
                       className="font-mono text-sm"
+                      readOnly={isEditMode}
+                      disabled={isEditMode}
                     />
                     <p className="text-xs text-muted-foreground">
-                      Stable kebab-case slug for the <span className="font-mono">d</span> tag. Defaults to the
-                      name; don't change it after publishing.
+                      {isEditMode
+                        ? "The d tag is fixed once a repo is published — it can't be changed."
+                        : "Stable kebab-case slug for the d tag. Defaults to the name; don't change it after publishing."}
                     </p>
                   </div>
 
@@ -702,17 +837,23 @@ const AddRepoPage = () => {
               {/* Submit */}
               <div className="flex items-center justify-end gap-3 border-t border-border/50 pt-5">
                 <Button type="button" variant="ghost" asChild>
-                  <Link to="/repos">Cancel</Link>
+                  <Link to={backTo}>Cancel</Link>
                 </Button>
                 <Button type="submit" disabled={isPending} className="gap-1.5">
                   {isPending ? (
                     <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                  ) : isEditMode ? (
+                    <Save className="size-4" aria-hidden="true" />
                   ) : mode === 'create' ? (
                     <Plus className="size-4" aria-hidden="true" />
                   ) : (
                     <Send className="size-4" aria-hidden="true" />
                   )}
-                  {mode === 'create' ? 'Create repository' : 'Mirror to Nostr'}
+                  {isEditMode
+                    ? 'Save changes'
+                    : mode === 'create'
+                      ? 'Create repository'
+                      : 'Mirror to Nostr'}
                 </Button>
               </div>
                 </>

@@ -1,4 +1,5 @@
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useSeoMeta } from '@unhead/react';
 import { nip19 } from 'nostr-tools';
 import { formatDistanceToNow } from 'date-fns';
@@ -6,7 +7,10 @@ import {
   AlertCircle,
   Crown,
   Fingerprint,
+  MoreVertical,
+  Pencil,
   Radio,
+  Trash2,
   Users,
 } from 'lucide-react';
 import { Layout } from '@/components/Layout';
@@ -19,16 +23,36 @@ import { RepoFileBrowser } from '@/components/git/RepoFileBrowser';
 import { CommentsSection } from '@/components/comments/CommentsSection';
 import { UsedByAppsCard, RelatedNipsCard } from '@/components/CrossRefCards';
 import { LinkAppNudge } from '@/components/LinkAppNudge';
-import { useGitRepo } from '@/hooks/useGitRepo';
+import { useGitRepo, useDeleteRepo } from '@/hooks/useGitRepo';
 import { useAuthor } from '@/hooks/useAuthor';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useToast } from '@/hooks/useToast';
 import { useAppsForRepo } from '@/hooks/useAppsForRepo';
 import { shortNpub, formatRelayName } from '@/lib/nostr';
-import { GIT_REPO_KIND, isShakespeareRepo, type GitRepoAnnouncement } from '@/lib/git';
+import { GIT_REPO_KIND, isShakespeareRepo, repoNaddr, type GitRepoAnnouncement } from '@/lib/git';
 import { uniqueNipRefs } from '@/lib/apps';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface GitRepoPageProps {
   /** Repository owner (hex pubkey). */
@@ -153,10 +177,34 @@ function RepoSidebar({ repo }: { repo: GitRepoAnnouncement }) {
 export function GitRepoPage({ pubkey, identifier, relays }: GitRepoPageProps) {
   const { data, isLoading, isError } = useGitRepo({ pubkey, identifier, relays });
   const author = useAuthor(pubkey);
+  const { user } = useCurrentUser();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const { mutateAsync: deleteRepo, isPending: isDeleting } = useDeleteRepo();
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const repo = data?.repo ?? null;
   const state = data?.state ?? null;
   const repoAddress = `${GIT_REPO_KIND}:${pubkey}:${identifier}`;
   const appsForRepo = useAppsForRepo(repoAddress);
+
+  const isOwner = !!user && !!repo && user.pubkey === repo.pubkey;
+  const editNaddr = repoNaddr(pubkey, identifier, relays);
+
+  const handleDelete = async () => {
+    if (!repo) return;
+    try {
+      await deleteRepo({ repo, state });
+      toast({ title: 'Repository deleted' });
+      setShowDeleteDialog(false);
+      navigate('/repos');
+    } catch (error) {
+      toast({
+        title: 'Failed to delete repository',
+        description: error instanceof Error ? error.message : undefined,
+        variant: 'destructive',
+      });
+    }
+  };
 
   // Apps referencing this repo in their NIP-89 listing also declare the NIPs
   // they implement — the listing is the nexus tying repos to NIPs.
@@ -191,7 +239,40 @@ export function GitRepoPage({ pubkey, identifier, relays }: GitRepoPageProps) {
       ) : (
         <article className="space-y-8">
           {/* ——— Header ——— */}
-          <DetailSurface>
+          <DetailSurface className="relative">
+          {isOwner && (
+            <div className="absolute right-4 top-4 sm:right-6 sm:top-6">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-8 text-muted-foreground hover:text-foreground"
+                    aria-label="Repository options"
+                  >
+                    <MoreVertical className="size-4" aria-hidden="true" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem asChild>
+                    <Link to={`/repos/edit/${editNaddr}`}>
+                      <Pencil className="size-4" aria-hidden="true" /> Edit
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      setShowDeleteDialog(true);
+                    }}
+                  >
+                    <Trash2 className="size-4" aria-hidden="true" /> Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
           <DetailHero
             title={repo.name}
             subtitle={
@@ -267,6 +348,32 @@ export function GitRepoPage({ pubkey, identifier, relays }: GitRepoPageProps) {
           </div>
         </article>
       )}
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this repository?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This publishes a deletion request (NIP-09) for your repository announcement. Relays
+              that honor it will remove the event, but copies may remain on relays that don't, and
+              any git data already pushed to a hosting server is unaffected. This can't be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleDelete();
+              }}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? 'Deleting…' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   );
 }
