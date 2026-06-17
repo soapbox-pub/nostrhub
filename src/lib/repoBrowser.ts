@@ -51,6 +51,8 @@ export interface CloneSnapshotOptions {
   cloneUrls: string[];
   /** Branch to check out; omit to use the remote default (HEAD). */
   ref?: string;
+  /** CORS proxy template (`{href}`) for cloning from non-CORS hosts. */
+  corsProxy?: string;
   signal?: AbortSignal;
 }
 
@@ -59,18 +61,19 @@ export interface CloneSnapshotOptions {
  * Tries each clone URL in order until one succeeds.
  */
 export async function cloneRepoSnapshot(options: CloneSnapshotOptions): Promise<RepoSnapshot> {
-  const { cloneUrls, ref, signal } = options;
+  const { cloneUrls, ref, corsProxy, signal } = options;
   if (cloneUrls.length === 0) {
     throw new Error('This repository has no clone URLs to browse.');
   }
 
   // Lazy-load the heavy git machinery so it never lands in the main bundle.
-  const [{ default: git }, { default: http }, { createMemFs }] = await Promise.all([
+  const [{ default: git }, { createMemFs }, { makeGitHttp }] = await Promise.all([
     import('isomorphic-git'),
-    import('isomorphic-git/http/web'),
     import('@/lib/memFs'),
+    import('@/lib/gitHttp'),
   ]);
 
+  const http = makeGitHttp(corsProxy ?? '');
   const errors: string[] = [];
 
   for (const url of cloneUrls) {

@@ -1,5 +1,5 @@
 import { useNostr } from '@nostrify/react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAppContext } from '@/hooks/useAppContext';
 import { getEffectiveRelays } from '@/lib/appRelays';
 import {
@@ -27,6 +27,16 @@ export interface GitRepoData {
   state: GitRepoState | null;
 }
 
+/**
+ * Relay-agnostic cache key for an optimistically-published repo. The main
+ * `['git-repo', ...]` query key embeds relay hints (which vary by entry point),
+ * so a just-published repo is stashed here and used as a fallback until relays
+ * have it indexed.
+ */
+function optimisticKey(pubkey: string, identifier: string) {
+  return ['git-repo-optimistic', pubkey, identifier] as const;
+}
+
 function normalizeRelayUrl(url: string): string | undefined {
   try {
     const parsed = new URL(url);
@@ -48,6 +58,7 @@ function normalizeRelayUrl(url: string): string | undefined {
 export function useGitRepo({ pubkey, identifier, relays }: UseGitRepoOptions) {
   const { nostr } = useNostr();
   const { config } = useAppContext();
+  const queryClient = useQueryClient();
 
   return useQuery<GitRepoData>({
     queryKey: ['git-repo', pubkey, identifier, [...(relays ?? [])].sort().join(',')],
@@ -82,13 +93,34 @@ export function useGitRepo({ pubkey, identifier, relays }: UseGitRepoOptions) {
         }
       }
 
-      return {
+      const result: GitRepoData = {
         repo: repoEvent ? parseRepoAnnouncement(repoEvent) : null,
         state: stateEvent ? parseRepoState(stateEvent) : null,
       };
+
+      // Until relays have indexed a freshly-published repo, fall back to the
+      // optimistic copy seeded at publish time so the page renders immediately.
+      if (!result.repo) {
+        const seeded = queryClient.getQueryData<GitRepoData>(optimisticKey(pubkey, identifier));
+        if (seeded?.repo) return seeded;
+      }
+
+      return result;
     },
     enabled: Boolean(pubkey && identifier),
     staleTime: 60 * 1000,
     retry: 1,
   });
+}
+
+/**
+ * Seed the optimistic repo cache so a just-published repo renders before relays
+ * have it. Returns the parsed data that was stored.
+ */
+export function seedOptimisticRepo(
+  queryClient: ReturnType<typeof useQueryClient>,
+  data: GitRepoData,
+): void {
+  if (!data.repo) return;
+  queryClient.setQueryData(optimisticKey(data.repo.pubkey, data.repo.identifier), data);
 }

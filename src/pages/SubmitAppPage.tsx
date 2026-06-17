@@ -39,6 +39,7 @@ import { cn } from '@/lib/utils';
 import { APP_PLATFORMS, APP_HANDLER_KIND, nipGithubUrl, parseAppEvent, type AppPlatform } from '@/lib/apps';
 import type { CustomNip } from '@/lib/nips';
 import type { GitRepoAnnouncement } from '@/lib/git';
+import { GIT_REPO_KIND } from '@/lib/git';
 import type { ZapstoreApp } from '@/hooks/useZapstoreSearch';
 
 // ---------------------------------------------------------------------------
@@ -177,6 +178,38 @@ function isValidWsUrl(value: string): boolean {
 function isValidUri(value: string): boolean {
   try { new URL(value); return true; }
   catch { return false; }
+}
+
+/**
+ * Parse a manually-entered repo reference into a {@link RepoRefEntry}. Accepts
+ * a repo `naddr1…` or a raw `30617:<pubkey>:<d>` address coordinate, so users
+ * can reference a repo that isn't surfaced by search.
+ */
+function parseRepoRef(value: string): RepoRefEntry | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+
+  // Raw address coordinate.
+  const parts = trimmed.split(':');
+  if (parts.length === 3 && parts[0] === String(GIT_REPO_KIND) && /^[0-9a-f]{64}$/i.test(parts[1])) {
+    return { address: trimmed, relayHint: '', name: parts[2] };
+  }
+
+  // naddr.
+  try {
+    const decoded = nip19.decode(trimmed);
+    if (decoded.type === 'naddr' && decoded.data.kind === GIT_REPO_KIND) {
+      const { pubkey, identifier, relays } = decoded.data;
+      return {
+        address: `${GIT_REPO_KIND}:${pubkey}:${identifier}`,
+        relayHint: relays?.[0] ?? '',
+        name: identifier,
+      };
+    }
+  } catch {
+    // not a nip19 string
+  }
+  return undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -411,6 +444,22 @@ function RepoPicker({
   const myRepos = useGitRepos({ authors: [pubkey], limit: 200 });
   const searchResults = useGitRepoSearch(debouncedQuery, 15);
 
+  const [manualRef, setManualRef] = useState('');
+  const [manualError, setManualError] = useState(false);
+
+  const addManual = () => {
+    const entry = parseRepoRef(manualRef);
+    if (!entry) {
+      setManualError(true);
+      return;
+    }
+    setManualError(false);
+    setRepoRefs((prev) =>
+      prev.some((r) => r.address === entry.address) ? prev : [...prev, entry],
+    );
+    setManualRef('');
+  };
+
   const selectedAddrs = new Set(repoRefs.map((r) => r.address));
 
   const toggle = (repo: GitRepoAnnouncement) => {
@@ -478,6 +527,28 @@ function RepoPicker({
               );
             })}
           </div>
+        )}
+      </div>
+
+      <div className="space-y-1.5">
+        <div className="flex gap-2">
+          <Input
+            value={manualRef}
+            onChange={(e) => { setManualRef(e.target.value); setManualError(false); }}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addManual(); } }}
+            placeholder="Or paste a repo naddr1… or 30617:<pubkey>:<id>"
+            aria-label="Add a repository by address"
+            aria-invalid={manualError}
+            className="font-mono text-xs"
+          />
+          <Button type="button" variant="outline" size="icon" onClick={addManual} aria-label="Add repository by address">
+            <PlusCircle className="size-4" aria-hidden="true" />
+          </Button>
+        </div>
+        {manualError && (
+          <p className="text-xs text-destructive">
+            Enter a valid repo <code className="font-mono">naddr1…</code> or <code className="font-mono">30617:&lt;pubkey&gt;:&lt;id&gt;</code> address.
+          </p>
         )}
       </div>
     </div>

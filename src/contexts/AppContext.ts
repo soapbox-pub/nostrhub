@@ -97,6 +97,14 @@ export interface AppConfig {
   searchRelays: string[];
   /** OpenAI-compatible AI provider config for the in-chat `@ai` assistant. */
   ai: AISettings;
+  /**
+   * CORS proxy used to clone git repositories from hosts that don't send CORS
+   * headers (e.g. GitHub/GitLab) when mirroring an existing repo onto Nostr.
+   * A `{href}` placeholder is replaced with the target URL; if absent, the
+   * target is appended. Empty disables proxying (direct fetch only — works for
+   * CORS-enabled GRASP hosts). Mirrors Shakespeare's `corsProxy`.
+   */
+  gitCorsProxy: string;
 }
 
 export interface AppContextType {

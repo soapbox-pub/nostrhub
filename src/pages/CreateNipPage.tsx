@@ -102,7 +102,7 @@ const CreateNipPage = () => {
   return (
     <Layout>
       <Button variant="ghost" asChild className="mb-4 -ml-2">
-        <Link to="/">
+        <Link to="/nips">
           <ArrowLeft className="mr-1.5 size-4" /> Back to NIPs
         </Link>
       </Button>

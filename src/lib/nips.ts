@@ -88,7 +88,9 @@ export function slugify(value: string): string {
   return value
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9\s-]/g, '')
+    // Keep underscores here so they collapse into separators below rather than
+    // being deleted (which would mash adjacent words together).
+    .replace(/[^a-z0-9\s_-]/g, '')
     .replace(/[\s_-]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 64);

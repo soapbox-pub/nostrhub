@@ -16,6 +16,24 @@ export const GIT_DISCOVERY_RELAYS: string[] = [
   'wss://git.shakespeare.diy/',
 ];
 
+/**
+ * Default GRASP servers offered when creating a brand-new repository. These are
+ * relays that also expose a git smart-HTTP endpoint, so a freshly-initialized
+ * repo can be pushed straight from the browser. Each entry's `wss://` host is
+ * reused for the `https://<host>/<npub>/<id>.git` clone URL.
+ */
+export const DEFAULT_GRASP_SERVERS: string[] = [
+  'wss://relay.ngit.dev/',
+  'wss://git.shakespeare.diy/',
+];
+
+/** Build a GRASP smart-HTTP clone URL: `https://<host>/<npub>/<id>.git`. */
+export function graspCloneUrl(graspRelay: string, pubkey: string, identifier: string): string {
+  const host = new URL(graspRelay).host;
+  const npub = nip19.npubEncode(pubkey);
+  return new URL(`/${npub}/${identifier}.git`, `https://${host}`).href;
+}
+
 /** A git ref (branch or tag) from a kind 30618 state event. */
 export interface GitRef {
   /** Short name, e.g. `main` or `v1.0.0`. */

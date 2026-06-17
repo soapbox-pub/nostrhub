@@ -8,10 +8,12 @@ import SettingsPage from "./pages/SettingsPage";
 import OfficialNipPage from "./pages/OfficialNipPage";
 import CreateNipPage from "./pages/CreateNipPage";
 import EditNipPage from "./pages/EditNipPage";
+import ComparePage from "./pages/ComparePage";
 import StatsPage from "./pages/StatsPage";
 import ExpertsPage from "./pages/ExpertsPage";
 import CommunityPage from "./pages/CommunityPage";
 import GitReposPage from "./pages/GitReposPage";
+import AddRepoPage from "./pages/AddRepoPage";
 import NipsPage from "./pages/NipsPage";
 import KindPage from "./pages/KindPage";
 import AppsPage from "./pages/AppsPage";
@@ -35,6 +37,7 @@ export function AppRouter() {
         <Route path="/articles/create" element={<CreateArticlePage />} />
         <Route path="/drafts" element={<DraftsPage />} />
         <Route path="/repos" element={<GitReposPage />} />
+        <Route path="/repos/new" element={<AddRepoPage />} />
         <Route path="/apps" element={<AppsPage />} />
         <Route path="/apps/submit" element={<SubmitAppPage />} />
         <Route path="/apps/edit/:naddr" element={<SubmitAppPage />} />
@@ -50,6 +53,7 @@ export function AppRouter() {
         <Route path="/k/:kind" element={<KindPage />} />
         <Route path="/create" element={<CreateNipPage />} />
         <Route path="/edit/:naddr" element={<EditNipPage />} />
+        <Route path="/compare" element={<ComparePage />} />
         {/* NIP-19 route for npub1, note1, naddr1, nevent1, nprofile1 */}
         <Route path="/:nip19" element={<NIP19Page />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

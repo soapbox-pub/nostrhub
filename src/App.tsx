@@ -63,6 +63,7 @@ const defaultConfig: AppConfig = {
     model: '',
     apiKey: '',
   },
+  gitCorsProxy: 'https://proxy.shakespeare.diy/?url={href}',
 };
 
 export function App() {

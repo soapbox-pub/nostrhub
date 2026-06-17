@@ -58,7 +58,7 @@ const OfficialNipPage = () => {
 
   return (
     <Layout className={showSidebar ? 'max-w-6xl' : undefined}>
-      <BackLink to="/">Back to NIPs</BackLink>
+      <BackLink to="/nips">Back to NIPs</BackLink>
 
       {isLoading ? (
         <div className="space-y-3">

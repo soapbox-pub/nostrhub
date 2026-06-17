@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSeoMeta } from '@unhead/react';
 import { nip19 } from 'nostr-tools';
-import { GitFork, AlertCircle, Pencil, Trash2, History } from 'lucide-react';
+import { GitFork, AlertCircle, Pencil, Trash2, History, GitCompare } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { BackLink, DetailHero } from '@/components/DetailHero';
 import { DetailSurface } from '@/components/DetailSurface';
@@ -91,7 +91,7 @@ export function CustomNipPage({ naddr, eventId }: { naddr?: string; eventId?: st
 
   return (
     <Layout className={showSidebar ? 'max-w-6xl' : undefined}>
-      <BackLink to="/">Back to NIPs</BackLink>
+      <BackLink to="/nips">Back to NIPs</BackLink>
 
       {isLoading ? (
         <div className="space-y-3">
@@ -169,6 +169,15 @@ export function CustomNipPage({ naddr, eventId }: { naddr?: string; eventId?: st
                 ) : (
                   <span className="font-mono">{nip.fork.address}</span>
                 )}
+                {' · '}
+                <Link
+                  to={`/compare?a=${encodeURIComponent(
+                    nip.fork.type === 'official' ? nip.fork.url : nip.fork.address,
+                  )}&b=${encodeURIComponent(nip.naddr)}`}
+                  className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+                >
+                  <GitCompare className="size-3.5" aria-hidden="true" /> Compare with source
+                </Link>
               </p>
             )}
           </DetailHero>
