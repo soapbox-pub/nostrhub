@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Check,
   ChevronDown,
@@ -13,6 +13,7 @@ import {
   FolderGit2,
   FolderOpen,
   GitBranch,
+  Link2,
   Loader2,
   ScrollText,
   Tag as TagIcon,
@@ -239,8 +240,19 @@ function CodeView({ text }: { text: string }) {
   );
 }
 
-function FileViewer({ snapshot, path }: { snapshot: RepoSnapshot; path: string }) {
+function FileViewer({
+  snapshot,
+  path,
+  shareUrl,
+}: {
+  snapshot: RepoSnapshot;
+  path: string;
+  /** Absolute, shareable URL that opens this file at the current branch. */
+  shareUrl?: string;
+}) {
   const { data: bytes, isLoading, isError } = useRepoFile(snapshot, path);
+  const { toast } = useToast();
+  const [copiedLink, setCopiedLink] = useState(false);
   const isMarkdown = /\.(md|markdown)$/i.test(path);
   // Track which path raw-mode is enabled for, so navigating away auto-resets.
   const [rawPath, setRawPath] = useState<string | null>(null);
@@ -286,6 +298,18 @@ function FileViewer({ snapshot, path }: { snapshot: RepoSnapshot; path: string }
     URL.revokeObjectURL(url);
   };
 
+  const copyLink = async () => {
+    if (!shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 1500);
+      toast({ title: 'Link to file copied to clipboard' });
+    } catch {
+      toast({ title: 'Could not copy link', variant: 'destructive' });
+    }
+  };
+
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="flex items-center gap-2 border-b border-border/60 bg-muted/40 px-4 py-2">
@@ -297,6 +321,23 @@ function FileViewer({ snapshot, path }: { snapshot: RepoSnapshot; path: string }
           <span className="shrink-0 text-xs text-muted-foreground">{formatBytes(bytes.length)}</span>
         )}
         <span className="ml-auto flex shrink-0 items-center gap-1">
+          {shareUrl && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-xs"
+              onClick={copyLink}
+              aria-label={copiedLink ? 'Link copied' : `Copy link to ${path}`}
+              title="Copy link to this file"
+              className="text-muted-foreground hover:text-foreground"
+            >
+              {copiedLink ? (
+                <Check className="size-3.5 text-chart-5" aria-hidden="true" />
+              ) : (
+                <Link2 className="size-3.5" aria-hidden="true" />
+              )}
+            </Button>
+          )}
           {isMarkdown && text !== undefined && (
             <Button
               type="button"
@@ -369,14 +410,46 @@ function FileViewer({ snapshot, path }: { snapshot: RepoSnapshot; path: string }
  * from a GRASP mirror and renders the tree + file contents, README first.
  */
 export function RepoFileBrowser({ repo, state }: RepoFileBrowserProps) {
+  const [searchParams, setSearchParams] = useSearchParams();
   const branches = state?.branches ?? [];
   const tags = state?.tags ?? [];
-  const [branch, setBranch] = useState<string | undefined>(state?.headBranch ?? branches[0]?.name);
+
+  // The branch and file path are reflected in the URL (`?ref=…&path=…`) so a
+  // specific file can be shared. The URL is the source of truth for both.
+  const refParam = searchParams.get('ref') ?? undefined;
+  const pathParam = searchParams.get('path') ?? undefined;
+
+  const branch =
+    refParam && branches.some((b) => b.name === refParam)
+      ? refParam
+      : state?.headBranch ?? branches[0]?.name;
   const [branchOpen, setBranchOpen] = useState(false);
   const { data: snapshot, isLoading, isError, error } = useRepoSnapshot(repo, branch);
 
-  const [selectedPath, setSelectedPath] = useState<string>();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  /** Update a single search param, preserving the rest and replacing history. */
+  const setParam = useCallback(
+    (key: 'ref' | 'path', value: string | undefined) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (value) next.set(key, value);
+          else next.delete(key);
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
+
+  const setBranch = useCallback(
+    (value: string) => {
+      setParam('ref', value);
+    },
+    [setParam],
+  );
 
   // All file paths in the current snapshot, for validating the selection
   // (a branch switch can produce a tree without the previously-open file).
@@ -392,12 +465,34 @@ export function RepoFileBrowser({ repo, state }: RepoFileBrowserProps) {
     return paths;
   }, [snapshot]);
 
-  // Derived selection: the user's pick when still valid, else the README.
+  // Derived selection: the path from the URL when still valid, else the README.
   const defaultPath = useMemo(() => {
     if (!snapshot) return undefined;
     return findReadme(snapshot.tree)?.path ?? snapshot.tree.find((n) => n.type === 'file')?.path;
   }, [snapshot]);
-  const selected = selectedPath && filePaths.has(selectedPath) ? selectedPath : defaultPath;
+  const selected = pathParam && filePaths.has(pathParam) ? pathParam : defaultPath;
+
+  const onSelect = useCallback(
+    (path: string) => {
+      setParam('path', path);
+    },
+    [setParam],
+  );
+
+  // Auto-expand the folders leading to the selected file so a shared deep link
+  // reveals it in the tree. Derived (not stored) so it never fights the user's
+  // manual toggles or triggers cascading effect renders.
+  const displayedExpanded = useMemo(() => {
+    if (!selected || !selected.includes('/')) return expanded;
+    const segments = selected.split('/');
+    const next = new Set(expanded);
+    let prefix = '';
+    for (let i = 0; i < segments.length - 1; i++) {
+      prefix = prefix ? `${prefix}/${segments[i]}` : segments[i];
+      next.add(prefix);
+    }
+    return next;
+  }, [selected, expanded]);
 
   const toggleDir = (path: string) => {
     setExpanded((prev) => {
@@ -407,6 +502,20 @@ export function RepoFileBrowser({ repo, state }: RepoFileBrowserProps) {
       return next;
     });
   };
+
+  /** Absolute URL that re-opens the current file at the current branch. */
+  const shareUrlFor = useCallback(
+    (path: string) => {
+      if (typeof window === 'undefined') return undefined;
+      const params = new URLSearchParams();
+      // Only pin the ref when it isn't the repo's default branch.
+      if (branch && branch !== state?.headBranch) params.set('ref', branch);
+      params.set('path', path);
+      const query = params.toString();
+      return `${window.location.origin}${window.location.pathname}${query ? `?${query}` : ''}`;
+    },
+    [branch, state?.headBranch],
+  );
 
   const hasMirrors = repo.cloneUrls.length > 0;
 
@@ -546,10 +655,10 @@ export function RepoFileBrowser({ repo, state }: RepoFileBrowserProps) {
                     key={node.path}
                     node={node}
                     depth={0}
-                    expanded={expanded}
+                    expanded={displayedExpanded}
                     selected={selected}
                     onToggle={toggleDir}
-                    onSelect={setSelectedPath}
+                    onSelect={onSelect}
                     trailing={
                       node.type === 'file' && node.path === 'NIP.md'
                         ? <PublishNipButton snapshot={snapshot} repo={repo} />
@@ -562,7 +671,7 @@ export function RepoFileBrowser({ repo, state }: RepoFileBrowserProps) {
 
             <div className="flex min-h-96 min-w-0 flex-col md:max-h-[46rem] md:overflow-y-auto">
               {selected ? (
-                <FileViewer snapshot={snapshot} path={selected} />
+                <FileViewer snapshot={snapshot} path={selected} shareUrl={shareUrlFor(selected)} />
               ) : (
                 <p className="m-auto p-10 text-sm text-muted-foreground">Select a file to view it.</p>
               )}
