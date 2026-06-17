@@ -179,7 +179,7 @@ const Index = () => {
   return (
     <Layout className="max-w-6xl">
       {/* ── Masthead ─────────────────────────────────────────────── */}
-      <header className="relative mb-14 flex flex-col items-center gap-5 overflow-x-clip pt-8 text-center sm:pt-12">
+      <header className="relative -mx-4 mb-14 flex flex-col items-center gap-5 overflow-x-clip px-4 pt-8 text-center sm:-mx-6 sm:px-6 sm:pt-12">
         {/* Nebula halo behind the wordmark */}
         <div
           aria-hidden="true"

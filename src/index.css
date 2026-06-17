@@ -276,8 +276,36 @@
       center bottom;
     background-size:
       300px 300px, 360px 360px, 320px 320px, 280px 280px, 340px 340px, 260px 260px,
-      100% auto;
+      cover;
     opacity: 0.5;
+    /* Per-layer masks (one per background layer): the six spore layers stay
+       fully visible, while the forest-floor photo (final layer) fades from
+       transparent at its top to opaque at the bottom — so its top edge melts
+       into the page instead of ending in a hard horizontal line. */
+    -webkit-mask-image:
+      none, none, none, none, none, none,
+      linear-gradient(to top, black 70%, transparent 100%);
+    mask-image:
+      none, none, none, none, none, none,
+      linear-gradient(to top, black 70%, transparent 100%);
+    -webkit-mask-size:
+      auto, auto, auto, auto, auto, auto,
+      100% 70dvh;
+    mask-size:
+      auto, auto, auto, auto, auto, auto,
+      100% 70dvh;
+    -webkit-mask-repeat:
+      repeat, repeat, repeat, repeat, repeat, repeat,
+      no-repeat;
+    mask-repeat:
+      repeat, repeat, repeat, repeat, repeat, repeat,
+      no-repeat;
+    -webkit-mask-position:
+      0 0, 0 0, 0 0, 0 0, 0 0, 0 0,
+      center bottom;
+    mask-position:
+      0 0, 0 0, 0 0, 0 0, 0 0, 0 0,
+      center bottom;
   }
 
   .dark body::after {
