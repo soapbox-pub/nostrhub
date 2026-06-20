@@ -5,6 +5,83 @@ import type { NostrEvent } from '@nostrify/nostrify';
 export const GIT_REPO_KIND = 30617;
 /** NIP-34 git repository state announcement (branches/tags). */
 export const GIT_STATE_KIND = 30618;
+/** NIP-34 patch. */
+export const GIT_PATCH_KIND = 1617;
+/** NIP-34 pull request. */
+export const GIT_PR_KIND = 1618;
+/** NIP-34 issue. */
+export const GIT_ISSUE_KIND = 1621;
+
+/** NIP-34 status kinds for issues/patches/PRs. */
+export const GIT_STATUS_OPEN_KIND = 1630;
+export const GIT_STATUS_APPLIED_KIND = 1631; // applied/merged for patches/PRs; resolved for issues
+export const GIT_STATUS_CLOSED_KIND = 1632;
+export const GIT_STATUS_DRAFT_KIND = 1633;
+
+export const GIT_STATUS_KINDS = [
+  GIT_STATUS_OPEN_KIND,
+  GIT_STATUS_APPLIED_KIND,
+  GIT_STATUS_CLOSED_KIND,
+  GIT_STATUS_DRAFT_KIND,
+] as const;
+
+/** Resolved lifecycle state of an issue or PR, derived from status events. */
+export type GitItemStatus = 'open' | 'draft' | 'closed' | 'merged' | 'resolved';
+
+/** A parsed NIP-34 issue (kind 1621) or pull request (kind 1618). */
+export interface GitTicket {
+  event: NostrEvent;
+  /** Issue (1621) or pull request (1618). */
+  kind: typeof GIT_ISSUE_KIND | typeof GIT_PR_KIND;
+  /** Header line, from the `subject` tag, falling back to the first content line. */
+  subject: string;
+  /** Markdown body. */
+  content: string;
+  /** Author pubkey. */
+  pubkey: string;
+  /** `t` labels. */
+  labels: string[];
+  createdAt: number;
+}
+
+/**
+ * Map the most-recent status event kind to a lifecycle state. `ticketKind`
+ * disambiguates kind 1631 (merged for PRs vs. resolved for issues).
+ */
+export function statusFromKind(
+  statusKind: number | undefined,
+  ticketKind: number,
+): GitItemStatus {
+  switch (statusKind) {
+    case GIT_STATUS_CLOSED_KIND:
+      return 'closed';
+    case GIT_STATUS_DRAFT_KIND:
+      return 'draft';
+    case GIT_STATUS_APPLIED_KIND:
+      return ticketKind === GIT_ISSUE_KIND ? 'resolved' : 'merged';
+    default:
+      return 'open';
+  }
+}
+
+/** Parse a NIP-34 issue or pull request event into a display ticket. */
+export function parseGitTicket(event: NostrEvent): GitTicket | null {
+  if (event.kind !== GIT_ISSUE_KIND && event.kind !== GIT_PR_KIND) return null;
+  const subject =
+    firstTagValue(event, 'subject')?.trim() ||
+    event.content.split('\n').find((l) => l.trim())?.trim() ||
+    '(no subject)';
+  const labels = [...new Set(tagValues(event, 't').map((t) => t.toLowerCase()))];
+  return {
+    event,
+    kind: event.kind,
+    subject,
+    content: event.content,
+    pubkey: event.pubkey,
+    labels,
+    createdAt: event.created_at,
+  };
+}
 
 /**
  * Well-known GRASP servers (relays that double as git smart-HTTP hosts).
