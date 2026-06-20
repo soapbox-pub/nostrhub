@@ -25,6 +25,7 @@ export const GIT_DISCOVERY_RELAYS: string[] = [
 export const DEFAULT_GRASP_SERVERS: string[] = [
   'wss://relay.ngit.dev/',
   'wss://git.shakespeare.diy/',
+  'wss://git.nostrhub.io/',
 ];
 
 /** Build a GRASP smart-HTTP clone URL: `https://<host>/<npub>/<id>.git`. */
