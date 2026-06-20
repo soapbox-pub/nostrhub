@@ -1,11 +1,14 @@
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { nip19 } from 'nostr-tools';
 import {
   CircleDot,
   CheckCircle2,
-  GitPullRequest,
   GitMerge,
+  GitPullRequest,
+  Search,
+  X,
   XCircle,
   CircleDashed,
 } from 'lucide-react';
@@ -16,6 +19,8 @@ import { GIT_ISSUE_KIND, type GitItemStatus } from '@/lib/git';
 import type { GitTicketWithStatus } from '@/hooks/useGitTickets';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
@@ -30,6 +35,13 @@ const STATUS_META: Record<
   merged: { label: 'Merged', icon: GitMerge, className: 'text-nebula' },
   resolved: { label: 'Resolved', icon: CheckCircle2, className: 'text-nebula' },
 };
+
+const OPEN_STATES: GitItemStatus[] = ['open', 'draft'];
+function isOpen(status: GitItemStatus): boolean {
+  return OPEN_STATES.includes(status);
+}
+
+type StatusFilter = 'open' | 'closed' | 'all';
 
 function TicketRow({ ticket }: { ticket: GitTicketWithStatus }) {
   const author = useAuthor(ticket.pubkey);
@@ -60,7 +72,7 @@ function TicketRow({ ticket }: { ticket: GitTicketWithStatus }) {
             {ticket.subject}
           </Link>
           {!isIssue && (
-            <GitPullRequest className="size-3.5 shrink-0 text-muted-foreground" aria-label="Pull request" />
+            <GitPullRequest className="size-3.5 shrink-0 text-muted-foreground" aria-label="Merge request" />
           )}
           {ticket.labels.map((label) => (
             <Badge key={label} variant="secondary" className="text-[10px] font-normal">
@@ -102,15 +114,42 @@ function ListSkeleton() {
 interface TicketListProps {
   tickets: GitTicketWithStatus[];
   isLoading: boolean;
-  /** Singular noun, e.g. "issue" or "pull request". */
+  /** Singular noun, e.g. "issue" or "merge request". */
   noun: string;
   emptyTitle: string;
   emptySubtitle: string;
 }
 
 export function TicketList({ tickets, isLoading, noun, emptyTitle, emptySubtitle }: TicketListProps) {
+  const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('open');
+
+  const openCount = useMemo(() => tickets.filter((t) => isOpen(t.status)).length, [tickets]);
+  const closedCount = tickets.length - openCount;
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return tickets.filter((t) => {
+      if (statusFilter === 'open' && !isOpen(t.status)) return false;
+      if (statusFilter === 'closed' && isOpen(t.status)) return false;
+      if (!q) return true;
+      return (
+        t.subject.toLowerCase().includes(q) ||
+        t.content.toLowerCase().includes(q) ||
+        t.labels.some((l) => l.includes(q))
+      );
+    });
+  }, [tickets, query, statusFilter]);
+
+  const hasActiveFilters = query.trim() !== '' || statusFilter !== 'open';
+  const clearFilters = () => {
+    setQuery('');
+    setStatusFilter('open');
+  };
+
   if (isLoading) return <ListSkeleton />;
 
+  // First load with nothing at all: show the empty state, skip the toolbar.
   if (tickets.length === 0) {
     return (
       <Card className="border-dashed">
@@ -122,30 +161,69 @@ export function TicketList({ tickets, isLoading, noun, emptyTitle, emptySubtitle
     );
   }
 
-  const openCount = tickets.filter((t) => t.status === 'open' || t.status === 'draft').length;
-  const closedCount = tickets.length - openCount;
-
   return (
-    <Card className="overflow-hidden py-0">
-      <div className="flex items-center gap-4 border-b border-border/60 bg-muted/40 px-4 py-2.5 text-sm">
-        <span className="flex items-center gap-1.5 font-medium">
-          <CircleDot className="size-4 text-chart-5" aria-hidden="true" />
-          {openCount} open
-        </span>
-        <span className="flex items-center gap-1.5 text-muted-foreground">
-          <CheckCircle2 className="size-4" aria-hidden="true" />
-          {closedCount} closed
-        </span>
-        <span className="ml-auto text-xs text-muted-foreground">
-          {tickets.length} {tickets.length === 1 ? noun : `${noun}s`}
-        </span>
+    <div className="space-y-3">
+      {/* Search + status filters */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative min-w-0 flex-1">
+          <Search
+            className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={`Search ${noun}s…`}
+            className="h-9 pl-8"
+            aria-label={`Search ${noun}s`}
+          />
+        </div>
+        <div className="flex items-center gap-1 rounded-md border p-0.5">
+          {(['open', 'closed', 'all'] as const).map((value) => (
+            <Button
+              key={value}
+              type="button"
+              variant={statusFilter === value ? 'secondary' : 'ghost'}
+              size="sm"
+              className="h-7 px-2.5 text-xs capitalize"
+              onClick={() => setStatusFilter(value)}
+              aria-pressed={statusFilter === value}
+            >
+              {value === 'open' && <CircleDot className="size-3.5 text-chart-5" aria-hidden="true" />}
+              {value === 'closed' && <CheckCircle2 className="size-3.5" aria-hidden="true" />}
+              {value}
+              {value === 'open' && ` ${openCount}`}
+              {value === 'closed' && ` ${closedCount}`}
+            </Button>
+          ))}
+        </div>
+        {hasActiveFilters && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-9 gap-1 text-xs text-muted-foreground"
+            onClick={clearFilters}
+          >
+            <X className="size-3.5" aria-hidden="true" /> Clear
+          </Button>
+        )}
       </div>
-      <ul className="divide-y divide-border/60">
-        {tickets.map((ticket) => (
-          <TicketRow key={ticket.event.id} ticket={ticket} />
-        ))}
-      </ul>
-    </Card>
+
+      <Card className="overflow-hidden py-0">
+        {filtered.length === 0 ? (
+          <div className="px-8 py-12 text-center text-sm text-muted-foreground">
+            No {noun}s match your filters.
+          </div>
+        ) : (
+          <ul className="divide-y divide-border/60">
+            {filtered.map((ticket) => (
+              <TicketRow key={ticket.event.id} ticket={ticket} />
+            ))}
+          </ul>
+        )}
+      </Card>
+    </div>
   );
 }
 

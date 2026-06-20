@@ -32,6 +32,7 @@ import { UsedByAppsCard, RelatedNipsCard } from '@/components/CrossRefCards';
 import { LinkAppNudge } from '@/components/LinkAppNudge';
 import { useGitRepo, useDeleteRepo } from '@/hooks/useGitRepo';
 import { useGitTickets } from '@/hooks/useGitTickets';
+import { useGitTicketCounts } from '@/hooks/useGitTicketCounts';
 import { useAuthor } from '@/hooks/useAuthor';
 import { useProfileUrl } from '@/hooks/useProfileUrl';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -224,8 +225,12 @@ export function GitRepoPage({ pubkey, identifier, relays }: GitRepoPageProps) {
   });
   const issues = tickets.data?.issues ?? [];
   const pullRequests = tickets.data?.pullRequests ?? [];
-  const openIssues = issues.filter((t) => t.status === 'open' || t.status === 'draft').length;
-  const openPrs = pullRequests.filter((t) => t.status === 'open' || t.status === 'draft').length;
+
+  // Tab badges show totals via NIP-45 COUNT, falling back to the number of
+  // events actually fetched when no relay answered the COUNT.
+  const ticketCounts = useGitTicketCounts({ pubkey, identifier, relays: repo?.relays });
+  const issueCount = ticketCounts.data?.issues || issues.length;
+  const prCount = ticketCounts.data?.pullRequests || pullRequests.length;
 
   const tab = searchParams.get('tab') ?? 'code';
   const setTab = (value: string) => {
@@ -385,7 +390,7 @@ export function GitRepoPage({ pubkey, identifier, relays }: GitRepoPageProps) {
           </DetailSurface>
 
           {/* ——— Tabs + body ——— */}
-          <div className="space-y-6 lg:grid lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start lg:gap-8 lg:space-y-0">
+          <div className="space-y-6 lg:grid lg:grid-cols-[minmax(0,1fr)_15rem] lg:items-start lg:gap-6 lg:space-y-0">
             <div className="min-w-0">
               <Tabs value={tab} onValueChange={setTab} className="gap-5">
                 <TabsList variant="line" className="w-full justify-start gap-1 overflow-x-auto">
@@ -394,11 +399,11 @@ export function GitRepoPage({ pubkey, identifier, relays }: GitRepoPageProps) {
                   </TabsTrigger>
                   <TabsTrigger value="issues" className="flex-none gap-1.5">
                     <CircleDot className="size-4" aria-hidden="true" /> Issues
-                    <TabCount value={openIssues} />
+                    <TabCount value={issueCount} />
                   </TabsTrigger>
                   <TabsTrigger value="pulls" className="flex-none gap-1.5">
-                    <GitPullRequest className="size-4" aria-hidden="true" /> Pull requests
-                    <TabCount value={openPrs} />
+                    <GitPullRequest className="size-4" aria-hidden="true" /> Merge requests
+                    <TabCount value={prCount} />
                   </TabsTrigger>
                   <TabsTrigger value="discussion" className="flex-none gap-1.5">
                     <MessageSquare className="size-4" aria-hidden="true" /> Discussion
@@ -425,14 +430,14 @@ export function GitRepoPage({ pubkey, identifier, relays }: GitRepoPageProps) {
 
                 <TabsContent value="pulls" className="space-y-4">
                   <h2 className="font-display text-lg font-semibold tracking-tight">
-                    Pull requests
+                    Merge requests
                   </h2>
                   <TicketList
                     tickets={pullRequests}
                     isLoading={tickets.isLoading}
-                    noun="pull request"
-                    emptyTitle="No pull requests yet"
-                    emptySubtitle="Pull requests sent to this repo over Nostr (NIP-34) appear here. Push one with ngit."
+                    noun="merge request"
+                    emptyTitle="No merge requests yet"
+                    emptySubtitle="Merge requests sent to this repo over Nostr (NIP-34) appear here. Push one with ngit."
                   />
                 </TabsContent>
 

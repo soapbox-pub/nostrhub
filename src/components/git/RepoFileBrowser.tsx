@@ -8,6 +8,7 @@ import {
   Download,
   ExternalLink,
   File as FileIcon,
+  FileCode2,
   FileText,
   Folder,
   FolderGit2,
@@ -15,6 +16,7 @@ import {
   Link2,
   Loader2,
   ScrollText,
+  Search,
   Tag as TagIcon,
 } from 'lucide-react';
 import { MarkdownContent } from '@/components/MarkdownContent';
@@ -205,6 +207,75 @@ function FileList({
         );
       })}
     </ul>
+  );
+}
+
+/* ——— "Go to file" fuzzy finder (GitHub `t` shortcut) ——— */
+
+function GoToFileButton({
+  snapshot,
+  onSelectFile,
+}: {
+  snapshot: RepoSnapshot;
+  onSelectFile: (path: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const allFiles = useMemo(() => [...collectFilePaths(snapshot.tree)].sort(), [snapshot]);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 gap-1.5 text-xs text-muted-foreground"
+        >
+          <Search className="size-3.5" aria-hidden="true" /> Go to file
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-[min(28rem,calc(100vw-2rem))] p-0">
+        <Command
+          filter={(value, search) => {
+            // Subsequence match so "slgit" finds "src/lib/git.ts".
+            const v = value.toLowerCase();
+            const s = search.toLowerCase().replace(/\s+/g, '');
+            if (!s) return 1;
+            let i = 0;
+            for (const ch of v) if (ch === s[i]) i++;
+            return i === s.length ? 1 : 0;
+          }}
+        >
+          <CommandInput placeholder="Search files…" autoFocus />
+          <CommandList className="max-h-72">
+            <CommandEmpty>No matching files.</CommandEmpty>
+            <CommandGroup>
+              {allFiles.map((path) => {
+                const name = path.slice(path.lastIndexOf('/') + 1);
+                const dir = path.slice(0, path.lastIndexOf('/'));
+                return (
+                  <CommandItem
+                    key={path}
+                    value={path}
+                    onSelect={() => {
+                      onSelectFile(path);
+                      setOpen(false);
+                    }}
+                    className="gap-2"
+                  >
+                    <FileCode2 className="size-4 shrink-0 opacity-70" aria-hidden="true" />
+                    <span className="min-w-0 truncate font-mono text-[13px]">
+                      {name}
+                      {dir && <span className="ml-1.5 text-muted-foreground/60">{dir}</span>}
+                    </span>
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -721,6 +792,9 @@ export function RepoFileBrowser({ repo, state }: RepoFileBrowserProps) {
         )}
 
         <div className="ml-auto flex items-center gap-2">
+          {snapshot && snapshot.tree.length > 0 && (
+            <GoToFileButton snapshot={snapshot} onSelectFile={openFile} />
+          )}
           {snapshot && (
             <code className="hidden font-mono text-xs text-muted-foreground sm:inline" title={snapshot.commit}>
               {shortCommit(snapshot.commit)}
@@ -768,43 +842,49 @@ export function RepoFileBrowser({ repo, state }: RepoFileBrowserProps) {
             This repository is empty.
           </p>
         </Card>
-      ) : selected ? (
-        /* ——— Single file view ——— */
-        <>
-          <Breadcrumb
-            repoName={repo.name}
-            segments={selected.split('/')}
-            onNavigate={(dir) => openDir(dir)}
-          />
-          <Card className="overflow-hidden">
-            <FileViewer snapshot={snapshot} path={selected} shareUrl={shareUrlFor(selected)} />
-          </Card>
-        </>
       ) : (
-        /* ——— Directory listing + README ——— */
-        <>
-          {breadcrumbSegments.length > 0 && (
-            <Breadcrumb
-              repoName={repo.name}
-              segments={breadcrumbSegments}
-              onNavigate={(dir) => openDir(dir)}
-            />
+        <div className="space-y-4">
+          {selected ? (
+            <>
+              <Breadcrumb
+                repoName={repo.name}
+                segments={selected.split('/')}
+                onNavigate={(dir) => openDir(dir)}
+              />
+              <Card className="overflow-hidden">
+                <FileViewer
+                  snapshot={snapshot}
+                  path={selected}
+                  shareUrl={shareUrlFor(selected)}
+                />
+              </Card>
+            </>
+          ) : (
+            <>
+              {breadcrumbSegments.length > 0 && (
+                <Breadcrumb
+                  repoName={repo.name}
+                  segments={breadcrumbSegments}
+                  onNavigate={(dir) => openDir(dir)}
+                />
+              )}
+              <Card className="overflow-hidden py-0">
+                <FileList
+                  nodes={currentNodes ?? []}
+                  currentDir={currentDir}
+                  onOpenDir={openDir}
+                  onOpenFile={openFile}
+                  nipAction={
+                    currentDir === '' && (currentNodes ?? []).some((n) => n.path === 'NIP.md') ? (
+                      <PublishNipButton snapshot={snapshot} repo={repo} />
+                    ) : undefined
+                  }
+                />
+              </Card>
+              {readme && <ReadmeCard snapshot={snapshot} path={readme.path} />}
+            </>
           )}
-          <Card className="overflow-hidden py-0">
-            <FileList
-              nodes={currentNodes ?? []}
-              currentDir={currentDir}
-              onOpenDir={openDir}
-              onOpenFile={openFile}
-              nipAction={
-                currentDir === '' && (currentNodes ?? []).some((n) => n.path === 'NIP.md') ? (
-                  <PublishNipButton snapshot={snapshot} repo={repo} />
-                ) : undefined
-              }
-            />
-          </Card>
-          {readme && <ReadmeCard snapshot={snapshot} path={readme.path} />}
-        </>
+        </div>
       )}
     </div>
   );

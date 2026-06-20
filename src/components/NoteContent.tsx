@@ -468,8 +468,17 @@ export function NoteContent({
     // Preserve formatting but prevent too much stacking with the card's own spacing.
     for (let i = 0; i < result.length; i++) {
       const token = result[i];
-      const isBlock = token.type === 'image-embed' || token.type === 'media-embed' || token.type === 'link-embed' || token.type === 'nevent-embed'
-        || (token.type === 'naddr-embed' && !token.url) || token.type === 'lightning-invoice';
+      // A token only counts as "block" when it actually renders as a card. With
+      // the relevant embeds disabled it renders as an inline link, so the
+      // surrounding whitespace must be preserved (e.g. "fixed by nevent1…").
+      const isMediaBlock =
+        (token.type === 'image-embed' || token.type === 'media-embed') &&
+        !(disableEmbeds || disableMediaEmbeds);
+      const isLinkBlock = token.type === 'link-embed' && !disableEmbeds;
+      const isNoteBlock =
+        (token.type === 'nevent-embed' || (token.type === 'naddr-embed' && !token.url)) &&
+        !disableNoteEmbeds;
+      const isBlock = isMediaBlock || isLinkBlock || isNoteBlock || token.type === 'lightning-invoice';
 
       if (isBlock) {
         // Strip all trailing whitespace from the preceding text token.
@@ -505,7 +514,7 @@ export function NoteContent({
 
     // Filter out empty text tokens
     return result.filter((t) => !(t.type === 'text' && t.value === ''));
-  }, [event]);
+  }, [event, disableEmbeds, disableMediaEmbeds, disableNoteEmbeds]);
 
   // Build emoji map for NIP-30 custom emoji rendering.
   // Merge the event's own emoji tags with the viewer's custom emoji collection
