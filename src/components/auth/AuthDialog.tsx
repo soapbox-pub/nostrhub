@@ -666,12 +666,14 @@ const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
                 />
               )}
 
-              <button
-                onClick={() => setStep('welcome')}
-                className="w-full text-sm text-muted-foreground hover:text-foreground"
-              >
-                Back
-              </button>
+              {!connectError && !showProgressView && (
+                <button
+                  onClick={() => setStep('welcome')}
+                  className="w-full text-sm text-muted-foreground hover:text-foreground"
+                >
+                  Back
+                </button>
+              )}
             </div>
           )}
         </div>
