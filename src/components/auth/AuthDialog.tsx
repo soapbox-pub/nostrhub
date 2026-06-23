@@ -679,24 +679,43 @@ const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
               <Tabs
                 value={loginMethod}
                 onValueChange={(v) => {
-                  setLoginMethod(v as LoginMethod);
+                  const method = v as LoginMethod;
                   setLoginError('');
+                  if (method === 'remote') {
+                    // The remote signer has its own dedicated step with the
+                    // QR / bunker handshake. Selecting the tab jumps straight
+                    // into it rather than showing a redundant "connect" button.
+                    goToConnect();
+                    return;
+                  }
+                  setLoginMethod(method);
                 }}
               >
                 <TabsList className="w-full">
                   {hasExtension && (
-                    <TabsTrigger value="extension">Extension</TabsTrigger>
+                    <TabsTrigger
+                      value="extension"
+                      className="data-[state=active]:font-semibold data-[state=active]:shadow-sm"
+                    >
+                      Extension
+                    </TabsTrigger>
                   )}
-                  <TabsTrigger value="remote">Remote signer</TabsTrigger>
-                  <TabsTrigger value="nsec">Secret key</TabsTrigger>
+                  <TabsTrigger
+                    value="remote"
+                    className="data-[state=active]:font-semibold data-[state=active]:shadow-sm"
+                  >
+                    Remote signer
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="nsec"
+                    className="data-[state=active]:font-semibold data-[state=active]:shadow-sm"
+                  >
+                    Secret key
+                  </TabsTrigger>
                 </TabsList>
 
                 {hasExtension && (
                   <TabsContent value="extension" className="pt-4 space-y-3">
-                    <p className="text-sm text-muted-foreground text-center">
-                      Log in securely with your browser extension. Your key never
-                      leaves the extension.
-                    </p>
                     <Button
                       onClick={handleExtensionLogin}
                       disabled={isLoggingIn}
@@ -712,20 +731,7 @@ const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
                   </TabsContent>
                 )}
 
-                <TabsContent value="remote" className="pt-4 space-y-3">
-                  <p className="text-sm text-muted-foreground text-center">
-                    Connect a remote signer (NIP-46) to log in without exposing
-                    your secret key.
-                  </p>
-                  <Button onClick={goToConnect} className="w-full h-12">
-                    Connect remote signer
-                  </Button>
-                </TabsContent>
-
                 <TabsContent value="nsec" className="pt-4 space-y-3">
-                  <p className="text-sm text-muted-foreground text-center">
-                    Paste your secret key, or upload a key file.
-                  </p>
                   <NsecLoginForm
                     loginNsec={loginNsec}
                     setLoginNsec={setLoginNsec}
