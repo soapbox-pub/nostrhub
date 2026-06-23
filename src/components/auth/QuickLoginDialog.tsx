@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -62,9 +61,6 @@ export function QuickLoginDialog({
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>Welcome back</DialogTitle>
-          <DialogDescription>
-            Continue with the account from your browser extension.
-          </DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col items-center gap-3 py-4">
@@ -75,9 +71,6 @@ export function QuickLoginDialog({
             </AvatarFallback>
           </Avatar>
           <p className="text-lg font-semibold leading-none">{displayName}</p>
-          {metadata?.nip05 && (
-            <p className="text-sm text-muted-foreground">{metadata.nip05}</p>
-          )}
         </div>
 
         {error && (
@@ -108,7 +101,7 @@ export function QuickLoginDialog({
             onClick={onOtherLogin}
             disabled={isLoggingIn}
           >
-            Other login
+            Log in with another account
           </Button>
         </div>
       </DialogContent>
