@@ -749,7 +749,7 @@ const NsecLoginForm: React.FC<NsecLoginFormProps> = ({
         <DropdownMenuContent align="end">
           <DropdownMenuItem onSelect={() => fileInputRef.current?.click()}>
             <FileUp className="h-4 w-4" />
-            Upload key file
+            Select key file
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={onOpenSignerApp}>
             <ExternalLink className="h-4 w-4" />
