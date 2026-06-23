@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Collapsible,
   CollapsibleContent,
@@ -41,6 +42,7 @@ interface AuthDialogProps {
 }
 
 type Step = 'welcome' | 'generate' | 'secure' | 'profile' | 'login' | 'connect';
+type LoginMethod = 'extension' | 'remote' | 'nsec';
 
 const validateNsec = (nsec: string) => /^nsec1[a-zA-Z0-9]{58}$/.test(nsec);
 const validateBunkerUri = (uri: string) => uri.startsWith('bunker://');
@@ -95,7 +97,7 @@ const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
   const [loginNsec, setLoginNsec] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [loginError, setLoginError] = useState('');
-  const [showMoreOptions, setShowMoreOptions] = useState(false);
+  const [loginMethod, setLoginMethod] = useState<LoginMethod>('extension');
 
   // Nostrconnect / bunker state
   const [nostrConnectParams, setNostrConnectParams] = useState<NostrConnectParams | null>(null);
@@ -156,7 +158,7 @@ const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
       setIsGenerating(false);
       setIsLoggingIn(false);
       setLoginError('');
-      setShowMoreOptions(false);
+      setLoginMethod(hasExtension ? 'extension' : 'nsec');
       setProfileData({ name: '', about: '', picture: '' });
       setNostrConnectParams(null);
       setNostrConnectUri('');
@@ -169,7 +171,7 @@ const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
       abortControllerRef.current?.abort();
       abortControllerRef.current = null;
     }
-  }, [isOpen]);
+  }, [isOpen, hasExtension]);
 
   // Generate a nostrconnect session (QR code data).
   const generateConnectSession = useCallback(() => {
@@ -674,49 +676,56 @@ const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
           {/* Login step. */}
           {step === 'login' && (
             <div className="space-y-4">
-              {hasExtension ? (
-                <>
-                  <Button
-                    onClick={handleExtensionLogin}
-                    disabled={isLoggingIn}
-                    className="w-full h-12"
-                  >
-                    {isLoggingIn ? 'Logging in…' : 'Log in with extension'}
-                  </Button>
+              <Tabs
+                value={loginMethod}
+                onValueChange={(v) => {
+                  setLoginMethod(v as LoginMethod);
+                  setLoginError('');
+                }}
+              >
+                <TabsList className="w-full">
+                  {hasExtension && (
+                    <TabsTrigger value="extension">Extension</TabsTrigger>
+                  )}
+                  <TabsTrigger value="remote">Remote signer</TabsTrigger>
+                  <TabsTrigger value="nsec">Secret key</TabsTrigger>
+                </TabsList>
 
-                  <Button
-                    variant="outline"
-                    onClick={goToConnect}
-                    className="w-full h-12"
-                  >
-                    Use remote signer
-                  </Button>
+                {hasExtension && (
+                  <TabsContent value="extension" className="pt-4 space-y-3">
+                    <p className="text-sm text-muted-foreground text-center">
+                      Log in securely with your browser extension. Your key never
+                      leaves the extension.
+                    </p>
+                    <Button
+                      onClick={handleExtensionLogin}
+                      disabled={isLoggingIn}
+                      className="w-full h-12"
+                    >
+                      {isLoggingIn ? 'Logging in…' : 'Log in with extension'}
+                    </Button>
+                    {loginError && (
+                      <p className="text-sm text-destructive text-center">
+                        {loginError}
+                      </p>
+                    )}
+                  </TabsContent>
+                )}
 
-                  <Collapsible open={showMoreOptions} onOpenChange={setShowMoreOptions}>
-                    <CollapsibleTrigger className="w-full flex items-center justify-center gap-1 text-sm text-muted-foreground hover:text-foreground py-2">
-                      <span>Use secret key</span>
-                      <ChevronDown
-                        className={`w-4 h-4 transition-transform ${
-                          showMoreOptions ? 'rotate-180' : ''
-                        }`}
-                      />
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="space-y-3 pt-1">
-                      <NsecLoginForm
-                        loginNsec={loginNsec}
-                        setLoginNsec={setLoginNsec}
-                        loginError={loginError}
-                        setLoginError={setLoginError}
-                        isLoggingIn={isLoggingIn}
-                        onSubmit={handleLogin}
-                        onFileChange={handleFileUpload}
-                        fileInputRef={fileInputRef}
-                      />
-                    </CollapsibleContent>
-                  </Collapsible>
-                </>
-              ) : (
-                <>
+                <TabsContent value="remote" className="pt-4 space-y-3">
+                  <p className="text-sm text-muted-foreground text-center">
+                    Connect a remote signer (NIP-46) to log in without exposing
+                    your secret key.
+                  </p>
+                  <Button onClick={goToConnect} className="w-full h-12">
+                    Connect remote signer
+                  </Button>
+                </TabsContent>
+
+                <TabsContent value="nsec" className="pt-4 space-y-3">
+                  <p className="text-sm text-muted-foreground text-center">
+                    Paste your secret key, or upload a key file.
+                  </p>
                   <NsecLoginForm
                     loginNsec={loginNsec}
                     setLoginNsec={setLoginNsec}
@@ -727,15 +736,8 @@ const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
                     onFileChange={handleFileUpload}
                     fileInputRef={fileInputRef}
                   />
-                  <Button
-                    variant="outline"
-                    onClick={goToConnect}
-                    className="w-full"
-                  >
-                    Use remote signer
-                  </Button>
-                </>
-              )}
+                </TabsContent>
+              </Tabs>
 
               <button
                 onClick={() => setStep('welcome')}
