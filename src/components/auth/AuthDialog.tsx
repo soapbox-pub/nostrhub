@@ -41,7 +41,7 @@ interface AuthDialogProps {
   onClose: () => void;
 }
 
-type Step = 'welcome' | 'generate' | 'secure' | 'profile' | 'login' | 'connect';
+type Step = 'welcome' | 'generate' | 'secure' | 'profile' | 'login';
 type LoginMethod = 'extension' | 'remote' | 'nsec';
 
 const validateNsec = (nsec: string) => /^nsec1[a-zA-Z0-9]{58}$/.test(nsec);
@@ -268,8 +268,11 @@ const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
     }
   };
 
-  const goToConnect = () => {
-    setStep('connect');
+  // Switch to the remote-signer login tab and kick off the nostrconnect
+  // session. The QR / bunker handshake renders inline within the tab, so the
+  // tab bar stays visible (no separate full-screen step).
+  const startRemoteSigner = () => {
+    setLoginMethod('remote');
     if (!nostrConnectParams && !connectError) {
       generateConnectSession();
     }
@@ -436,8 +439,6 @@ const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
         return 'Your profile';
       case 'login':
         return 'Log in';
-      case 'connect':
-        return 'Connect signer';
     }
   };
 
@@ -682,10 +683,7 @@ const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
                   const method = v as LoginMethod;
                   setLoginError('');
                   if (method === 'remote') {
-                    // The remote signer has its own dedicated step with the
-                    // QR / bunker handshake. Selecting the tab jumps straight
-                    // into it rather than showing a redundant "connect" button.
-                    goToConnect();
+                    startRemoteSigner();
                     return;
                   }
                   setLoginMethod(method);
@@ -743,105 +741,97 @@ const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
                     fileInputRef={fileInputRef}
                   />
                 </TabsContent>
+
+                {/* Remote signer — nostrconnect QR + bunker URI fallback,
+                    rendered inline so the tab bar stays visible. */}
+                <TabsContent value="remote" className="pt-4 space-y-4">
+                  <div className="flex flex-col items-center space-y-4">
+                    {connectError ? (
+                      <div className="flex flex-col items-center space-y-3 py-4">
+                        <p className="text-sm text-destructive text-center">{connectError}</p>
+                        <Button variant="outline" onClick={handleConnectRetry}>
+                          Try again
+                        </Button>
+                      </div>
+                    ) : showProgressView ? (
+                      // Progress view — replaces the QR/button once the handshake
+                      // is under way. Gives the user live feedback through each
+                      // phase so a stuck signer is visibly stuck, not silently
+                      // stuck.
+                      <div className="flex flex-col items-center space-y-4 py-6 w-full">
+                        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                        <p className="text-sm text-muted-foreground text-center min-h-[1.25rem]">
+                          {connectStatusLabel(connectStatus)}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={handleConnectRetry}
+                          className="text-sm text-primary hover:underline underline-offset-4 font-medium"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : nostrConnectUri ? (
+                      <>
+                        {!isMobile && (
+                          <div className="p-4 bg-white rounded-xl">
+                            <QRCodeCanvas value={nostrConnectUri} size={180} level="M" />
+                          </div>
+                        )}
+
+                        {isMobile && (
+                          <Button onClick={handleOpenSignerApp} className="w-full h-12">
+                            <ExternalLink className="w-5 h-5 mr-2" />
+                            Open signer app
+                          </Button>
+                        )}
+                      </>
+                    ) : (
+                      <div className="flex items-center justify-center h-[100px]">
+                        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Manual bunker URI fallback. */}
+                  <Collapsible open={showBunkerInput} onOpenChange={setShowBunkerInput}>
+                    <CollapsibleTrigger className="w-full flex items-center justify-center gap-1 text-sm text-muted-foreground hover:text-foreground py-2">
+                      <span>Enter bunker URI manually</span>
+                      {showBunkerInput ? (
+                        <ChevronUp className="w-4 h-4" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4" />
+                      )}
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="space-y-3 pt-2">
+                      <Input
+                        value={bunkerUri}
+                        onChange={(e) => setBunkerUri(e.target.value)}
+                        placeholder="bunker://…"
+                        className="text-base md:text-sm"
+                      />
+                      {bunkerUri && !validateBunkerUri(bunkerUri) && (
+                        <Alert variant="destructive">
+                          <AlertDescription>Invalid bunker URI format.</AlertDescription>
+                        </Alert>
+                      )}
+                      <Button
+                        variant="outline"
+                        onClick={handleBunkerLogin}
+                        disabled={
+                          isLoggingIn || !bunkerUri.trim() || !validateBunkerUri(bunkerUri)
+                        }
+                        className="w-full"
+                      >
+                        {isLoggingIn ? 'Connecting…' : 'Connect'}
+                      </Button>
+                    </CollapsibleContent>
+                  </Collapsible>
+                </TabsContent>
               </Tabs>
 
               <button
                 onClick={() => setStep('welcome')}
-                className="w-full text-sm text-muted-foreground hover:text-foreground"
-              >
-                Back
-              </button>
-            </div>
-          )}
-
-          {/* Connect step — nostrconnect QR + bunker URI fallback. */}
-          {step === 'connect' && (
-            <div className="space-y-4">
-              <div className="flex flex-col items-center space-y-4">
-                {connectError ? (
-                  <div className="flex flex-col items-center space-y-3 py-4">
-                    <p className="text-sm text-destructive text-center">{connectError}</p>
-                    <Button variant="outline" onClick={handleConnectRetry}>
-                      Try again
-                    </Button>
-                  </div>
-                ) : showProgressView ? (
-                  // Progress view — replaces the QR/button once the handshake
-                  // is under way. Gives the user live feedback through each
-                  // phase so a stuck signer is visibly stuck, not silently
-                  // stuck.
-                  <div className="flex flex-col items-center space-y-4 py-6 w-full">
-                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                    <p className="text-sm text-muted-foreground text-center min-h-[1.25rem]">
-                      {connectStatusLabel(connectStatus)}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={handleConnectRetry}
-                      className="text-sm text-primary hover:underline underline-offset-4 font-medium"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                ) : nostrConnectUri ? (
-                  <>
-                    {!isMobile && (
-                      <div className="p-4 bg-white rounded-xl">
-                        <QRCodeCanvas value={nostrConnectUri} size={180} level="M" />
-                      </div>
-                    )}
-
-                    {isMobile && (
-                      <Button onClick={handleOpenSignerApp} className="w-full h-12">
-                        <ExternalLink className="w-5 h-5 mr-2" />
-                        Open signer app
-                      </Button>
-                    )}
-                  </>
-                ) : (
-                  <div className="flex items-center justify-center h-[100px]">
-                    <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-                  </div>
-                )}
-              </div>
-
-              {/* Manual bunker URI fallback. */}
-              <Collapsible open={showBunkerInput} onOpenChange={setShowBunkerInput}>
-                <CollapsibleTrigger className="w-full flex items-center justify-center gap-1 text-sm text-muted-foreground hover:text-foreground py-2">
-                  <span>Enter bunker URI manually</span>
-                  {showBunkerInput ? (
-                    <ChevronUp className="w-4 h-4" />
-                  ) : (
-                    <ChevronDown className="w-4 h-4" />
-                  )}
-                </CollapsibleTrigger>
-                <CollapsibleContent className="space-y-3 pt-2">
-                  <Input
-                    value={bunkerUri}
-                    onChange={(e) => setBunkerUri(e.target.value)}
-                    placeholder="bunker://…"
-                    className="text-base md:text-sm"
-                  />
-                  {bunkerUri && !validateBunkerUri(bunkerUri) && (
-                    <Alert variant="destructive">
-                      <AlertDescription>Invalid bunker URI format.</AlertDescription>
-                    </Alert>
-                  )}
-                  <Button
-                    variant="outline"
-                    onClick={handleBunkerLogin}
-                    disabled={
-                      isLoggingIn || !bunkerUri.trim() || !validateBunkerUri(bunkerUri)
-                    }
-                    className="w-full"
-                  >
-                    {isLoggingIn ? 'Connecting…' : 'Connect'}
-                  </Button>
-                </CollapsibleContent>
-              </Collapsible>
-
-              <button
-                onClick={() => setStep('login')}
                 className="w-full text-sm text-muted-foreground hover:text-foreground"
               >
                 Back
