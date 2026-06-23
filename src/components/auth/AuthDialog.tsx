@@ -869,27 +869,20 @@ const NsecLoginForm: React.FC<NsecLoginFormProps> = ({
     }}
     className="space-y-3"
   >
-    <Input
-      type="password"
-      value={loginNsec}
-      onChange={(e) => {
-        setLoginNsec(e.target.value);
-        if (loginError) setLoginError('');
-      }}
-      placeholder="nsec1…"
-      autoComplete="off"
-      className={loginError ? 'border-destructive focus-visible:ring-destructive' : ''}
-    />
-    {loginError && <p className="text-sm text-destructive">{loginError}</p>}
-
-    <div className="flex gap-2">
-      <Button
-        type="submit"
-        disabled={isLoggingIn || !loginNsec.trim()}
-        className="flex-1"
-      >
-        {isLoggingIn ? 'Logging in…' : 'Log in'}
-      </Button>
+    <div className="relative">
+      <Input
+        type="password"
+        value={loginNsec}
+        onChange={(e) => {
+          setLoginNsec(e.target.value);
+          if (loginError) setLoginError('');
+        }}
+        placeholder="nsec1…"
+        autoComplete="off"
+        className={`pr-10 ${
+          loginError ? 'border-destructive focus-visible:ring-destructive' : ''
+        }`}
+      />
       <input
         type="file"
         accept=".txt"
@@ -899,13 +892,24 @@ const NsecLoginForm: React.FC<NsecLoginFormProps> = ({
       />
       <Button
         type="button"
-        variant="outline"
+        variant="ghost"
         size="icon"
+        className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
         onClick={() => fileInputRef.current?.click()}
+        title="Upload key file"
       >
-        <Upload className="w-4 h-4" />
+        <Upload className="h-4 w-4 text-muted-foreground" />
       </Button>
     </div>
+    {loginError && <p className="text-sm text-destructive">{loginError}</p>}
+
+    <Button
+      type="submit"
+      disabled={isLoggingIn || !loginNsec.trim()}
+      className="w-full"
+    >
+      {isLoggingIn ? 'Logging in…' : 'Log in'}
+    </Button>
   </form>
 );
 
