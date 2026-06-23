@@ -101,7 +101,7 @@ export function QuickLoginDialog({
             onClick={onOtherLogin}
             disabled={isLoggingIn}
           >
-            Log in with another account
+            Other ways to log in
           </Button>
         </div>
       </DialogContent>
