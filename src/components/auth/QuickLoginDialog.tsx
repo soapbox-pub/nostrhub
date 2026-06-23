@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useAuthor } from '@/hooks/useAuthor';
 import { useLoginActions } from '@/hooks/useLoginActions';
 
@@ -64,13 +65,22 @@ export function QuickLoginDialog({
         </DialogHeader>
 
         <div className="flex flex-col items-center gap-3 py-4">
-          <Avatar className="size-20">
-            <AvatarImage src={picture} alt={displayName} />
-            <AvatarFallback className="text-xl">
-              {displayName.slice(0, 2).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <p className="text-lg font-semibold leading-none">{displayName}</p>
+          {author.isLoading ? (
+            <>
+              <Skeleton className="size-20 rounded-full" />
+              <Skeleton className="h-5 w-32" />
+            </>
+          ) : (
+            <>
+              <Avatar className="size-20">
+                <AvatarImage src={picture} alt={displayName} />
+                <AvatarFallback className="text-xl">
+                  {displayName.slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <p className="text-lg font-semibold leading-none">{displayName}</p>
+            </>
+          )}
         </div>
 
         {error && (
