@@ -430,13 +430,13 @@ const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
               </div>
 
               <div className="space-y-2">
-                <Button onClick={() => setStep('generate')} className="w-full h-12">
+                <Button onClick={() => setStep('generate')} className="w-full h-12 rounded-full">
                   Create a new Nostr account
                 </Button>
                 <Button
-                  variant="outline"
+                  variant="link"
                   onClick={() => setStep('login')}
-                  className="w-full h-12"
+                  className="w-full text-muted-foreground"
                 >
                   Log in to an existing account
                 </Button>
@@ -471,7 +471,7 @@ const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
               </div>
 
               {!isGenerating && (
-                <Button onClick={generateKey} className="w-full h-12">
+                <Button onClick={generateKey} className="w-full h-12 rounded-full">
                   Generate key
                 </Button>
               )}
@@ -524,7 +524,7 @@ const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
                 </p>
               </div>
 
-              <Button onClick={downloadAndProceed} className="w-full h-12">
+              <Button onClick={downloadAndProceed} className="w-full h-12 rounded-full">
                 <Download className="w-4 h-4 mr-2" />
                 Download &amp; continue
               </Button>
@@ -612,7 +612,7 @@ const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
                 <Button
                   onClick={() => finishSignup(false)}
                   disabled={isPublishing}
-                  className="w-full h-12"
+                  className="w-full h-12 rounded-full"
                 >
                   {isPublishing ? 'Saving…' : 'Finish'}
                 </Button>
@@ -620,7 +620,7 @@ const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
                   variant="ghost"
                   onClick={() => finishSignup(true)}
                   disabled={isPublishing}
-                  className="w-full"
+                  className="w-full rounded-full"
                 >
                   Skip for now
                 </Button>
@@ -634,7 +634,7 @@ const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
               {connectError ? (
                 <div className="flex flex-col items-center space-y-3 py-4">
                   <p className="text-sm text-destructive text-center">{connectError}</p>
-                  <Button variant="outline" onClick={handleConnectRetry}>
+                  <Button variant="outline" onClick={handleConnectRetry} className="rounded-full">
                     Try again
                   </Button>
                 </div>
@@ -763,7 +763,7 @@ const NsecLoginForm: React.FC<NsecLoginFormProps> = ({
     <Button
       type="submit"
       disabled={isLoggingIn || !loginInput.trim()}
-      className="w-full"
+      className="w-full rounded-full"
     >
       {isLoggingIn ? 'Logging in…' : 'Log in'}
     </Button>

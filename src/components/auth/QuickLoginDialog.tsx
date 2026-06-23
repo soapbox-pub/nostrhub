@@ -61,7 +61,7 @@ export function QuickLoginDialog({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>Welcome back</DialogTitle>
+          <DialogTitle className="text-center">Welcome back</DialogTitle>
         </DialogHeader>
 
         <div className="flex flex-col items-center gap-3 py-4">
