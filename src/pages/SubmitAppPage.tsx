@@ -39,6 +39,7 @@ import { cn } from '@/lib/utils';
 import { APP_PLATFORMS, APP_HANDLER_KIND, nipGithubUrl, parseAppEvent, type AppPlatform } from '@/lib/apps';
 import type { CustomNip } from '@/lib/nips';
 import type { GitRepoAnnouncement } from '@/lib/git';
+import { GIT_REPO_KIND } from '@/lib/git';
 import type { ZapstoreApp } from '@/hooks/useZapstoreSearch';
 
 // ---------------------------------------------------------------------------
@@ -177,6 +178,38 @@ function isValidWsUrl(value: string): boolean {
 function isValidUri(value: string): boolean {
   try { new URL(value); return true; }
   catch { return false; }
+}
+
+/**
+ * Parse a manually-entered repo reference into a {@link RepoRefEntry}. Accepts
+ * a repo `naddr1…` or a raw `30617:<pubkey>:<d>` address coordinate, so users
+ * can reference a repo that isn't surfaced by search.
+ */
+function parseRepoRef(value: string): RepoRefEntry | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+
+  // Raw address coordinate.
+  const parts = trimmed.split(':');
+  if (parts.length === 3 && parts[0] === String(GIT_REPO_KIND) && /^[0-9a-f]{64}$/i.test(parts[1])) {
+    return { address: trimmed, relayHint: '', name: parts[2] };
+  }
+
+  // naddr.
+  try {
+    const decoded = nip19.decode(trimmed);
+    if (decoded.type === 'naddr' && decoded.data.kind === GIT_REPO_KIND) {
+      const { pubkey, identifier, relays } = decoded.data;
+      return {
+        address: `${GIT_REPO_KIND}:${pubkey}:${identifier}`,
+        relayHint: relays?.[0] ?? '',
+        name: identifier,
+      };
+    }
+  } catch {
+    // not a nip19 string
+  }
+  return undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -326,34 +359,49 @@ function NipPicker({
       {/* Scroll list */}
       <div className="max-h-56 overflow-y-auto rounded-lg border border-border/60 bg-background">
         {showSearch ? (
-          searchResults.isLoading ? (
-            <div className="space-y-1 p-2">
-              {[1, 2, 3].map((i) => <Skeleton key={i} className="h-9 w-full rounded-md" />)}
-            </div>
-          ) : (searchResults.data?.length ?? 0) === 0 ? (
-            <p className="px-4 py-6 text-center text-sm text-muted-foreground">
-              No NIPs found for "{debouncedQuery}"
-            </p>
-          ) : (
-            <div className="p-1.5 space-y-0.5">
-              {/* Custom NIP results */}
-              {searchResults.data!.map((nip) => (
-                <PickRow
-                  key={nip.address}
-                  icon={<BookOpen className="size-3.5" />}
-                  label={nip.title}
-                  sublabel={`custom · ${nip.identifier}`}
-                  selected={selectedCustomAddrs.has(nip.address)}
-                  onToggle={() => toggleCustom(nip)}
-                />
-              ))}
-              {/* Official NIP matches by number/title from local list */}
-              {(officialNips.data ?? [])
-                .filter((n) => !n.deprecated &&
-                  (n.number.toLowerCase().includes(debouncedQuery.toLowerCase()) ||
-                   n.title.toLowerCase().includes(debouncedQuery.toLowerCase())))
-                .slice(0, 8)
-                .map((n) => (
+          // Official matches come from the locally-cached index; custom matches
+          // come from the relay (NIP-50) search. Either source can be empty
+          // independently, so we only show the empty state when both are.
+          (() => {
+            const q = debouncedQuery.toLowerCase();
+            // Strip a leading "nip-"/"nip " prefix so "NIP-01" matches number "01".
+            const numQuery = q.replace(/^nip[-\s]*/i, '').trim();
+            // Drop leading zeros so "1" matches "01" and vice-versa.
+            const numQueryStripped = numQuery.replace(/^0+/, '');
+            const officialMatches = (officialNips.data ?? [])
+              .filter((n) => {
+                if (n.deprecated) return false;
+                const num = n.number.toLowerCase();
+                const numStripped = num.replace(/^0+/, '');
+                return (
+                  n.title.toLowerCase().includes(q) ||
+                  (numQuery.length > 0 &&
+                    (num.includes(numQuery) || numStripped === numQueryStripped))
+                );
+              })
+              .slice(0, 8);
+            const customMatches = searchResults.data ?? [];
+
+            if (searchResults.isLoading && officialMatches.length === 0) {
+              return (
+                <div className="space-y-1 p-2">
+                  {[1, 2, 3].map((i) => <Skeleton key={i} className="h-9 w-full rounded-md" />)}
+                </div>
+              );
+            }
+
+            if (officialMatches.length === 0 && customMatches.length === 0) {
+              return (
+                <p className="px-4 py-6 text-center text-sm text-muted-foreground">
+                  No NIPs found for "{debouncedQuery}"
+                </p>
+              );
+            }
+
+            return (
+              <div className="p-1.5 space-y-0.5">
+                {/* Official NIP matches by number/title from local list */}
+                {officialMatches.map((n) => (
                   <PickRow
                     key={n.number}
                     icon={<BookOpen className="size-3.5" />}
@@ -363,30 +411,67 @@ function NipPicker({
                     onToggle={() => toggleOfficial(n.number)}
                   />
                 ))}
-            </div>
-          )
+                {/* Custom NIP results */}
+                {customMatches.map((nip) => (
+                  <PickRow
+                    key={nip.address}
+                    icon={<BookOpen className="size-3.5" />}
+                    label={nip.title}
+                    sublabel={`custom · ${nip.identifier}`}
+                    selected={selectedCustomAddrs.has(nip.address)}
+                    onToggle={() => toggleCustom(nip)}
+                  />
+                ))}
+              </div>
+            );
+          })()
         ) : (
-          /* Browse: your own custom NIPs */
-          myNips.isLoading ? (
+          /* Browse: your own custom NIPs + the full official NIPs list */
+          (myNips.isLoading || officialNips.isLoading) ? (
             <div className="space-y-1 p-2">
               {[1, 2, 3].map((i) => <Skeleton key={i} className="h-9 w-full rounded-md" />)}
             </div>
-          ) : (myNips.data?.length ?? 0) === 0 ? (
-            <p className="px-4 py-6 text-center text-sm text-muted-foreground">
-              You haven't published any custom NIPs yet. Search to add official NIPs.
-            </p>
           ) : (
             <div className="p-1.5 space-y-0.5">
-              {myNips.data!.map((nip) => (
-                <PickRow
-                  key={nip.address}
-                  icon={<BookOpen className="size-3.5" />}
-                  label={nip.title}
-                  sublabel={`custom · ${nip.identifier}`}
-                  selected={selectedCustomAddrs.has(nip.address)}
-                  onToggle={() => toggleCustom(nip)}
-                />
-              ))}
+              {(myNips.data?.length ?? 0) > 0 && (
+                <>
+                  <p className="px-2 pb-1 pt-1.5 text-xs font-medium text-muted-foreground">Your custom NIPs</p>
+                  {myNips.data!.map((nip) => (
+                    <PickRow
+                      key={nip.address}
+                      icon={<BookOpen className="size-3.5" />}
+                      label={nip.title}
+                      sublabel={`custom · ${nip.identifier}`}
+                      selected={selectedCustomAddrs.has(nip.address)}
+                      onToggle={() => toggleCustom(nip)}
+                    />
+                  ))}
+                </>
+              )}
+
+              {(officialNips.data?.length ?? 0) > 0 && (
+                <>
+                  <p className="px-2 pb-1 pt-1.5 text-xs font-medium text-muted-foreground">Official NIPs</p>
+                  {officialNips.data!
+                    .filter((n) => !n.deprecated)
+                    .map((n) => (
+                      <PickRow
+                        key={n.number}
+                        icon={<BookOpen className="size-3.5" />}
+                        label={`NIP-${n.number}: ${n.title}`}
+                        sublabel="official"
+                        selected={selectedOfficialNums.has(n.number)}
+                        onToggle={() => toggleOfficial(n.number)}
+                      />
+                    ))}
+                </>
+              )}
+
+              {(myNips.data?.length ?? 0) === 0 && (officialNips.data?.length ?? 0) === 0 && (
+                <p className="px-4 py-6 text-center text-sm text-muted-foreground">
+                  No NIPs available. Try searching by number or title.
+                </p>
+              )}
             </div>
           )
         )}
@@ -410,6 +495,22 @@ function RepoPicker({
   const debouncedQuery = useDebounced(query, 350);
   const myRepos = useGitRepos({ authors: [pubkey], limit: 200 });
   const searchResults = useGitRepoSearch(debouncedQuery, 15);
+
+  const [manualRef, setManualRef] = useState('');
+  const [manualError, setManualError] = useState(false);
+
+  const addManual = () => {
+    const entry = parseRepoRef(manualRef);
+    if (!entry) {
+      setManualError(true);
+      return;
+    }
+    setManualError(false);
+    setRepoRefs((prev) =>
+      prev.some((r) => r.address === entry.address) ? prev : [...prev, entry],
+    );
+    setManualRef('');
+  };
 
   const selectedAddrs = new Set(repoRefs.map((r) => r.address));
 
@@ -478,6 +579,28 @@ function RepoPicker({
               );
             })}
           </div>
+        )}
+      </div>
+
+      <div className="space-y-1.5">
+        <div className="flex gap-2">
+          <Input
+            value={manualRef}
+            onChange={(e) => { setManualRef(e.target.value); setManualError(false); }}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addManual(); } }}
+            placeholder="Or paste a repo naddr1… or 30617:<pubkey>:<id>"
+            aria-label="Add a repository by address"
+            aria-invalid={manualError}
+            className="font-mono text-xs"
+          />
+          <Button type="button" variant="outline" size="icon" onClick={addManual} aria-label="Add repository by address">
+            <PlusCircle className="size-4" aria-hidden="true" />
+          </Button>
+        </div>
+        {manualError && (
+          <p className="text-xs text-destructive">
+            Enter a valid repo <code className="font-mono">naddr1…</code> or <code className="font-mono">30617:&lt;pubkey&gt;:&lt;id&gt;</code> address.
+          </p>
         )}
       </div>
     </div>

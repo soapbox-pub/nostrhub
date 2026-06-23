@@ -1,6 +1,8 @@
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { shakespeareEditUrl, type GitRepoAnnouncement } from '@/lib/git';
+import { useAuthor } from '@/hooks/useAuthor';
+import { useNip05Verify } from '@/hooks/useNip05Verify';
 
 interface EditWithShakespeareButtonProps {
   repo: GitRepoAnnouncement;
@@ -19,7 +21,10 @@ export function EditWithShakespeareButton({
   variant = 'hero',
   className,
 }: EditWithShakespeareButtonProps) {
-  const href = shakespeareEditUrl(repo.pubkey, repo.identifier);
+  const author = useAuthor(repo.pubkey);
+  const nip05 = author.data?.metadata?.nip05;
+  const { data: nip05Verified } = useNip05Verify(nip05, repo.pubkey);
+  const href = shakespeareEditUrl(repo.pubkey, repo.identifier, nip05, nip05Verified === true);
 
   if (variant === 'chip') {
     return (

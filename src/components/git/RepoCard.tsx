@@ -1,10 +1,11 @@
 import { Link } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
-import { nip19 } from 'nostr-tools';
 import { useAuthor } from '@/hooks/useAuthor';
+import { useProfileUrl } from '@/hooks/useProfileUrl';
+import { useRepoUrl } from '@/hooks/useRepoUrl';
 import { UserAvatar } from '@/components/UserAvatar';
 import { shortNpub } from '@/lib/nostr';
-import { repoNaddr, isShakespeareRepo, type GitRepoAnnouncement } from '@/lib/git';
+import { isShakespeareRepo, type GitRepoAnnouncement } from '@/lib/git';
 import { EditWithShakespeareButton } from '@/components/git/EditWithShakespeareButton';
 import { CloneUriPill } from '@/components/git/CloneUriPill';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,14 +17,8 @@ export function RepoCard({ repo }: { repo: GitRepoAnnouncement }) {
   const metadata = author.data?.metadata;
   const authorName = metadata?.name || metadata?.display_name || shortNpub(repo.pubkey);
   const nip05 = metadata?.nip05;
-  const naddr = repoNaddr(repo.pubkey, repo.identifier, repo.relays);
-  const authorNpub = (() => {
-    try {
-      return nip19.npubEncode(repo.pubkey);
-    } catch {
-      return repo.pubkey;
-    }
-  })();
+  const repoUrl = useRepoUrl(repo.pubkey, repo.identifier);
+  const authorUrl = useProfileUrl(repo.pubkey, metadata);
 
   return (
     <Card className="group relative h-full overflow-clip border-border/70 bg-card/60 backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-[0_8px_40px_-8px] hover:shadow-primary/30">
@@ -32,7 +27,7 @@ export function RepoCard({ repo }: { repo: GitRepoAnnouncement }) {
         className="pointer-events-none absolute -right-8 -top-10 size-32 rounded-full bg-primary/20 opacity-0 blur-2xl transition-opacity duration-300 group-hover:opacity-100"
       />
       <Link
-        to={`/${naddr}`}
+        to={repoUrl}
         className="relative block h-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <CardContent className="flex h-full flex-col gap-3 px-4">
@@ -61,7 +56,7 @@ export function RepoCard({ repo }: { repo: GitRepoAnnouncement }) {
           {/* Author + timestamp */}
           <div className="mt-auto flex items-center gap-2 border-t border-border/50 pt-3">
             <Link
-              to={`/${authorNpub}`}
+              to={authorUrl}
               onClick={(e) => e.stopPropagation()}
               className="flex min-w-0 items-center gap-1.5 text-xs text-foreground/80 hover:text-primary"
             >

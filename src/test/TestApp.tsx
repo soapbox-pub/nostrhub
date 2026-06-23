@@ -30,6 +30,8 @@ export function TestApp({ children }: TestAppProps) {
       ],
       updatedAt: 0,
     },
+    useAppRelays: true,
+    useUserRelays: true,
     blossomServerMetadata: {
       servers: ['https://blossom.primal.net/'],
       updatedAt: 0,
@@ -41,6 +43,10 @@ export function TestApp({ children }: TestAppProps) {
     statsRelay: '',
     searchRelays: [],
     ai: { baseURL: 'https://openrouter.ai/api/v1', model: '', apiKey: '' },
+    gitCorsProxy: '',
+    plausibleDomain: '',
+    plausibleEndpoint: '',
+    analyticsEnabled: true,
   };
 
   return (

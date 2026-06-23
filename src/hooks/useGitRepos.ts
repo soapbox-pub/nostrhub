@@ -1,6 +1,7 @@
 import { useNostr } from '@nostrify/react';
 import { useQuery } from '@tanstack/react-query';
 import { useAppContext } from '@/hooks/useAppContext';
+import { getEffectiveRelays } from '@/lib/appRelays';
 import {
   GIT_DISCOVERY_RELAYS,
   GIT_REPO_KIND,
@@ -34,7 +35,11 @@ export function useGitRepos(options: UseGitReposOptions = {}) {
   return useQuery<GitRepoAnnouncement[]>({
     queryKey: ['git-repos', hashtag ?? null, authors ? [...authors].sort() : null, limit],
     queryFn: async ({ signal }) => {
-      const readRelays = config.relayMetadata.relays
+      const readRelays = getEffectiveRelays(
+        config.relayMetadata,
+        config.useAppRelays,
+        config.useUserRelays,
+      ).relays
         .filter((r) => r.read)
         .map((r) => r.url);
 

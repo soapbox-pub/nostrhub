@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Check,
   ChevronDown,
@@ -7,14 +7,16 @@ import {
   Code2,
   Download,
   ExternalLink,
+  File as FileIcon,
   FileCode2,
   FileText,
   Folder,
   FolderGit2,
-  FolderOpen,
   GitBranch,
+  Link2,
   Loader2,
   ScrollText,
+  Search,
   Tag as TagIcon,
 } from 'lucide-react';
 import { MarkdownContent } from '@/components/MarkdownContent';
@@ -33,7 +35,7 @@ import {
 import type { GitRepoAnnouncement, GitRepoState } from '@/lib/git';
 import { shortCommit } from '@/lib/git';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Command,
   CommandEmpty,
@@ -53,80 +55,227 @@ interface RepoFileBrowserProps {
   state: GitRepoState | null;
 }
 
-/* ——— Tree ——— */
+/* ——— Tree helpers ——— */
 
-function TreeRow({
-  node,
-  depth,
-  expanded,
-  selected,
-  onToggle,
-  onSelect,
-  trailing,
+/** Resolve a directory path (e.g. `src/lib`) to its child nodes in the tree. */
+function nodesAtPath(tree: RepoTreeFile[], dir: string): RepoTreeFile[] | undefined {
+  if (!dir) return tree;
+  const segments = dir.split('/');
+  let nodes: RepoTreeFile[] | undefined = tree;
+  for (const segment of segments) {
+    const next: RepoTreeFile | undefined = nodes?.find(
+      (n) => n.type === 'dir' && n.name === segment,
+    );
+    if (!next) return undefined;
+    nodes = next.children ?? [];
+  }
+  return nodes;
+}
+
+/** Collect every file path in the tree, for validating the URL selection. */
+function collectFilePaths(tree: RepoTreeFile[]): Set<string> {
+  const paths = new Set<string>();
+  const walk = (nodes: RepoTreeFile[]) => {
+    for (const node of nodes) {
+      if (node.type === 'file') paths.add(node.path);
+      else if (node.children) walk(node.children);
+    }
+  };
+  walk(tree);
+  return paths;
+}
+
+/** Find a README among a directory's immediate children. */
+function findReadmeIn(nodes: RepoTreeFile[]): RepoTreeFile | undefined {
+  return findReadme(nodes);
+}
+
+/* ——— Breadcrumb ——— */
+
+function Breadcrumb({
+  repoName,
+  segments,
+  onNavigate,
 }: {
-  node: RepoTreeFile;
-  depth: number;
-  expanded: Set<string>;
-  selected: string | undefined;
-  onToggle: (path: string) => void;
-  onSelect: (path: string) => void;
-  /** Optional action rendered after the row (e.g. "Publish NIP" for NIP.md). */
-  trailing?: React.ReactNode;
+  repoName: string;
+  segments: string[];
+  onNavigate: (dir: string) => void;
 }) {
-  const isDir = node.type === 'dir';
-  const isOpen = isDir && expanded.has(node.path);
-  const isSelected = node.path === selected;
+  return (
+    <nav aria-label="File path" className="flex flex-wrap items-center gap-1 text-sm">
+      <button
+        type="button"
+        onClick={() => onNavigate('')}
+        className={cn(
+          'rounded font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+          segments.length > 0 ? 'text-primary hover:underline' : 'text-foreground',
+        )}
+      >
+        {repoName}
+      </button>
+      {segments.map((segment, i) => {
+        const isLast = i === segments.length - 1;
+        const dir = segments.slice(0, i + 1).join('/');
+        return (
+          <span key={dir} className="flex items-center gap-1">
+            <span className="text-muted-foreground/50" aria-hidden="true">/</span>
+            {isLast ? (
+              <span className="font-semibold text-foreground">{segment}</span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => onNavigate(dir)}
+                className="rounded font-medium text-primary transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {segment}
+              </button>
+            )}
+          </span>
+        );
+      })}
+    </nav>
+  );
+}
+
+/* ——— File / folder listing ——— */
+
+function FileList({
+  nodes,
+  currentDir,
+  onOpenDir,
+  onOpenFile,
+  nipAction,
+}: {
+  nodes: RepoTreeFile[];
+  /** Current directory path (for the ".." up-row). */
+  currentDir: string;
+  onOpenDir: (path: string) => void;
+  onOpenFile: (path: string) => void;
+  /** Optional action rendered on a root-level NIP.md row. */
+  nipAction?: React.ReactNode;
+}) {
+  const parentDir = currentDir.includes('/')
+    ? currentDir.slice(0, currentDir.lastIndexOf('/'))
+    : '';
 
   return (
-    <>
-      <div className="flex items-center gap-1">
-        <button
-          type="button"
-          onClick={() => (isDir ? onToggle(node.path) : onSelect(node.path))}
-          className={cn(
-            'flex min-w-0 flex-1 items-center gap-1.5 rounded-md py-1 pr-2 text-left text-sm transition-colors',
-            'hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-            isSelected ? 'bg-gradient-to-r from-primary/15 to-nebula/10 font-medium' : 'text-muted-foreground hover:text-foreground',
-          )}
-          style={{ paddingLeft: `${depth * 14 + 8}px` }}
-          aria-expanded={isDir ? isOpen : undefined}
-          aria-current={isSelected ? 'true' : undefined}
-        >
-          {isDir ? (
-            <>
-              {isOpen ? (
-                <ChevronDown className="size-3.5 shrink-0 opacity-60" aria-hidden="true" />
-              ) : (
-                <ChevronRight className="size-3.5 shrink-0 opacity-60" aria-hidden="true" />
-              )}
-              {isOpen ? (
-                <FolderOpen className="size-4 shrink-0 text-chart-3" aria-hidden="true" />
-              ) : (
+    <ul className="divide-y divide-border/60">
+      {currentDir && (
+        <li>
+          <button
+            type="button"
+            onClick={() => onOpenDir(parentDir)}
+            className="flex w-full items-center gap-2.5 px-4 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+          >
+            <span className="size-4 shrink-0" aria-hidden="true" />
+            <span className="font-mono">..</span>
+          </button>
+        </li>
+      )}
+      {nodes.map((node) => {
+        const isDir = node.type === 'dir';
+        const isNip = node.type === 'file' && node.path === 'NIP.md';
+        return (
+          <li key={node.path} className="flex items-center">
+            <button
+              type="button"
+              onClick={() => (isDir ? onOpenDir(node.path) : onOpenFile(node.path))}
+              className="flex min-w-0 flex-1 items-center gap-2.5 px-4 py-2 text-left text-sm transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+            >
+              {isDir ? (
                 <Folder className="size-4 shrink-0 text-chart-3" aria-hidden="true" />
+              ) : (
+                <FileIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
               )}
-            </>
-          ) : (
-            <>
-              <span className="size-3.5 shrink-0" aria-hidden="true" />
-              <FileCode2 className="size-4 shrink-0 opacity-70" aria-hidden="true" />
-            </>
-          )}
-          <span className="min-w-0 truncate font-mono text-[13px]">{node.name}</span>
-        </button>
-        {trailing}
-      </div>
-      {isDir && isOpen && node.children?.map((child) => (
-        <TreeRow
-          key={child.path}
-          node={child}
-          depth={depth + 1}
-          expanded={expanded}
-          selected={selected}
-          onToggle={onToggle}
-          onSelect={onSelect}
-        />
-      ))}
-    </>
+              <span
+                className={cn(
+                  'min-w-0 truncate',
+                  isDir ? 'font-medium text-foreground' : 'text-foreground/90 hover:text-primary',
+                )}
+              >
+                {node.name}
+              </span>
+              {isDir && (
+                <ChevronRight
+                  className="ml-auto size-4 shrink-0 text-muted-foreground/40"
+                  aria-hidden="true"
+                />
+              )}
+            </button>
+            {isNip && nipAction && <span className="shrink-0 pr-4">{nipAction}</span>}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+/* ——— "Go to file" fuzzy finder (GitHub `t` shortcut) ——— */
+
+function GoToFileButton({
+  snapshot,
+  onSelectFile,
+}: {
+  snapshot: RepoSnapshot;
+  onSelectFile: (path: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const allFiles = useMemo(() => [...collectFilePaths(snapshot.tree)].sort(), [snapshot]);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 gap-1.5 text-xs text-muted-foreground"
+        >
+          <Search className="size-3.5" aria-hidden="true" /> Go to file
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-[min(28rem,calc(100vw-2rem))] p-0">
+        <Command
+          filter={(value, search) => {
+            // Subsequence match so "slgit" finds "src/lib/git.ts".
+            const v = value.toLowerCase();
+            const s = search.toLowerCase().replace(/\s+/g, '');
+            if (!s) return 1;
+            let i = 0;
+            for (const ch of v) if (ch === s[i]) i++;
+            return i === s.length ? 1 : 0;
+          }}
+        >
+          <CommandInput placeholder="Search files…" autoFocus />
+          <CommandList className="max-h-72">
+            <CommandEmpty>No matching files.</CommandEmpty>
+            <CommandGroup>
+              {allFiles.map((path) => {
+                const name = path.slice(path.lastIndexOf('/') + 1);
+                const dir = path.slice(0, path.lastIndexOf('/'));
+                return (
+                  <CommandItem
+                    key={path}
+                    value={path}
+                    onSelect={() => {
+                      onSelectFile(path);
+                      setOpen(false);
+                    }}
+                    className="gap-2"
+                  >
+                    <FileCode2 className="size-4 shrink-0 opacity-70" aria-hidden="true" />
+                    <span className="min-w-0 truncate font-mono text-[13px]">
+                      {name}
+                      {dir && <span className="ml-1.5 text-muted-foreground/60">{dir}</span>}
+                    </span>
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -165,7 +314,7 @@ function PublishNipButton({ snapshot, repo }: { snapshot: RepoSnapshot; repo: Gi
       aria-label="Publish NIP.md as a NIP"
       title="Publish this NIP.md as a NIP"
       className={cn(
-        'mr-1 inline-flex shrink-0 items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary transition-colors',
+        'inline-flex shrink-0 items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary transition-colors',
         'hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50',
       )}
     >
@@ -184,11 +333,8 @@ function PublishNipButton({ snapshot, repo }: { snapshot: RepoSnapshot; repo: Gi
 function ImagePreview({ bytes, path }: { bytes: Uint8Array; path: string }) {
   const mime = imageMimeType(path);
 
-  // Create the object URL during render (memoized) and only revoke it from
-  // the effect cleanup, keeping setState out of effects.
   const url = useMemo(() => {
     if (!mime) return undefined;
-    // Copy into a fresh ArrayBuffer-backed view to satisfy BlobPart typing.
     return URL.createObjectURL(new Blob([new Uint8Array(bytes)], { type: mime }));
   }, [bytes, mime]);
 
@@ -239,10 +385,20 @@ function CodeView({ text }: { text: string }) {
   );
 }
 
-function FileViewer({ snapshot, path }: { snapshot: RepoSnapshot; path: string }) {
+function FileViewer({
+  snapshot,
+  path,
+  shareUrl,
+}: {
+  snapshot: RepoSnapshot;
+  path: string;
+  /** Absolute, shareable URL that opens this file at the current branch. */
+  shareUrl?: string;
+}) {
   const { data: bytes, isLoading, isError } = useRepoFile(snapshot, path);
+  const { toast } = useToast();
+  const [copiedLink, setCopiedLink] = useState(false);
   const isMarkdown = /\.(md|markdown)$/i.test(path);
-  // Track which path raw-mode is enabled for, so navigating away auto-resets.
   const [rawPath, setRawPath] = useState<string | null>(null);
   const showRaw = rawPath === path;
 
@@ -257,7 +413,6 @@ function FileViewer({ snapshot, path }: { snapshot: RepoSnapshot; path: string }
 
   const basename = path.slice(path.lastIndexOf('/') + 1);
 
-  /** Build a Blob of the file's bytes with a sensible MIME type. */
   const toBlob = (forViewing: boolean) => {
     if (!bytes) return undefined;
     const mime = imageMimeType(path) ?? (forViewing && text !== undefined
@@ -271,7 +426,6 @@ function FileViewer({ snapshot, path }: { snapshot: RepoSnapshot; path: string }
     if (!blob) return;
     const url = URL.createObjectURL(blob);
     window.open(url, '_blank', 'noopener');
-    // Give the new tab time to load the blob before releasing it.
     setTimeout(() => URL.revokeObjectURL(url), 60_000);
   };
 
@@ -286,17 +440,46 @@ function FileViewer({ snapshot, path }: { snapshot: RepoSnapshot; path: string }
     URL.revokeObjectURL(url);
   };
 
+  const copyLink = async () => {
+    if (!shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 1500);
+      toast({ title: 'Link to file copied to clipboard' });
+    } catch {
+      toast({ title: 'Could not copy link', variant: 'destructive' });
+    }
+  };
+
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="flex items-center gap-2 border-b border-border/60 bg-muted/40 px-4 py-2">
         <FileText className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
         <span className="min-w-0 truncate font-mono text-[13px]" title={path}>
-          {path}
+          {basename}
         </span>
         {bytes && (
           <span className="shrink-0 text-xs text-muted-foreground">{formatBytes(bytes.length)}</span>
         )}
         <span className="ml-auto flex shrink-0 items-center gap-1">
+          {shareUrl && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-xs"
+              onClick={copyLink}
+              aria-label={copiedLink ? 'Link copied' : `Copy link to ${path}`}
+              title="Copy link to this file"
+              className="text-muted-foreground hover:text-foreground"
+            >
+              {copiedLink ? (
+                <Check className="size-3.5 text-chart-5" aria-hidden="true" />
+              ) : (
+                <Link2 className="size-3.5" aria-hidden="true" />
+              )}
+            </Button>
+          )}
           {isMarkdown && text !== undefined && (
             <Button
               type="button"
@@ -362,157 +545,274 @@ function FileViewer({ snapshot, path }: { snapshot: RepoSnapshot; path: string }
   );
 }
 
-/* ——— Browser ——— */
+/* ——— Rendered README card ——— */
 
-/**
- * In-browser file explorer for a NIP-34 repo: shallow-clones the packfile
- * from a GRASP mirror and renders the tree + file contents, README first.
- */
-export function RepoFileBrowser({ repo, state }: RepoFileBrowserProps) {
-  const branches = state?.branches ?? [];
-  const tags = state?.tags ?? [];
-  const [branch, setBranch] = useState<string | undefined>(state?.headBranch ?? branches[0]?.name);
-  const [branchOpen, setBranchOpen] = useState(false);
-  const { data: snapshot, isLoading, isError, error } = useRepoSnapshot(repo, branch);
+function ReadmeCard({ snapshot, path }: { snapshot: RepoSnapshot; path: string }) {
+  const { data: bytes, isLoading } = useRepoFile(snapshot, path);
+  const basename = path.slice(path.lastIndexOf('/') + 1);
 
-  const [selectedPath, setSelectedPath] = useState<string>();
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const text = useMemo(() => {
+    if (!bytes || looksBinary(bytes) || bytes.length > MAX_TEXT_BYTES) return undefined;
+    try {
+      return new TextDecoder('utf-8').decode(bytes);
+    } catch {
+      return undefined;
+    }
+  }, [bytes]);
 
-  // All file paths in the current snapshot, for validating the selection
-  // (a branch switch can produce a tree without the previously-open file).
-  const filePaths = useMemo(() => {
-    const paths = new Set<string>();
-    const collect = (nodes: RepoTreeFile[]) => {
-      for (const node of nodes) {
-        if (node.type === 'file') paths.add(node.path);
-        else if (node.children) collect(node.children);
-      }
-    };
-    if (snapshot) collect(snapshot.tree);
-    return paths;
-  }, [snapshot]);
+  const isMarkdown = /\.(md|markdown)$/i.test(path);
 
-  // Derived selection: the user's pick when still valid, else the README.
-  const defaultPath = useMemo(() => {
-    if (!snapshot) return undefined;
-    return findReadme(snapshot.tree)?.path ?? snapshot.tree.find((n) => n.type === 'file')?.path;
-  }, [snapshot]);
-  const selected = selectedPath && filePaths.has(selectedPath) ? selectedPath : defaultPath;
+  if (isLoading) {
+    return (
+      <Card className="overflow-hidden">
+        <div className="flex items-center justify-center gap-2 p-10 text-sm text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" aria-hidden="true" /> Loading README…
+        </div>
+      </Card>
+    );
+  }
 
-  const toggleDir = (path: string) => {
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      if (next.has(path)) next.delete(path);
-      else next.add(path);
-      return next;
-    });
-  };
-
-  const hasMirrors = repo.cloneUrls.length > 0;
+  if (text === undefined) return null;
 
   return (
     <Card className="overflow-hidden">
-      {/* CardHeader is a grid (one row per child), so the toolbar lives in a single flex child. */}
-      <CardHeader className="pb-4">
-        <div className="flex flex-wrap items-center gap-2">
-          {branches.length > 0 ? (
-            <Popover open={branchOpen} onOpenChange={setBranchOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 max-w-48 gap-1.5 font-mono text-xs"
-                  aria-label="Switch branch"
+      <div className="flex items-center gap-2 border-b border-border/60 bg-muted/40 px-4 py-2.5">
+        <FileText className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+        <span className="font-mono text-[13px] font-medium">{basename}</span>
+      </div>
+      <CardContent className="p-5 sm:p-6">
+        {isMarkdown ? <MarkdownContent content={text} /> : <CodeView text={text} />}
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ——— Branch / tag toolbar ——— */
+
+function BranchPicker({
+  branch,
+  branches,
+  headBranch,
+  onSelect,
+}: {
+  branch: string | undefined;
+  branches: GitRepoState['branches'];
+  headBranch: string | undefined;
+  onSelect: (name: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 max-w-48 gap-1.5 font-mono text-xs"
+          aria-label="Switch branch"
+        >
+          <GitBranch className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <span className="min-w-0 truncate font-semibold">{branch}</span>
+          <ChevronDown className="size-3.5 shrink-0 opacity-60" aria-hidden="true" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-64 p-0">
+        <Command>
+          <CommandInput placeholder="Find a branch…" />
+          <CommandList className="max-h-64">
+            <CommandEmpty>No branches found.</CommandEmpty>
+            <CommandGroup>
+              {branches.map((b) => (
+                <CommandItem
+                  key={b.name}
+                  value={b.name}
+                  onSelect={(value) => {
+                    onSelect(value);
+                    setOpen(false);
+                  }}
+                  className="gap-2 font-mono text-xs"
                 >
-                  <GitBranch className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-                  <span className="min-w-0 truncate">{branch}</span>
-                  <ChevronDown className="size-3.5 shrink-0 opacity-60" aria-hidden="true" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent align="start" className="w-64 p-0">
-                <Command>
-                  <CommandInput placeholder="Find a branch…" />
-                  <CommandList className="max-h-64">
-                    <CommandEmpty>No branches found.</CommandEmpty>
-                    <CommandGroup>
-                      {branches.map((b) => (
-                        <CommandItem
-                          key={b.name}
-                          value={b.name}
-                          onSelect={(value) => {
-                            setBranch(value);
-                            setBranchOpen(false);
-                          }}
-                          className="gap-2 font-mono text-xs"
-                        >
-                          <span className="min-w-0 truncate">{b.name}</span>
-                          {b.name === state?.headBranch && (
-                            <span className="shrink-0 rounded-full border border-border/60 px-1.5 py-px font-sans text-[10px] text-muted-foreground">
-                              default
-                            </span>
-                          )}
-                          {b.name === branch && (
-                            <Check className="ml-auto size-3.5 shrink-0" aria-hidden="true" />
-                          )}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
-          ) : (
-            <CardTitle className="flex items-center gap-2 text-base">
-              <FolderGit2 className="size-4 text-primary" aria-hidden="true" /> Files
-            </CardTitle>
-          )}
+                  <span className="min-w-0 truncate">{b.name}</span>
+                  {b.name === headBranch && (
+                    <span className="shrink-0 rounded-full border border-border/60 px-1.5 py-px font-sans text-[10px] text-muted-foreground">
+                      default
+                    </span>
+                  )}
+                  {b.name === branch && (
+                    <Check className="ml-auto size-3.5 shrink-0" aria-hidden="true" />
+                  )}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
-          {tags.length > 0 && (
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs text-muted-foreground">
-                  <TagIcon className="size-3.5" aria-hidden="true" />
-                  {tags.length} {tags.length === 1 ? 'tag' : 'tags'}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent align="start" className="w-64 p-0">
-                <Command>
-                  <CommandInput placeholder="Find a tag…" />
-                  <CommandList className="max-h-64">
-                    <CommandEmpty>No tags found.</CommandEmpty>
-                    <CommandGroup>
-                      {tags.map((tag) => (
-                        <CommandItem key={tag.name} value={tag.name} className="gap-2 font-mono text-xs">
-                          <span className="min-w-0 truncate">{tag.name}</span>
-                          <code className="ml-auto shrink-0 text-muted-foreground" title={tag.commit}>
-                            {shortCommit(tag.commit)}
-                          </code>
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
-          )}
+/* ——— Browser ——— */
 
-          <div className="ml-auto flex items-center gap-2">
-            {snapshot && (
-              <code className="hidden font-mono text-xs text-muted-foreground sm:inline" title={snapshot.commit}>
-                {shortCommit(snapshot.commit)}
-              </code>
-            )}
-            <CloneButton repo={repo} />
-          </div>
+/**
+ * In-browser file explorer for a NIP-34 repo: shallow-clones the packfile from
+ * a GRASP mirror, then presents a GitHub-style directory listing (folders open
+ * in place, files open in a viewer) with the README rendered below the root
+ * listing. Branch, directory, and file are reflected in the URL so deep links
+ * are shareable.
+ */
+export function RepoFileBrowser({ repo, state }: RepoFileBrowserProps) {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const branches = state?.branches ?? [];
+  const tags = state?.tags ?? [];
+
+  const refParam = searchParams.get('ref') ?? undefined;
+  const dirParam = searchParams.get('dir') ?? '';
+  const pathParam = searchParams.get('path') ?? undefined;
+
+  const branch =
+    refParam && branches.some((b) => b.name === refParam)
+      ? refParam
+      : state?.headBranch ?? branches[0]?.name;
+
+  const { data: snapshot, isLoading, isError, error } = useRepoSnapshot(repo, branch);
+
+  /** Update search params, preserving the rest and replacing history. */
+  const setParams = useCallback(
+    (updates: Partial<Record<'ref' | 'dir' | 'path', string | undefined>>) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          for (const [key, value] of Object.entries(updates)) {
+            if (value) next.set(key, value);
+            else next.delete(key);
+          }
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
+
+  const setBranch = useCallback(
+    (value: string) => setParams({ ref: value, dir: undefined, path: undefined }),
+    [setParams],
+  );
+  const openDir = useCallback(
+    (dir: string) => setParams({ dir: dir || undefined, path: undefined }),
+    [setParams],
+  );
+  const openFile = useCallback(
+    (path: string) => setParams({ path }),
+    [setParams],
+  );
+
+  const filePaths = useMemo(
+    () => (snapshot ? collectFilePaths(snapshot.tree) : new Set<string>()),
+    [snapshot],
+  );
+
+  // Selected file: the URL path when it still points at a real file.
+  const selected = pathParam && filePaths.has(pathParam) ? pathParam : undefined;
+
+  // Current directory listing (validated against the snapshot).
+  const currentNodes = useMemo(() => {
+    if (!snapshot) return undefined;
+    return nodesAtPath(snapshot.tree, dirParam) ?? snapshot.tree;
+  }, [snapshot, dirParam]);
+  const currentDir = useMemo(() => {
+    if (!snapshot) return '';
+    return nodesAtPath(snapshot.tree, dirParam) ? dirParam : '';
+  }, [snapshot, dirParam]);
+
+  // README for the current directory listing (GitHub renders it below files).
+  const readme = useMemo(
+    () => (currentNodes ? findReadmeIn(currentNodes) : undefined),
+    [currentNodes],
+  );
+
+  /** Absolute URL that re-opens the current view at the current branch. */
+  const shareUrlFor = useCallback(
+    (path: string) => {
+      if (typeof window === 'undefined') return undefined;
+      const params = new URLSearchParams();
+      if (branch && branch !== state?.headBranch) params.set('ref', branch);
+      params.set('path', path);
+      return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+    },
+    [branch, state?.headBranch],
+  );
+
+  const hasMirrors = repo.cloneUrls.length > 0;
+  const breadcrumbSegments = currentDir ? currentDir.split('/') : [];
+
+  return (
+    <div className="space-y-4">
+      {/* ——— Toolbar: branch · tags · commit · Code ——— */}
+      <div className="flex flex-wrap items-center gap-2">
+        {branches.length > 0 ? (
+          <BranchPicker
+            branch={branch}
+            branches={branches}
+            headBranch={state?.headBranch}
+            onSelect={setBranch}
+          />
+        ) : (
+          <span className="flex items-center gap-2 text-sm font-semibold">
+            <FolderGit2 className="size-4 text-primary" aria-hidden="true" /> Files
+          </span>
+        )}
+
+        {tags.length > 0 && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs text-muted-foreground">
+                <TagIcon className="size-3.5" aria-hidden="true" />
+                {tags.length} {tags.length === 1 ? 'tag' : 'tags'}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-64 p-0">
+              <Command>
+                <CommandInput placeholder="Find a tag…" />
+                <CommandList className="max-h-64">
+                  <CommandEmpty>No tags found.</CommandEmpty>
+                  <CommandGroup>
+                    {tags.map((tag) => (
+                      <CommandItem key={tag.name} value={tag.name} className="gap-2 font-mono text-xs">
+                        <span className="min-w-0 truncate">{tag.name}</span>
+                        <code className="ml-auto shrink-0 text-muted-foreground" title={tag.commit}>
+                          {shortCommit(tag.commit)}
+                        </code>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+        )}
+
+        <div className="ml-auto flex items-center gap-2">
+          {snapshot && snapshot.tree.length > 0 && (
+            <GoToFileButton snapshot={snapshot} onSelectFile={openFile} />
+          )}
+          {snapshot && (
+            <code className="hidden font-mono text-xs text-muted-foreground sm:inline" title={snapshot.commit}>
+              {shortCommit(snapshot.commit)}
+            </code>
+          )}
+          <CloneButton repo={repo} />
         </div>
-      </CardHeader>
+      </div>
 
-      <CardContent className="p-0">
-        {!hasMirrors ? (
+      {/* ——— Body ——— */}
+      {!hasMirrors ? (
+        <Card>
           <p className="px-8 py-12 text-center text-sm text-muted-foreground">
             This repository doesn't list any clone mirrors, so its files can't be browsed here.
           </p>
-        ) : isLoading ? (
+        </Card>
+      ) : isLoading ? (
+        <Card>
           <div className="flex flex-col items-center gap-3 px-8 py-14 text-center">
             <span className="grid size-12 place-items-center rounded-2xl bg-gradient-to-br from-primary/15 to-nebula/15 ring-1 ring-primary/20">
               <Loader2 className="size-5 animate-spin text-primary" aria-hidden="true" />
@@ -522,7 +822,9 @@ export function RepoFileBrowser({ repo, state }: RepoFileBrowserProps) {
               Fetching a shallow packfile straight into your browser — no server in between.
             </p>
           </div>
-        ) : isError || !snapshot ? (
+        </Card>
+      ) : isError || !snapshot ? (
+        <Card>
           <div className="px-8 py-12 text-center">
             <p className="text-sm text-muted-foreground">
               Couldn't fetch this repository's files from any mirror.
@@ -533,44 +835,58 @@ export function RepoFileBrowser({ repo, state }: RepoFileBrowserProps) {
               </pre>
             )}
           </div>
-        ) : snapshot.tree.length === 0 ? (
+        </Card>
+      ) : snapshot.tree.length === 0 ? (
+        <Card>
           <p className="px-8 py-12 text-center text-sm text-muted-foreground">
             This repository is empty.
           </p>
-        ) : (
-          <div className="grid md:grid-cols-[250px_minmax(0,1fr)]">
-            <div className="max-h-56 overflow-y-auto border-b border-border/60 md:max-h-[46rem] md:border-b-0 md:border-r">
-              <nav aria-label="Repository files" className="p-2">
-                {snapshot.tree.map((node) => (
-                  <TreeRow
-                    key={node.path}
-                    node={node}
-                    depth={0}
-                    expanded={expanded}
-                    selected={selected}
-                    onToggle={toggleDir}
-                    onSelect={setSelectedPath}
-                    trailing={
-                      node.type === 'file' && node.path === 'NIP.md'
-                        ? <PublishNipButton snapshot={snapshot} repo={repo} />
-                        : undefined
-                    }
-                  />
-                ))}
-              </nav>
-            </div>
-
-            <div className="flex min-h-96 min-w-0 flex-col md:max-h-[46rem] md:overflow-y-auto">
-              {selected ? (
-                <FileViewer snapshot={snapshot} path={selected} />
-              ) : (
-                <p className="m-auto p-10 text-sm text-muted-foreground">Select a file to view it.</p>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {selected ? (
+            <>
+              <Breadcrumb
+                repoName={repo.name}
+                segments={selected.split('/')}
+                onNavigate={(dir) => openDir(dir)}
+              />
+              <Card className="overflow-hidden">
+                <FileViewer
+                  snapshot={snapshot}
+                  path={selected}
+                  shareUrl={shareUrlFor(selected)}
+                />
+              </Card>
+            </>
+          ) : (
+            <>
+              {breadcrumbSegments.length > 0 && (
+                <Breadcrumb
+                  repoName={repo.name}
+                  segments={breadcrumbSegments}
+                  onNavigate={(dir) => openDir(dir)}
+                />
               )}
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+              <Card className="overflow-hidden py-0">
+                <FileList
+                  nodes={currentNodes ?? []}
+                  currentDir={currentDir}
+                  onOpenDir={openDir}
+                  onOpenFile={openFile}
+                  nipAction={
+                    currentDir === '' && (currentNodes ?? []).some((n) => n.path === 'NIP.md') ? (
+                      <PublishNipButton snapshot={snapshot} repo={repo} />
+                    ) : undefined
+                  }
+                />
+              </Card>
+              {readme && <ReadmeCard snapshot={snapshot} path={readme.path} />}
+            </>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 

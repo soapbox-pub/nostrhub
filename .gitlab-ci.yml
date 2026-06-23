@@ -35,7 +35,13 @@ deploy:
       when: never
     - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH && $DEPLOY_SSH_KEY && $DEPLOY_TARGET
   script:
-    # Build the web app (build script also writes dist/404.html)
+    # Build the web app (build script also writes dist/404.html).
+    # Vite inlines VITE_* env vars at build time, sourced directly from the job
+    # environment. Set VITE_PLAUSIBLE_DOMAIN (and optionally
+    # VITE_PLAUSIBLE_ENDPOINT) as project-level CI/CD variables to enable
+    # analytics — they're already present in the job env, so do NOT re-declare
+    # them here as `KEY: $KEY` (that overwrites the real value with the literal
+    # string "$KEY" when the source variable is out of scope).
     - npm ci
     - npm run build
 

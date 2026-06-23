@@ -1,11 +1,12 @@
 import { Link } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { Sparkles } from 'lucide-react';
-import { nip19 } from 'nostr-tools';
 import { UserAvatar } from '@/components/UserAvatar';
 import { useAuthor } from '@/hooks/useAuthor';
+import { useProfileUrl } from '@/hooks/useProfileUrl';
+import { useRepoUrl } from '@/hooks/useRepoUrl';
 import { shortNpub } from '@/lib/nostr';
-import { repoNaddr, isShakespeareRepo, type GitRepoAnnouncement } from '@/lib/git';
+import { isShakespeareRepo, type GitRepoAnnouncement } from '@/lib/git';
 import { EditWithShakespeareButton } from '@/components/git/EditWithShakespeareButton';
 import { Badge } from '@/components/ui/badge';
 import { TagBadge } from '@/components/TagBadge';
@@ -32,23 +33,17 @@ interface RepoListItemProps {
  * topic badges, and a muted meta line. Render inside a `divide-y` container.
  */
 export function RepoListItem({ repo, showAuthor = true }: RepoListItemProps) {
-  const author = useAuthor(showAuthor ? repo.pubkey : undefined);
+  const author = useAuthor(repo.pubkey);
   const metadata = author.data?.metadata;
   const authorName = metadata?.name || metadata?.display_name || shortNpub(repo.pubkey);
-  const naddr = repoNaddr(repo.pubkey, repo.identifier, repo.relays);
-  const authorNpub = (() => {
-    try {
-      return nip19.npubEncode(repo.pubkey);
-    } catch {
-      return repo.pubkey;
-    }
-  })();
+  const repoUrl = useRepoUrl(repo.pubkey, repo.identifier);
+  const authorUrl = useProfileUrl(repo.pubkey, metadata);
 
   return (
     <div className="flex flex-col gap-2 py-5 first:pt-3 last:pb-3">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <Link
-          to={`/${naddr}`}
+          to={repoUrl}
           className="font-display text-lg font-semibold leading-tight text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
         >
           {repo.name}
@@ -87,7 +82,7 @@ export function RepoListItem({ repo, showAuthor = true }: RepoListItemProps) {
         {showAuthor && (
           <>
             <Link
-              to={`/${authorNpub}`}
+              to={authorUrl}
               className="flex min-w-0 items-center gap-1.5 font-medium text-foreground/80 hover:text-primary"
             >
               <UserAvatar pubkey={repo.pubkey} size="sm" />

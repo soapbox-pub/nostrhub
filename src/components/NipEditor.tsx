@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { nip19 } from 'nostr-tools';
-import { Save, GitFork, X, Plus, FileText } from 'lucide-react';
+import { Save, GitFork, X, Plus, FileText, ChevronRight } from 'lucide-react';
 import { MarkdownContent } from '@/components/MarkdownContent';
 import { useSaveNip, buildNipTags, type SaveNipParams, type NipKind } from '@/hooks/useSaveNip';
 import { useDrafts } from '@/hooks/useDrafts';
 import { useToast } from '@/hooks/useToast';
-import { generateIdentifier, parseCustomNip, CUSTOM_NIP_KIND, type CustomNip } from '@/lib/nips';
+import { slugify, parseCustomNip, CUSTOM_NIP_KIND, type CustomNip } from '@/lib/nips';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -15,6 +15,8 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { cn } from '@/lib/utils';
 
 /** Pre-filled values when forking another NIP or resuming a saved draft. */
 export interface NipEditorInitial {
@@ -55,13 +57,32 @@ export function NipEditor({ editing, initial }: NipEditorProps) {
   // Kind number whose name input should grab focus right after it's added.
   const [focusKind, setFocusKind] = useState<string | null>(null);
 
-  // The addressable identifier (`d` tag) is opaque and stable for the whole
-  // lifecycle: reuse the existing one when editing or resuming a draft,
-  // otherwise mint a random one ONCE so it survives every draft save → resume
-  // → publish without ever changing or leaking the title.
-  const [identifier] = useState(
-    () => editing?.identifier ?? initial?.identifier ?? generateIdentifier(),
+  // The addressable identifier (`d` tag) is a stable kebab-case slug. It
+  // defaults to a slug of the title and stays in sync until the user edits it
+  // manually (or it's carried over from an edit/draft). Deriving from the title
+  // keeps the address human-readable, matching the repo-creation flow.
+  const [identifier, setIdentifier] = useState(
+    () =>
+      editing?.identifier ??
+      initial?.identifier ??
+      slugify(editing?.title ?? initial?.title ?? ''),
   );
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  // True once the identifier was carried over (edit/resumed draft) or the user
+  // edited it manually — gates the title-based auto-fill below.
+  const [identifierTouched, setIdentifierTouched] = useState(
+    Boolean(editing?.identifier ?? initial?.identifier),
+  );
+
+  const handleTitleChange = (value: string) => {
+    setTitle(value);
+    if (!identifierTouched) setIdentifier(slugify(value));
+  };
+
+  const handleIdentifierChange = (value: string) => {
+    setIdentifierTouched(true);
+    setIdentifier(slugify(value));
+  };
 
   // The draft slug we're currently editing into, so repeated saves overwrite
   // the same draft instead of piling up new ones.
@@ -102,14 +123,17 @@ export function NipEditor({ editing, initial }: NipEditorProps) {
       return;
     }
 
+    // Never publish an empty d tag: fall back to a slug of the title.
+    const finalIdentifier = identifier.trim() || slugify(title);
+
     saveNip(
-      { identifier, title, content, kinds, fork, original: editing },
+      { identifier: finalIdentifier, title, content, kinds, fork, original: editing },
       {
         onSuccess: (event) => {
           const naddr = nip19.naddrEncode({
             kind: event.kind,
             pubkey: event.pubkey,
-            identifier: event.tags.find(([n]) => n === 'd')?.[1] ?? identifier,
+            identifier: event.tags.find(([n]) => n === 'd')?.[1] ?? finalIdentifier,
           });
           // Seed the detail-page cache with the freshly signed event so
           // navigation is optimistic — relays may not index it for a few
@@ -173,7 +197,7 @@ export function NipEditor({ editing, initial }: NipEditorProps) {
         <Input
           id="title"
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          onChange={(e) => handleTitleChange(e.target.value)}
           placeholder="e.g. Encrypted Group Metadata"
           required
         />
@@ -270,6 +294,30 @@ export function NipEditor({ editing, initial }: NipEditorProps) {
           </TabsContent>
         </Tabs>
       </div>
+
+      <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
+        <CollapsibleTrigger className="flex items-center gap-1 rounded-md text-xs font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <ChevronRight className={cn('size-3.5 transition-transform', advancedOpen && 'rotate-90')} aria-hidden="true" />
+          Advanced
+        </CollapsibleTrigger>
+        <CollapsibleContent className="space-y-1.5 pt-3">
+          <Label htmlFor="nip-id">Identifier</Label>
+          <Input
+            id="nip-id"
+            value={identifier}
+            onChange={(e) => handleIdentifierChange(e.target.value)}
+            placeholder="encrypted-group-metadata"
+            className="font-mono text-sm"
+            readOnly={!!editing}
+            disabled={!!editing}
+          />
+          <p className="text-xs text-muted-foreground">
+            {editing
+              ? "The d tag is fixed once a NIP is published — it can't be changed."
+              : "Stable kebab-case slug for the d tag. Defaults to the title; don't change it after publishing."}
+          </p>
+        </CollapsibleContent>
+      </Collapsible>
 
       <div className="flex flex-col justify-end gap-2 sm:flex-row">
         <Button type="button" variant="outline" onClick={() => navigate(-1)} className="sm:w-auto">

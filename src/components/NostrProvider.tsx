@@ -4,11 +4,24 @@ import { NostrContext } from '@nostrify/react';
 import { NUser, useNostrLogin } from '@nostrify/react/login';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAppContext } from '@/hooks/useAppContext';
-import { SEARCH_RELAYS } from '@/lib/appRelays';
+import { getEffectiveRelays, SEARCH_RELAYS } from '@/lib/appRelays';
+import { DEFAULT_GRASP_SERVERS } from '@/lib/git';
 
 interface NostrProviderProps {
   children: React.ReactNode;
 }
+
+/**
+ * NIP-34 git event kinds. These are routed to GRASP servers (Nostr relays that
+ * double as git hosts) in addition to the normal relay set, so a GRASP server
+ * sees a repo's announcement/state and provisions + serves the git data.
+ */
+const GIT_KINDS = [
+  30617, // repository announcement
+  30618, // repository state
+  1617, // patch
+  1621, // issue
+];
 
 const NostrProvider: React.FC<NostrProviderProps> = (props) => {
   const { children } = props;
@@ -20,7 +33,12 @@ const NostrProvider: React.FC<NostrProviderProps> = (props) => {
   // Use refs so the pool callbacks always see the latest data without
   // recreating the pool. The refs are written from effects (never during
   // render) to satisfy React's purity rules.
-  const relayMetadataRef = useRef(config.relayMetadata);
+  //
+  // `effectiveRelays` is the merged relay set derived from the app-default
+  // relays and the user's NIP-65 list, gated by `useAppRelays`/`useUserRelays`.
+  const effectiveRelaysRef = useRef(
+    getEffectiveRelays(config.relayMetadata, config.useAppRelays, config.useUserRelays),
+  );
 
   // Stable ref to the current user's signer for NIP-42 AUTH.
   // The `open()` callback reads from this ref when a relay sends an AUTH
@@ -64,7 +82,7 @@ const NostrProvider: React.FC<NostrProviderProps> = (props) => {
       }
 
       // Route to all read relays
-      const readRelays = relayMetadataRef.current.relays
+      const readRelays = effectiveRelaysRef.current.relays
         .filter(r => r.read)
         .map(r => r.url);
 
@@ -72,15 +90,31 @@ const NostrProvider: React.FC<NostrProviderProps> = (props) => {
         routes.set(url, filters);
       }
 
+      // Git-only queries also fan out to the GRASP servers, which carry the
+      // NIP-34 traffic general relays usually don't.
+      if (filters.length > 0 && filters.every((f) => f.kinds?.every((k) => GIT_KINDS.includes(k)))) {
+        for (const url of DEFAULT_GRASP_SERVERS) {
+          routes.set(url, filters);
+        }
+      }
+
       return routes;
     },
-    eventRouter(_event: NostrEvent) {
-      // Get write relays from metadata
-      const writeRelays = relayMetadataRef.current.relays
+    eventRouter(event: NostrEvent) {
+      // Get write relays from the effective relay set
+      const writeRelays = effectiveRelaysRef.current.relays
         .filter(r => r.write)
         .map(r => r.url);
 
       const allRelays = new Set<string>(writeRelays);
+
+      // Git events must reach the GRASP servers so they provision and serve
+      // the repository, not just the user's general write relays.
+      if (GIT_KINDS.includes(event.kind)) {
+        for (const url of DEFAULT_GRASP_SERVERS) {
+          allRelays.add(url);
+        }
+      }
 
       return [...allRelays];
     },
@@ -115,11 +149,16 @@ const NostrProvider: React.FC<NostrProviderProps> = (props) => {
     signerRef.current = currentSigner;
   }, [currentSigner]);
 
-  // Invalidate Nostr queries when relay metadata changes.
+  // Recompute the effective relay set and invalidate Nostr queries when the
+  // relay config (NIP-65 list or the app/user relay toggles) changes.
   useEffect(() => {
-    relayMetadataRef.current = config.relayMetadata;
+    effectiveRelaysRef.current = getEffectiveRelays(
+      config.relayMetadata,
+      config.useAppRelays,
+      config.useUserRelays,
+    );
     queryClient.invalidateQueries({ queryKey: ['nostr'] });
-  }, [config.relayMetadata, queryClient]);
+  }, [config.relayMetadata, config.useAppRelays, config.useUserRelays, queryClient]);
 
   const contextValue = useMemo(() => ({ nostr: pool }), [pool]);
 

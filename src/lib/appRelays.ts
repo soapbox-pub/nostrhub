@@ -26,8 +26,9 @@ export const SEARCH_RELAYS: string[] = [
 export const NIP46_RELAY = 'wss://relay.primal.net';
 
 /**
- * App default relays. Used as the initial `relayMetadata` for new users and as
- * a fallback when the user has no NIP-65 relay list configured (e.g. during
+ * App default relays. Hardcoded in the app (not user-editable) and included in
+ * the effective relay set whenever `useAppRelays` is enabled. Also used as a
+ * fallback when the user has no NIP-65 relay list configured (e.g. during
  * nostrconnect handshakes before any user relays have been loaded).
  */
 export const APP_RELAYS: RelayMetadata = {
@@ -37,3 +38,43 @@ export const APP_RELAYS: RelayMetadata = {
   ],
   updatedAt: 0,
 };
+
+/** Normalize a relay URL for deduplication (lowercase, strip trailing slashes). */
+function normalizeUrl(url: string): string {
+  return url.toLowerCase().replace(/\/+$/, '');
+}
+
+/**
+ * Get the effective relay list based on user settings.
+ *
+ * - `useAppRelays`: when true, the hardcoded app-default relays are included (first).
+ * - `useUserRelays`: when true, the user's personal NIP-65 list is included.
+ *
+ * When both flags are off the result is empty. When both are on the two lists
+ * are merged with app relays first, deduplicated by normalized URL.
+ */
+export function getEffectiveRelays(
+  userRelays: RelayMetadata,
+  useAppRelays: boolean,
+  useUserRelays: boolean,
+): RelayMetadata {
+  const seen = new Set<string>();
+  const mergedRelays: RelayMetadata['relays'] = [];
+
+  const sources: RelayMetadata['relays'] = [];
+  if (useAppRelays) sources.push(...APP_RELAYS.relays);
+  if (useUserRelays) sources.push(...userRelays.relays);
+
+  for (const relay of sources) {
+    const normalized = normalizeUrl(relay.url);
+    if (!seen.has(normalized)) {
+      seen.add(normalized);
+      mergedRelays.push(relay);
+    }
+  }
+
+  return {
+    relays: mergedRelays,
+    updatedAt: userRelays.updatedAt,
+  };
+}

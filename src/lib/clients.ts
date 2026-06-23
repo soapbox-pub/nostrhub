@@ -16,4 +16,5 @@ export const CLIENTS: ClientDef[] = [
   { tags: ['nostur'], label: 'Nostur', color: 'hsl(160, 75%, 42%)' },
   { tags: ['Coracle'], label: 'Coracle', color: 'hsl(25, 95%, 53%)' },
   { tags: ['snort'], label: 'Snort', color: 'hsl(280, 68%, 55%)' },
+  { tags: ['Wisp'], label: 'Wisp', color: 'hsl(190, 80%, 50%)' },
 ];

@@ -45,8 +45,21 @@ export interface AppConfig {
   appId: string;
   /** Current theme mode. */
   theme: Theme;
-  /** NIP-65 relay list metadata */
+  /** NIP-65 relay list metadata (the user's personal kind 10002 relay list). */
   relayMetadata: RelayMetadata;
+  /**
+   * Whether to use the app's default relays. When true, the hardcoded
+   * `APP_RELAYS` are included in the effective relay set (first). Defaults to
+   * `true` so the app works out of the box without the user configuring relays.
+   */
+  useAppRelays: boolean;
+  /**
+   * Whether to include the user's personal NIP-65 relay list (`relayMetadata`)
+   * in the effective relay set. Defaults to `false` — users must opt in via
+   * Settings to actually connect to their own relays. Until enabled, only the
+   * app-default relays are used (assuming `useAppRelays` is true).
+   */
+  useUserRelays: boolean;
   /** User's kind 10063 Blossom server list. */
   blossomServerMetadata: BlossomServerMetadata;
   /**
@@ -84,6 +97,32 @@ export interface AppConfig {
   searchRelays: string[];
   /** OpenAI-compatible AI provider config for the in-chat `@ai` assistant. */
   ai: AISettings;
+  /**
+   * CORS proxy used to clone git repositories from hosts that don't send CORS
+   * headers (e.g. GitHub/GitLab) when mirroring an existing repo onto Nostr.
+   * A `{href}` placeholder is replaced with the target URL; if absent, the
+   * target is appended. Empty disables proxying (direct fetch only — works for
+   * CORS-enabled GRASP hosts). Mirrors Shakespeare's `corsProxy`.
+   */
+  gitCorsProxy: string;
+  /**
+   * Plausible Analytics domain, baked in at build time from
+   * `VITE_PLAUSIBLE_DOMAIN`. Empty string disables analytics entirely
+   * (no tracker is ever loaded), regardless of `analyticsEnabled`.
+   */
+  plausibleDomain: string;
+  /**
+   * Plausible Analytics API endpoint, baked in at build time from
+   * `VITE_PLAUSIBLE_ENDPOINT`. Empty string uses Plausible Cloud's default
+   * endpoint. Set this when self-hosting Plausible.
+   */
+  plausibleEndpoint: string;
+  /**
+   * User opt-out switch for privacy-friendly analytics. Defaults to `true`
+   * (opted in). When `false`, the Plausible tracker is never initialized even
+   * if `plausibleDomain` is configured. Persisted locally per device.
+   */
+  analyticsEnabled: boolean;
 }
 
 export interface AppContextType {

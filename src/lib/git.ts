@@ -5,6 +5,83 @@ import type { NostrEvent } from '@nostrify/nostrify';
 export const GIT_REPO_KIND = 30617;
 /** NIP-34 git repository state announcement (branches/tags). */
 export const GIT_STATE_KIND = 30618;
+/** NIP-34 patch. */
+export const GIT_PATCH_KIND = 1617;
+/** NIP-34 pull request. */
+export const GIT_PR_KIND = 1618;
+/** NIP-34 issue. */
+export const GIT_ISSUE_KIND = 1621;
+
+/** NIP-34 status kinds for issues/patches/PRs. */
+export const GIT_STATUS_OPEN_KIND = 1630;
+export const GIT_STATUS_APPLIED_KIND = 1631; // applied/merged for patches/PRs; resolved for issues
+export const GIT_STATUS_CLOSED_KIND = 1632;
+export const GIT_STATUS_DRAFT_KIND = 1633;
+
+export const GIT_STATUS_KINDS = [
+  GIT_STATUS_OPEN_KIND,
+  GIT_STATUS_APPLIED_KIND,
+  GIT_STATUS_CLOSED_KIND,
+  GIT_STATUS_DRAFT_KIND,
+] as const;
+
+/** Resolved lifecycle state of an issue or PR, derived from status events. */
+export type GitItemStatus = 'open' | 'draft' | 'closed' | 'merged' | 'resolved';
+
+/** A parsed NIP-34 issue (kind 1621) or pull request (kind 1618). */
+export interface GitTicket {
+  event: NostrEvent;
+  /** Issue (1621) or pull request (1618). */
+  kind: typeof GIT_ISSUE_KIND | typeof GIT_PR_KIND;
+  /** Header line, from the `subject` tag, falling back to the first content line. */
+  subject: string;
+  /** Markdown body. */
+  content: string;
+  /** Author pubkey. */
+  pubkey: string;
+  /** `t` labels. */
+  labels: string[];
+  createdAt: number;
+}
+
+/**
+ * Map the most-recent status event kind to a lifecycle state. `ticketKind`
+ * disambiguates kind 1631 (merged for PRs vs. resolved for issues).
+ */
+export function statusFromKind(
+  statusKind: number | undefined,
+  ticketKind: number,
+): GitItemStatus {
+  switch (statusKind) {
+    case GIT_STATUS_CLOSED_KIND:
+      return 'closed';
+    case GIT_STATUS_DRAFT_KIND:
+      return 'draft';
+    case GIT_STATUS_APPLIED_KIND:
+      return ticketKind === GIT_ISSUE_KIND ? 'resolved' : 'merged';
+    default:
+      return 'open';
+  }
+}
+
+/** Parse a NIP-34 issue or pull request event into a display ticket. */
+export function parseGitTicket(event: NostrEvent): GitTicket | null {
+  if (event.kind !== GIT_ISSUE_KIND && event.kind !== GIT_PR_KIND) return null;
+  const subject =
+    firstTagValue(event, 'subject')?.trim() ||
+    event.content.split('\n').find((l) => l.trim())?.trim() ||
+    '(no subject)';
+  const labels = [...new Set(tagValues(event, 't').map((t) => t.toLowerCase()))];
+  return {
+    event,
+    kind: event.kind,
+    subject,
+    content: event.content,
+    pubkey: event.pubkey,
+    labels,
+    createdAt: event.created_at,
+  };
+}
 
 /**
  * Well-known GRASP servers (relays that double as git smart-HTTP hosts).
@@ -15,6 +92,25 @@ export const GIT_DISCOVERY_RELAYS: string[] = [
   'wss://relay.ngit.dev/',
   'wss://git.shakespeare.diy/',
 ];
+
+/**
+ * Default GRASP servers offered when creating a brand-new repository. These are
+ * relays that also expose a git smart-HTTP endpoint, so a freshly-initialized
+ * repo can be pushed straight from the browser. Each entry's `wss://` host is
+ * reused for the `https://<host>/<npub>/<id>.git` clone URL.
+ */
+export const DEFAULT_GRASP_SERVERS: string[] = [
+  'wss://relay.ngit.dev/',
+  'wss://git.shakespeare.diy/',
+  'wss://git.nostrhub.io/',
+];
+
+/** Build a GRASP smart-HTTP clone URL: `https://<host>/<npub>/<id>.git`. */
+export function graspCloneUrl(graspRelay: string, pubkey: string, identifier: string): string {
+  const host = new URL(graspRelay).host;
+  const npub = nip19.npubEncode(pubkey);
+  return new URL(`/${npub}/${identifier}.git`, `https://${host}`).href;
+}
 
 /** A git ref (branch or tag) from a kind 30618 state event. */
 export interface GitRef {
@@ -216,9 +312,27 @@ export function parseRepoState(event: NostrEvent): GitRepoState {
   };
 }
 
-/** Build the `nostr://npub.../<identifier>` clone URI understood by ngit. */
-export function nostrCloneUri(pubkey: string, identifier: string): string {
-  return `nostr://${nip19.npubEncode(pubkey)}/${identifier}`;
+/**
+ * Build the `nostr://<npub|nip05>/<identifier>` clone URI understood by ngit.
+ *
+ * Per NIP-34 the owner segment may be an npub **or** a NIP-05 identifier. When
+ * `nip05Verified` is `true` the verified handle is used (`_@domain.com`
+ * collapses to `domain.com`); otherwise it falls back to the npub so a spoofed
+ * NIP-05 in kind-0 metadata can't redirect clones to the wrong owner.
+ */
+export function nostrCloneUri(
+  pubkey: string,
+  identifier: string,
+  nip05?: string,
+  nip05Verified = false,
+): string {
+  let owner: string;
+  if (nip05Verified && nip05) {
+    owner = nip05.startsWith('_@') ? nip05.slice(2) : nip05;
+  } else {
+    owner = nip19.npubEncode(pubkey);
+  }
+  return `nostr://${owner}/${identifier}`;
 }
 
 /**
@@ -231,10 +345,16 @@ export function isShakespeareRepo(repo: GitRepoAnnouncement): boolean {
 
 /**
  * Build a `https://shakespeare.diy/clone?url=...` link that opens the repo in
- * Shakespeare, using the repo's `nostr://` clone URI (npub + d tag).
+ * Shakespeare, using the repo's `nostr://` clone URI. Prefers a verified
+ * NIP-05 owner segment, falling back to the npub.
  */
-export function shakespeareEditUrl(pubkey: string, identifier: string): string {
-  const nostrUri = nostrCloneUri(pubkey, identifier);
+export function shakespeareEditUrl(
+  pubkey: string,
+  identifier: string,
+  nip05?: string,
+  nip05Verified = false,
+): string {
+  const nostrUri = nostrCloneUri(pubkey, identifier, nip05, nip05Verified);
   return `https://shakespeare.diy/clone?url=${encodeURIComponent(nostrUri)}`;
 }
 
@@ -246,6 +366,37 @@ export function repoNaddr(pubkey: string, identifier: string, relays?: string[])
     identifier,
     relays: relays?.slice(0, 3),
   });
+}
+
+/**
+ * Build the internal `/{owner}/{repo}` URL for a repository, mirroring NIP-34's
+ * `nostr://<npub|nip05>/<identifier>` clone-URI convention.
+ *
+ * The `owner` segment is a verified NIP-05 identifier when `nip05Verified` is
+ * `true` (`_@domain.com` collapses to `domain.com`), otherwise it falls back to
+ * the npub — so an attacker can't hijack repo links by spoofing someone else's
+ * NIP-05 in their kind-0 metadata. The `repo` segment is the percent-encoded
+ * `d` tag value (NIP-34 requires percent-encoding for identifiers in URIs).
+ *
+ * The resulting path is resolved by the `/:owner/:repo` route.
+ *
+ * **Precondition:** `pubkey` must be a valid 64-char lowercase hex string.
+ */
+export function getRepoUrl(
+  pubkey: string,
+  identifier: string,
+  nip05?: string,
+  nip05Verified = false,
+): string {
+  let owner: string;
+  if (nip05Verified && nip05) {
+    owner = nip05.startsWith('_@') ? nip05.slice(2) : nip05;
+  } else {
+    owner = nip19.npubEncode(pubkey);
+  }
+  // `@` is a valid path-segment character (RFC 3986 sub-delims), so leave the
+  // owner readable; only the `d` identifier needs percent-encoding (NIP-34).
+  return `/${owner}/${encodeURIComponent(identifier)}`;
 }
 
 /** Shorten a commit id for display. */

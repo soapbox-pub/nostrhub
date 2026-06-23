@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useSeoMeta } from '@unhead/react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { nip19 } from 'nostr-tools';
-import { User, X } from 'lucide-react';
+import { Plus, User, X } from 'lucide-react';
 import { RepoCard, RepoCardSkeleton } from '@/components/git/RepoCard';
 import {
   DiscoveryGrid,
@@ -14,6 +14,7 @@ import { useGitRepos } from '@/hooks/useGitRepos';
 import { useCommunityAuthors } from '@/hooks/useCommunityAuthors';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useAuthor } from '@/hooks/useAuthor';
+import { Button } from '@/components/ui/button';
 
 /** Resolve an `author` query param (npub, nprofile, or hex) to a hex pubkey. */
 function authorParamToHex(value: string | null): string | undefined {
@@ -126,6 +127,14 @@ export function GitReposPage() {
     <DiscoveryPage
       title="Repositories"
       description="Code that lives on Nostr: announced over relays, cloneable from anywhere, owned by no forge."
+      action={
+        <Button asChild size="sm" className="gap-1.5 rounded-full shadow-lg shadow-primary/25">
+          <Link to="/repos/new">
+            <Plus className="size-4" aria-hidden="true" />
+            Add repository
+          </Link>
+        </Button>
+      }
       filters={
         <>
           <DiscoverySearch

@@ -39,6 +39,8 @@ export const AppConfigSchema = z.object({
   appId: z.string(),
   theme: ThemeSchema,
   relayMetadata: RelayMetadataSchema,
+  useAppRelays: z.boolean(),
+  useUserRelays: z.boolean(),
   blossomServerMetadata: BlossomServerMetadataSchema,
   useAppBlossomServers: z.boolean(),
   experts: z.array(z.string()),
@@ -47,6 +49,10 @@ export const AppConfigSchema = z.object({
   statsRelay: z.string(),
   searchRelays: z.array(z.string()),
   ai: AISettingsSchema,
+  gitCorsProxy: z.string(),
+  plausibleDomain: z.string(),
+  plausibleEndpoint: z.string(),
+  analyticsEnabled: z.boolean(),
 }) satisfies z.ZodType<AppConfig>;
 
 // ─── Encrypted settings schema (NIP-78, kind 30078) ───────────────────
@@ -80,8 +86,13 @@ export const EncryptedSettingsSchema = z
     communityCap: z.number().nullable().optional(),
     statsProvider: z.string().optional(),
     useAppBlossomServers: z.boolean().optional(),
+    useAppRelays: z.boolean().optional(),
+    useUserRelays: z.boolean().optional(),
     statsRelay: z.string().optional(),
     searchRelays: z.array(z.string()).optional(),
+    gitCorsProxy: z.string().optional(),
+    /** Privacy-friendly analytics opt-out toggle. */
+    analyticsEnabled: z.boolean().optional(),
     /** Notification read-state. */
     notifications: NotificationSettingsSchema.optional(),
     /** Logical clock: ms timestamp of the last write, used to order cross-device updates. */

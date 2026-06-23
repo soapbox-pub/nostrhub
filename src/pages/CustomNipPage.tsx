@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSeoMeta } from '@unhead/react';
 import { nip19 } from 'nostr-tools';
-import { GitFork, AlertCircle, Pencil, Trash2, History } from 'lucide-react';
+import { GitFork, AlertCircle, Pencil, Trash2, History, GitCompare } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { BackLink, DetailHero } from '@/components/DetailHero';
 import { DetailSurface } from '@/components/DetailSurface';
@@ -12,11 +12,12 @@ import { ExpertApprovers } from '@/components/ExpertApprovers';
 import { CommentsSection } from '@/components/comments/CommentsSection';
 import { UserAvatar } from '@/components/UserAvatar';
 import { CopyButton } from '@/components/git/CopyButton';
-import { RelatedReposCard, UsedByAppsCard } from '@/components/CrossRefCards';
+import { RelatedReposCard, UsedByAppsCard, ExpertForksCard } from '@/components/CrossRefCards';
 import { LinkAppNudge } from '@/components/LinkAppNudge';
 import { RevisionsDialog } from '@/components/RevisionsDialog';
 import { CUSTOM_NIP_KIND } from '@/lib/nips';
 import { useCustomNip, useCustomNipByEventId } from '@/hooks/useCustomNips';
+import { useForksOfCustomNip } from '@/hooks/useForksOfNip';
 import { useDeleteNip } from '@/hooks/useSaveNip';
 import { useAuthor } from '@/hooks/useAuthor';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -64,6 +65,10 @@ export function CustomNipPage({ naddr, eventId }: { naddr?: string; eventId?: st
   const apps = appsForNip.data ?? [];
   const repoRefs = uniqueRepoRefs(apps);
 
+  // Expert-authored forks of this NIP (curation signal).
+  const forksQuery = useForksOfCustomNip(nip?.address);
+  const forks = forksQuery.data ?? [];
+
   useSeoMeta({
     title: nip ? `${nip.title} | NostrHub` : 'NIP | NostrHub',
     description: nip ? `${nip.title}: a community NIP on NostrHub.` : undefined,
@@ -71,7 +76,7 @@ export function CustomNipPage({ naddr, eventId }: { naddr?: string; eventId?: st
 
   const target: NipTarget | null = nip ? { type: 'custom', address: nip.address } : null;
   const isOwner = !!user && !!nip && user.pubkey === nip.author;
-  const showSidebar = apps.length > 0 || isOwner;
+  const showSidebar = apps.length > 0 || forks.length > 0 || forksQuery.isLoading || isOwner;
 
   const handleDelete = async () => {
     if (!nip) return;
@@ -91,7 +96,7 @@ export function CustomNipPage({ naddr, eventId }: { naddr?: string; eventId?: st
 
   return (
     <Layout className={showSidebar ? 'max-w-6xl' : undefined}>
-      <BackLink to="/">Back to NIPs</BackLink>
+      <BackLink to="/nips">Back to NIPs</BackLink>
 
       {isLoading ? (
         <div className="space-y-3">
@@ -169,6 +174,15 @@ export function CustomNipPage({ naddr, eventId }: { naddr?: string; eventId?: st
                 ) : (
                   <span className="font-mono">{nip.fork.address}</span>
                 )}
+                {' · '}
+                <Link
+                  to={`/compare?a=${encodeURIComponent(
+                    nip.fork.type === 'official' ? nip.fork.url : nip.fork.address,
+                  )}&b=${encodeURIComponent(nip.naddr)}`}
+                  className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+                >
+                  <GitCompare className="size-3.5" aria-hidden="true" /> Compare with source
+                </Link>
               </p>
             )}
           </DetailHero>
@@ -230,6 +244,7 @@ export function CustomNipPage({ naddr, eventId }: { naddr?: string; eventId?: st
                   linkedApps={apps}
                 />
                 <UsedByAppsCard apps={apps} />
+                <ExpertForksCard forks={forks} isLoading={forksQuery.isLoading} />
                 <RelatedReposCard repoRefs={repoRefs} />
               </aside>
             )}
