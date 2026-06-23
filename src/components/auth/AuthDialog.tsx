@@ -471,10 +471,6 @@ const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
                 🔑
               </div>
 
-              <p className="text-sm text-muted-foreground">
-                Join with a new Nostr account, or log in with one you already have.
-              </p>
-
               <div className="space-y-2">
                 <Button onClick={() => setStep('generate')} className="w-full h-12">
                   Create a new Nostr account
