@@ -1,238 +1,91 @@
-# MKStack
+# NostrHub
 
-**The Complete Framework for Building Nostr Clients with AI**
+**A Nostr-native hub where the developer community builds the protocol together.**
 
-MKStack is an AI-powered framework for building Nostr applications with React 18.x, TailwindCSS 3.x, Vite, shadcn/ui, and Nostrify. Build powerful Nostr applications with AI-first development - from social feeds to private messaging, MKStack provides everything you need to create decentralized apps on the Nostr protocol.
+NostrHub is a place to collaborate on Nostr itself. Its center of gravity is **NIPs** — the proposals that define how Nostr works — along with the discussion around them, a **plan graph** of what the ecosystem is building, an **app directory**, and **git repos**. Everything lives on Nostr as ordinary events, owned by no forge and governed by no central authority.
 
-## 🚀 Quick Start
+It's not a democracy. It's not a dictatorship. It's a **configurable meritocracy** you tune yourself.
 
-Build your Nostr app in 3 simple steps:
+🌐 **[nostrhub.io](https://nostrhub.io)**
 
-### 1. Install & Create
-```bash
-npm install -g @getstacks/stacks
-stacks mkstack
-```
+## The Idea
 
-### 2. Build with AI
-```bash
-stacks agent
-# Tell Dork AI what you want: "Build a group chat application"
-```
+NIPs on GitHub are centralized — an oligarchy of maintainers decides which proposals become "official." NostrHub takes a different approach, rooted in a single trust primitive applied everywhere.
 
-### 3. Deploy Instantly
-```bash
-npm run deploy
-# ✅ App deployed to NostrDeploy.com!
-```
+### Experts
 
-## ✨ What Makes MKStack Special
+NostrHub ships with a default set of **experts**: the top contributors to the NIPs repo (fiatjaf, hodlbod, Vitor Pamplona, PABLOF7z, jb55, Kieran, mattn, and others). But the list is **yours to edit** in Settings.
 
-- **🤖 AI-First Development**: Build complete Nostr apps with just one prompt using Dork AI agent
-- **⚡ 8 Minutes Average**: From idea to deployed application in minutes, not months
-- **🔗 50+ NIPs Supported**: Comprehensive Nostr protocol implementation
-- **🎨 Beautiful UI**: 48+ shadcn/ui components with light/dark theme support
-- **🔐 Built-in Security**: NIP-07 browser signing, NIP-44 encryption, event validation
-- **💰 Payments Ready**: Lightning zaps (NIP-57), Cashu wallets (NIP-60), Wallet Connect (NIP-47)
-- **📱 Production Ready**: TypeScript, testing, deployment, and responsive design included
+Instead of a "Follow" button, profiles have an **"add as expert"** button. Experts wear a shield badge above their avatar wherever they appear, so you always know whose judgment you're looking at.
 
-## 🛠 Technology Stack
+### Approvals
 
-- **React 18.x**: Stable version with hooks, concurrent rendering, and improved performance
-- **TailwindCSS 3.x**: Utility-first CSS framework for styling
-- **Vite**: Fast build tool and development server
-- **shadcn/ui**: 48+ unstyled, accessible UI components built with Radix UI
-- **Nostrify**: Nostr protocol framework for Deno and web
-- **React Router**: Client-side routing with BrowserRouter
-- **TanStack Query**: Data fetching, caching, and state management
-- **TypeScript**: Type-safe JavaScript development
+Anyone can approve a NIP. Approvals are [NIP-32](https://github.com/nostr-protocol/nips/blob/master/32.md) label events — ordinary Nostr data — but **only approvals from your experts count** toward a NIP becoming "official." NIPs are ranked by how many experts approve them. Change your experts, and the rankings rearrange themselves around your trust.
 
-## 🎯 Real-World Examples
+> NostrHub doesn't tell you what's true. It tells you what the people you trust think is true, and lets you choose those people.
 
-### Built with One Prompt
+### The Community
 
-Each of these applications was created with just a single prompt to Dork AI:
+From the experts, NostrHub derives a much larger **community**: it combines the follow lists of every expert, ranks each followed account by how many experts follow them, and caps the result (1,000 by default, configurable, or off entirely).
 
-- **Group Chat Application**: `"Build me a group chat application"`
-  - [Live Demo](https://groupchat-74z9j26wq-mks-projects-1f1254c4.vercel.app/)
+To be **seen** on NostrHub, you don't need permission — Nostr is permissionless. But to be **rendered**, you have to have already earned the attention of people the experts trust. This is what kills spam — not a moderator, captcha, or blocklist, but the shape of the network itself. The same community set scopes everything downstream: comments, chat, the plan graph, apps, and repos.
 
-- **Decentralized Goodreads**: `"Build a decentralized goodreads alternative. Use OpenLibrary API for book data."`
-  - [Live Demo](https://bookstr123-87phkwjcy-mks-projects-1f1254c4.vercel.app/)
+Curation and participation are cleanly separated. Experts **curate** by approving. The community **participates** by building.
 
-- **Chess Game**: `"Build a chess game with NIP 64"`
-  - [Live Demo](https://chess-l0d7ms7m3-mks-projects-1f1254c4.vercel.app/chess)
+## Features
 
-### Production Apps
+### NIPs
+The heart of NostrHub. Browse, propose, discuss, and approve NIPs. Fresh drafts surface the moment a community member publishes them. Expert approval is required to rise.
 
-Real Nostr applications built using MKStack:
+### Plan Graph
+A shared, visual map of what the Nostr community is building — goals, problems, tasks, and the people and projects connected to them. Every node and edge is an independent Nostr event owned by its author. The client merges everyone's contributions into one force-directed "galaxy" and computes the layout locally, so nobody can fight over a shared canvas.
 
-- **[Chorus](https://chorus.community/)**: Facebook-style groups on Nostr with built-in eCash wallet
-- **[Blobbi](https://www.blobbi.pet/)**: Digital pet companions that live forever on the decentralized web
-- **[Treasures](https://treasures.to/)**: Decentralized geocaching adventure powered by Nostr
+### App Directory
+Applications announced on Nostr itself via [NIP-89](https://github.com/nostr-protocol/nips/blob/master/89.md) handler events, with no central submission. The community rates how well each app implements each NIP, ProtonDB-style: **Flawless**, **Incomplete**, **Isolated**, or **Borked**. Reports are shared 1:1 with the [Borkstr](https://borkstr.com) directory, so ratings flow between clients.
 
-[Browse more apps made with MKStack →](https://nostrhub.io/apps/t/mkstack/)
+### Git Repos
+Code that lives on Nostr via [NIP-34](https://github.com/nostr-protocol/nips/blob/master/34.md) — announced over relays, cloneable from anywhere, owned by no forge. Spin up a brand-new repo entirely in the browser and push it to a GRASP server (a relay that doubles as a git host), or mirror an existing GitHub repo onto Nostr. Repo pages are laid out GitHub-style, with issues, pull requests, and a file browser — except there's no GitHub underneath.
 
-## 🔧 Core Features
+### Chat
+A public community chat with AI agent integration.
 
-### Authentication & Users
-- `LoginArea` component with account switching
-- `useCurrentUser` hook for authentication state
-- `useAuthor` hook for fetching user profiles
-- NIP-07 browser signing support
-- Multi-account management
+## Tech Stack
 
-### Nostr Protocol Support
-- **Social Features**: User profiles (NIP-01), follow lists (NIP-02), reactions (NIP-25), reposts (NIP-18)
-- **Messaging**: Private DMs (NIP-17), public chat (NIP-28), group chat (NIP-29), encryption (NIP-44)
-- **Payments**: Lightning zaps (NIP-57), Cashu wallets (NIP-60), Nutzaps (NIP-61), Wallet Connect (NIP-47)
-- **Content**: Long-form articles (NIP-23), file metadata (NIP-94), live events (NIP-53), calendars (NIP-52)
+NostrHub is built with [MKStack](https://soapbox.pub/mkstack), Soapbox's framework for building Nostr clients with AI.
 
-### Data Management
-- `useNostr` hook for querying and publishing
-- `useNostrPublish` hook with automatic client tagging
-- Event validation and filtering
-- Infinite scroll with TanStack Query
-- Multi-relay support
+- **React 19** — hooks, concurrent rendering, ref-as-prop
+- **TailwindCSS 4** — utility-first styling
+- **Vite** — dev server and production bundler
+- **shadcn/ui** — accessible Radix UI + Tailwind components
+- **Nostrify** (`@nostrify/react`) — Nostr protocol framework
+- **TanStack Query** — data fetching, caching, state
+- **React Router** — client-side routing
+- **isomorphic-git** — in-browser git for NIP-34 repos
+- **TypeScript** — type-safe throughout
 
-### UI Components
-- 48+ shadcn/ui components (buttons, forms, dialogs, etc.)
-- `NoteContent` component for rich text rendering
-- `EditProfileForm` for profile management
-- `RelaySelector` for relay switching
-- `CommentsSection` for threaded discussions
-- Light/dark theme system
-
-### Media & Files
-- `useUploadFile` hook with Blossom server integration
-- NIP-94 compatible file metadata
-- Image and video support
-- File attachment to events
-
-### Advanced Features
-- NIP-19 identifier routing (`npub1`, `note1`, `nevent1`, `naddr1`)
-- Cryptographic operations (encryption/decryption)
-- Lightning payments and zaps
-- Real-time event subscriptions
-- Responsive design with mobile support
-
-## 🤖 AI Development with Dork
-
-MKStack includes Dork, a built-in AI agent that understands your codebase and Nostr protocols:
-
-### Supported AI Providers
-
-Configure your AI provider with `stacks configure`:
-
-- **OpenRouter** ([openrouter.ai](https://openrouter.ai/)): Enter your API key from settings
-- **Routstr** ([routstr.com](https://www.routstr.com/)): Use Cashu tokens for payment
-- **PayPerQ** ([ppq.ai](https://ppq.ai/)): OpenAI-compatible API
-
-### How Dork Works
-
-- **Context-Aware**: Understands your entire codebase and project structure
-- **Nostr Expert**: Built-in knowledge of 50+ NIPs and best practices
-- **Instant Implementation**: Makes changes directly to your code following React/TypeScript best practices
-
-Example prompts:
-```bash
-"Add user profiles with avatars and bio"
-"Implement NIP-17 private messaging"
-"Add a dark mode toggle"
-"Create a marketplace with NIP-15"
-```
-
-## 📁 Project Structure
-
-```
-src/
-├── components/           # UI components
-│   ├── ui/              # shadcn/ui components (48+ available)
-│   ├── auth/            # Authentication components
-│   └── comments/        # Comment system components
-├── hooks/               # Custom React hooks
-│   ├── useNostr         # Core Nostr integration
-│   ├── useAuthor        # User profile data
-│   ├── useCurrentUser   # Authentication state
-│   ├── useNostrPublish  # Event publishing
-│   ├── useUploadFile    # File uploads
-│   └── useZaps          # Lightning payments
-├── pages/               # Page components
-├── lib/                 # Utility functions
-├── contexts/            # React context providers
-└── test/                # Testing utilities
-```
-
-## 🎨 UI Components
-
-MKStack includes 48+ shadcn/ui components:
-
-**Layout**: Card, Separator, Sheet, Sidebar, ScrollArea, Resizable
-**Navigation**: Breadcrumb, NavigationMenu, Menubar, Tabs, Pagination
-**Forms**: Button, Input, Textarea, Select, Checkbox, RadioGroup, Switch, Slider
-**Feedback**: Alert, AlertDialog, Toast, Progress, Skeleton
-**Overlay**: Dialog, Popover, HoverCard, Tooltip, ContextMenu, DropdownMenu
-**Data Display**: Table, Avatar, Badge, Calendar, Chart, Carousel
-**And many more...
-
-## 🔐 Security & Best Practices
-
-- **Never use `any` type**: Always use proper TypeScript types
-- **Event validation**: Filter events through validator functions for custom kinds
-- **Efficient queries**: Minimize separate queries to avoid rate limiting
-- **Proper error handling**: Graceful handling of invalid NIP-19 identifiers
-- **Secure authentication**: Use signer interface, never request private keys directly
-
-## 📱 Responsive Design
-
-- Mobile-first approach with Tailwind breakpoints
-- `useIsMobile` hook for responsive behavior
-- Touch-friendly interactions
-- Optimized for all screen sizes
-
-## 🧪 Testing
-
-- Vitest with jsdom environment
-- React Testing Library with jest-dom matchers
-- `TestApp` component provides all necessary context providers
-- Mocked browser APIs (matchMedia, scrollTo, IntersectionObserver, ResizeObserver)
-
-## 🚀 Deployment
-
-Built-in deployment to NostrDeploy.com:
+## Development
 
 ```bash
-npm run deploy
+# Start the dev server
+npm run dev
+
+# Type-check, lint, test, and build
+npm run test
+
+# Production build
+npm run build
 ```
 
-Your app goes live instantly with:
-- Automatic builds
-- CDN distribution
-- HTTPS support
-- Custom domains available
+## Source
 
-## 📚 Documentation
+NostrHub is open source and hosts its own source code on Nostr, at [nostrhub.io/alex@gleasonator.com/nostrhub](https://nostrhub.io/alex@gleasonator.com/nostrhub).
 
-For detailed documentation on building Nostr applications with MKStack:
+## Further Reading
 
-- [Tutorial](https://soapbox.pub/blog/mkstack-tutorial)
-- [Nostr Protocol Documentation](https://nostr.com)
-- [shadcn/ui Components](https://ui.shadcn.com)
-
-## 🤝 Contributing
-
-MKStack is open source and welcomes contributions. The framework is designed to be:
-
-- **Extensible**: Easy to add new NIPs and features
-- **Maintainable**: Clean architecture with TypeScript
-- **Testable**: Comprehensive testing setup included
-- **Documented**: Clear patterns and examples
-
-## 📄 License
-
-Open source - build amazing Nostr applications and help grow the decentralized web!
+- [NostrHub 2.0: A Meritocracy for Building Nostr Together](https://soapbox.pub/blog/nostrhub-2)
+- [NostrHub: NIPs, Apps, and Repos on Nostr](https://soapbox.pub/blog/announcing-nostrhub)
+- [Build a Nostr App with MKStack](https://soapbox.pub/blog/mkstack-tutorial)
 
 ---
 
-**"Vibed with MKStack"** - [Learn more about MKStack](https://soapbox.pub/mkstack)
-
-*Build your Nostr app in minutes, not months. Start with AI, deploy instantly.*
+Come build Nostr with us at [nostrhub.io](https://nostrhub.io).
