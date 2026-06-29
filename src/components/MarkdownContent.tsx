@@ -10,7 +10,7 @@ import { EmbeddedNote } from '@/components/EmbeddedNote';
 import { EmbeddedNaddr } from '@/components/EmbeddedNaddr';
 import { sanitizeUrl } from '@/lib/sanitizeUrl';
 import { cn } from '@/lib/utils';
-import { MarkedText } from '@/components/markdownHighlight';
+import { HighlightBlock } from '@/components/markdownHighlight';
 
 interface MarkdownContentProps {
   content: string;
@@ -39,14 +39,6 @@ function resolveHref(href: string | undefined): string | undefined {
  *   @<prefix><data>       — @ prefix consumed
  *   #word                 — hashtag link
  */
-/**
- * Render a plain-text leaf, wrapping any community-highlighted ranges in
- * clickable <mark> elements when a highlight context is active.
- */
-function PlainText({ text }: { text: string }) {
-  return <MarkedText text={text} />;
-}
-
 function NostrInlineContent({ text, inlineOnly }: { text: string; inlineOnly?: boolean }) {
   const nodes = useMemo(() => {
     const result: ReactNode[] = [];
@@ -60,7 +52,7 @@ function NostrInlineContent({ text, inlineOnly }: { text: string; inlineOnly?: b
       const [fullMatch, nostrPfx, nostrData, barePfx, bareData, hashtag] = match;
 
       if (match.index > lastIndex) {
-        result.push(<PlainText key={key++} text={text.slice(lastIndex, match.index)} />);
+        result.push(<Fragment key={key++}>{text.slice(lastIndex, match.index)}</Fragment>);
       }
 
       if (hashtag) {
@@ -123,7 +115,7 @@ function NostrInlineContent({ text, inlineOnly }: { text: string; inlineOnly?: b
     }
 
     if (lastIndex < text.length) {
-      result.push(<PlainText key={key} text={text.slice(lastIndex)} />);
+      result.push(<Fragment key={key}>{text.slice(lastIndex)}</Fragment>);
     }
 
     return result.length > 0 ? result : [text];
@@ -152,11 +144,9 @@ function NostrMentionInline({ pubkey, raw }: { pubkey: string; raw: string }) {
  */
 function enrichChildren(children: ReactNode, inlineOnly?: boolean): ReactNode {
   if (typeof children === 'string') {
-    // Only run the Nostr tokenizer if an identifier or hashtag is present;
-    // otherwise hand the bare text to <PlainText> so community highlights
-    // still get marked.
+    // Only bother if there's a Nostr identifier or hashtag present.
     if (!/nostr:|npub1|note1|nprofile1|nevent1|naddr1|#[\p{L}\p{N}_]/iu.test(children)) {
-      return <PlainText text={children} />;
+      return children;
     }
     return <NostrInlineContent text={children} inlineOnly={inlineOnly} />;
   }
@@ -180,12 +170,16 @@ function extractText(node: ReactNode): string {
 }
 
 function buildComponents(inlineOnly?: boolean): Components {
+  // Enrich Nostr tokens, then overlay community highlights across the whole block.
+  const block = (children: ReactNode, inline?: boolean) => (
+    <HighlightBlock>{enrichChildren(children, inline)}</HighlightBlock>
+  );
   return {
-    h1: ({ children }) => <h1 className="mt-8 mb-4 scroll-mt-24 text-2xl font-bold tracking-tight first:mt-0">{enrichChildren(children, true)}</h1>,
-    h2: ({ children }) => <h2 className="mt-8 mb-3 scroll-mt-24 border-b border-border/60 pb-1 text-xl font-semibold first:mt-0">{enrichChildren(children, true)}</h2>,
-    h3: ({ children }) => <h3 className="mt-6 mb-2 scroll-mt-24 text-lg font-semibold">{enrichChildren(children, true)}</h3>,
-    h4: ({ children }) => <h4 className="mt-4 mb-2 scroll-mt-24 font-semibold">{enrichChildren(children, true)}</h4>,
-    p: ({ children }) => <p className="my-4 leading-7">{enrichChildren(children, inlineOnly)}</p>,
+    h1: ({ children }) => <h1 className="mt-8 mb-4 scroll-mt-24 text-2xl font-bold tracking-tight first:mt-0">{block(children, true)}</h1>,
+    h2: ({ children }) => <h2 className="mt-8 mb-3 scroll-mt-24 border-b border-border/60 pb-1 text-xl font-semibold first:mt-0">{block(children, true)}</h2>,
+    h3: ({ children }) => <h3 className="mt-6 mb-2 scroll-mt-24 text-lg font-semibold">{block(children, true)}</h3>,
+    h4: ({ children }) => <h4 className="mt-4 mb-2 scroll-mt-24 font-semibold">{block(children, true)}</h4>,
+    p: ({ children }) => <p className="my-4 leading-7">{block(children, inlineOnly)}</p>,
     a: ({ href, children }) => {
       const safe = resolveHref(href);
       const external = safe?.startsWith('http');
@@ -202,9 +196,9 @@ function buildComponents(inlineOnly?: boolean): Components {
     },
     ul: ({ children }) => <ul className="my-4 ml-6 list-disc space-y-1.5">{children}</ul>,
     ol: ({ children }) => <ol className="my-4 ml-6 list-decimal space-y-1.5">{children}</ol>,
-    li: ({ children }) => <li className="leading-7">{enrichChildren(children, inlineOnly)}</li>,
+    li: ({ children }) => <li className="leading-7">{block(children, inlineOnly)}</li>,
     blockquote: ({ children }) => (
-      <blockquote className="my-4 border-l-4 border-primary/40 pl-4 italic text-muted-foreground">{enrichChildren(children, true)}</blockquote>
+      <blockquote className="my-4 border-l-4 border-primary/40 pl-4 italic text-muted-foreground">{block(children, true)}</blockquote>
     ),
     code: ({ className, children }) => {
       const isBlock = /language-/.test(className ?? '');
@@ -241,7 +235,7 @@ function buildComponents(inlineOnly?: boolean): Components {
       </div>
     ),
     th: ({ children }) => <th className="border border-border px-3 py-2 text-left font-semibold">{children}</th>,
-    td: ({ children }) => <td className="border border-border px-3 py-2 align-top">{enrichChildren(children, inlineOnly)}</td>,
+    td: ({ children }) => <td className="border border-border px-3 py-2 align-top">{block(children, inlineOnly)}</td>,
     hr: () => <hr className="my-8 border-border/60" />,
   };
 }

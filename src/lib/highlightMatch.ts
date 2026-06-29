@@ -18,25 +18,28 @@ export interface HighlightContextValue {
 
 export const HighlightContext = createContext<HighlightContextValue | null>(null);
 
-/**
- * Normalize text for matching: collapse whitespace and lowercase. We compare
- * normalized forms so that markdown soft-wraps / multiple spaces don't defeat
- * the match, while still mapping back to the original substring.
- */
-export function normalizeForMatch(value: string): string {
-  return value.replace(/\s+/g, ' ').toLowerCase();
-}
-
 export interface HighlightSpan {
+  /** Start offset into the NORMALIZED (whitespace-collapsed, lowercased) text. */
   start: number;
+  /** End offset (exclusive) into the normalized text. */
   end: number;
   highlights: ParsedHighlight[];
 }
 
 /**
- * Find, within `original`, all character ranges that correspond to any
- * matcher's needle. Matching is whitespace-insensitive and case-insensitive.
- * Overlapping highlights are merged into a single span carrying all of them.
+ * Normalize text for matching: collapse runs of whitespace to a single space
+ * and lowercase. This MUST match the per-chunk normalization used by the
+ * renderer so that span offsets line up with rendered text leaves.
+ */
+export function normalizeText(value: string): string {
+  return value.replace(/\s+/g, ' ').toLowerCase();
+}
+
+/**
+ * Find, within `original`, all ranges (in NORMALIZED coordinates) that match
+ * any matcher's needle. Matching is whitespace-insensitive and
+ * case-insensitive. Overlapping highlights are merged into a single span
+ * carrying all of them.
  */
 export function findHighlightSpans(
   original: string,
@@ -44,25 +47,7 @@ export function findHighlightSpans(
 ): HighlightSpan[] {
   if (matchers.length === 0) return [];
 
-  // Build a normalized version of `original` plus a map back to original
-  // offsets. Each normalized char maps to the original index it came from.
-  const normChars: string[] = [];
-  const normToOrig: number[] = [];
-  let prevSpace = false;
-  for (let i = 0; i < original.length; i++) {
-    const ch = original[i];
-    if (/\s/.test(ch)) {
-      if (prevSpace) continue; // collapse runs
-      normChars.push(' ');
-      normToOrig.push(i);
-      prevSpace = true;
-    } else {
-      normChars.push(ch.toLowerCase());
-      normToOrig.push(i);
-      prevSpace = false;
-    }
-  }
-  const norm = normChars.join('');
+  const norm = normalizeText(original);
 
   const raw: HighlightSpan[] = [];
   for (const m of matchers) {
@@ -72,10 +57,7 @@ export function findHighlightSpans(
     for (;;) {
       const idx = norm.indexOf(needle, from);
       if (idx === -1) break;
-      const startOrig = normToOrig[idx];
-      const endNorm = idx + needle.length - 1;
-      const endOrig = normToOrig[endNorm] + 1;
-      raw.push({ start: startOrig, end: endOrig, highlights: [m.highlight] });
+      raw.push({ start: idx, end: idx + needle.length, highlights: [m.highlight] });
       from = idx + needle.length;
     }
   }

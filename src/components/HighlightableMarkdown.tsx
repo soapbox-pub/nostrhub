@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { MarkdownContent } from '@/components/MarkdownContent';
 import { HighlightProvider } from '@/components/markdownHighlight';
-import { normalizeForMatch, type HighlightMatcher } from '@/lib/highlightMatch';
+import { normalizeText, type HighlightMatcher } from '@/lib/highlightMatch';
 import { HighlightSelectionPopover } from '@/components/HighlightSelectionPopover';
 import { HighlightCommentsDialog } from '@/components/HighlightCommentsDialog';
 import { useHighlights } from '@/hooks/useHighlights';
@@ -27,7 +27,7 @@ export function HighlightableMarkdown({ content, className, source }: Highlighta
   const matchers = useMemo<HighlightMatcher[]>(() => {
     if (!highlights) return [];
     return highlights
-      .map((h) => ({ needle: normalizeForMatch(h.text), highlight: h }))
+      .map((h) => ({ needle: normalizeText(h.text), highlight: h }))
       .filter((m) => m.needle.length > 0);
   }, [highlights]);
 
