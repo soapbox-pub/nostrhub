@@ -154,17 +154,19 @@ export function useExpertArticles() {
  * whole community web-of-trust (see {@link useCommunityAuthors}). Deduped to
  * the latest revision per address and ordered newest-first by publish date.
  * Used to backfill the `/articles` directory beyond the experts' own pieces.
+ * Callers showing only a handful of leads can pass a smaller `limit` to keep
+ * the fetch tight.
  */
-export function useCommunityArticles(authors: string[] | undefined) {
+export function useCommunityArticles(authors: string[] | undefined, limit = 100) {
   const { nostr } = useNostr();
   const list = authors ?? [];
 
   return useQuery<ExpertArticle[]>({
-    queryKey: ['community-articles', [...list].sort()],
+    queryKey: ['community-articles', [...list].sort(), limit],
     queryFn: async ({ signal }) => {
       const opts = { signal: AbortSignal.any([signal, AbortSignal.timeout(8000)]) };
       const events = await nostr.query(
-        [{ kinds: [ARTICLE_KIND], authors: list, limit: 100 }],
+        [{ kinds: [ARTICLE_KIND], authors: list, limit }],
         opts,
       );
       return collectArticles(events);
