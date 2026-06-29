@@ -1,11 +1,15 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { nip19 } from 'nostr-tools';
 import { formatDistanceToNow } from 'date-fns';
+import { MessageSquare } from 'lucide-react';
 import { useAuthor } from '@/hooks/useAuthor';
 import { shortNpub } from '@/lib/nostr';
 import type { ParsedHighlight } from '@/lib/highlightSource';
 import { UserAvatar } from '@/components/UserAvatar';
+import { CommentsSection } from '@/components/comments/CommentsSection';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -20,6 +24,7 @@ function HighlightComment({ highlight }: { highlight: ParsedHighlight }) {
   const name = metadata?.display_name || metadata?.name || shortNpub(event.pubkey);
   const npub = nip19.npubEncode(event.pubkey);
   const when = formatDistanceToNow(new Date(event.created_at * 1000), { addSuffix: true });
+  const [showReplies, setShowReplies] = useState(false);
 
   return (
     <li className="rounded-xl border border-border/60 bg-card/60 p-4">
@@ -38,6 +43,29 @@ function HighlightComment({ highlight }: { highlight: ParsedHighlight }) {
       <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground">
         {comment}
       </p>
+
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="mt-2 h-auto gap-1.5 px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+        aria-expanded={showReplies}
+        onClick={() => setShowReplies((v) => !v)}
+      >
+        <MessageSquare className="size-3.5" aria-hidden="true" />
+        {showReplies ? 'Hide replies' : 'Reply'}
+      </Button>
+
+      {showReplies && (
+        <div className="mt-3 border-t border-border/60 pt-3">
+          <CommentsSection
+            root={event}
+            limit={200}
+            emptyStateMessage="No replies yet"
+            emptyStateSubtitle="Start the discussion on this highlight."
+          />
+        </div>
+      )}
     </li>
   );
 }
