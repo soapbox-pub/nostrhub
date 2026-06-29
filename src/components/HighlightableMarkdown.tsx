@@ -23,6 +23,7 @@ export function HighlightableMarkdown({ content, className, source }: Highlighta
   const containerRef = useRef<HTMLDivElement>(null);
   const { data: highlights } = useHighlights(source);
   const [active, setActive] = useState<ParsedHighlight[] | null>(null);
+  const [hoveredIds, setHoveredIds] = useState<string[] | null>(null);
 
   const matchers = useMemo<HighlightMatcher[]>(() => {
     if (!highlights) return [];
@@ -35,7 +36,13 @@ export function HighlightableMarkdown({ content, className, source }: Highlighta
 
   return (
     <div ref={containerRef} className="relative">
-      <HighlightProvider matchers={matchers} onActivate={setActive} activeId={activeId}>
+      <HighlightProvider
+        matchers={matchers}
+        onActivate={setActive}
+        activeId={activeId}
+        onHover={setHoveredIds}
+        hoveredIds={hoveredIds ?? undefined}
+      >
         <MarkdownContent content={content} className={className} />
       </HighlightProvider>
 

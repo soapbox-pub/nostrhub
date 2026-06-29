@@ -27,7 +27,7 @@ function renderWithHighlights(content: string, highlights: ParsedHighlight[]) {
   }));
   return render(
     <BrowserRouter>
-      <HighlightProvider matchers={matchers} onActivate={() => {}}>
+      <HighlightProvider matchers={matchers} onActivate={() => {}} onHover={() => {}}>
         <MarkdownContent content={content} />
       </HighlightProvider>
     </BrowserRouter>,

@@ -12,11 +12,13 @@ export function HighlightProvider({
   matchers,
   onActivate,
   activeId,
+  onHover,
+  hoveredIds,
   children,
 }: HighlightContextValue & { children: ReactNode }) {
   const value = useMemo(
-    () => ({ matchers, onActivate, activeId }),
-    [matchers, onActivate, activeId],
+    () => ({ matchers, onActivate, activeId, onHover, hoveredIds }),
+    [matchers, onActivate, activeId, onHover, hoveredIds],
   );
   return <HighlightContext.Provider value={value}>{children}</HighlightContext.Provider>;
 }
@@ -129,7 +131,11 @@ function renderMark(
   ctx: HighlightContextValue,
   key: number,
 ): ReactNode {
-  const isActive = ctx.activeId ? highlights.some((h) => h.event.id === ctx.activeId) : false;
+  const ids = highlights.map((h) => h.event.id);
+  const isActive = ctx.activeId ? ids.includes(ctx.activeId) : false;
+  // Hovered when any highlight in this segment is part of the hovered group —
+  // so every segment of the same highlight reacts together, even across links.
+  const isHovered = ctx.hoveredIds ? ids.some((id) => ctx.hoveredIds!.includes(id)) : false;
   const label =
     highlights.length > 1
       ? `${highlights.length} community highlights — click to read comments`
@@ -142,15 +148,20 @@ function renderMark(
       aria-label={label}
       title={label}
       data-active={isActive || undefined}
+      data-hovered={isHovered || undefined}
       // No horizontal padding or per-segment rounding: a highlight that spans
       // several text leaves (e.g. across a link) must read as one continuous
-      // run. `text-inherit` + `bg-transparent` keep nested links looking like
-      // links; the highlight tint is painted as a flowing background.
+      // run. `text-inherit` keeps nested links looking like links; the tint is
+      // painted as a flowing background. Hover is driven by shared JS state
+      // (not CSS :hover) so the whole highlight group reacts as one.
       className={
         'cursor-pointer bg-primary/25 text-inherit transition-colors ' +
-        'hover:bg-primary/40 focus-visible:outline-none focus-visible:bg-primary/40 ' +
+        'focus-visible:outline-none focus-visible:bg-primary/40 ' +
+        'data-[hovered=true]:bg-primary/40 ' +
         'data-[active=true]:bg-primary/50 box-decoration-clone'
       }
+      onMouseEnter={() => ctx.onHover(ids)}
+      onMouseLeave={() => ctx.onHover(null)}
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -245,13 +256,16 @@ function collectRawText(node: ReactNode): string {
  */
 export function HighlightBlock({ children }: { children: ReactNode }) {
   const ctx = useHighlightContext();
+  const matchers = ctx?.matchers;
 
   const spans = useMemo(() => {
-    if (!ctx || ctx.matchers.length === 0) return [];
+    if (!matchers || matchers.length === 0) return [];
     const blockText = collectRawText(children);
     if (!blockText) return [];
-    return findHighlightSpans(blockText, ctx.matchers);
-  }, [ctx, children]);
+    return findHighlightSpans(blockText, matchers);
+    // Only the matcher set + content affect spans; hover/active state must not
+    // trigger a re-match.
+  }, [matchers, children]);
 
   if (!ctx || spans.length === 0) return <>{children}</>;
 

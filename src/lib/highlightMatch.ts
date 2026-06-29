@@ -14,6 +14,10 @@ export interface HighlightContextValue {
   onActivate: (highlights: ParsedHighlight[]) => void;
   /** The event id of the currently-active (open) highlight, if any. */
   activeId?: string;
+  /** Set the currently-hovered highlight group (event ids), or null to clear. */
+  onHover: (ids: string[] | null) => void;
+  /** Event ids of the highlight group currently hovered, for cross-segment styling. */
+  hoveredIds?: string[];
 }
 
 export const HighlightContext = createContext<HighlightContextValue | null>(null);
