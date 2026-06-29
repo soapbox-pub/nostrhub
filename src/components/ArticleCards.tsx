@@ -72,7 +72,7 @@ export function LeadArticleCard({ article }: { article: ExpertArticle }) {
         to={`/${article.naddr}`}
         className={cn(
           'grid focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-xl',
-          hasImage && 'lg:grid-cols-[1.15fr_1fr]',
+          hasImage && 'lg:grid-cols-[1.15fr_1fr] lg:max-h-96',
         )}
       >
         {hasImage && (
