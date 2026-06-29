@@ -528,6 +528,86 @@ These settings are private to the owner — always queried with `authors: [self]
 
 ---
 
+## Highlights — Kind `9802` ([NIP-84](https://github.com/nostr-protocol/nips/blob/master/84.md))
+
+NostrHub lets readers **highlight passages** of NIPs and long-form articles. A highlight is
+a standard [NIP-84](https://github.com/nostr-protocol/nips/blob/master/84.md) kind `9802`
+event: the highlighted excerpt is the event `content`, and the source it was taken from is
+referenced by a tag. Community highlights are rendered inline over the prose on the
+article/NIP detail pages — the highlighted run is marked, and clicking it reveals the
+highlighter's comment.
+
+**NostrHub extension: the comment is REQUIRED.** Plain NIP-84 treats commentary as optional,
+but NostrHub never publishes a highlight without one. The comment lives in a `comment` tag.
+When displaying highlights from other clients, NostrHub only renders kind 9802 events that
+carry both a non-empty `content` excerpt **and** a non-empty `comment` tag.
+
+### Source references
+
+A highlight references exactly one source:
+
+| Source                              | Tag                                       |
+| ----------------------------------- | ----------------------------------------- |
+| Article (kind 30023) / custom NIP (30817) | `["a", "<kind>:<pubkey>:<d>"]`       |
+| Regular event                       | `["e", "<event-id>"]`                     |
+| Official NIP (fetched from GitHub)  | `["r", "https://github.com/nostr-protocol/nips/blob/master/<NN>.md"]` |
+
+### Tags
+
+| Tag       | Required | Description                                                             |
+| --------- | -------- | ----------------------------------------------------------------------- |
+| `a`/`e`/`r` | yes    | The source being highlighted (exactly one of these — see above).        |
+| `comment` | yes      | The highlighter's commentary. **NostrHub requires this.**               |
+| `p`       | no       | Original author of the source, attributed with role: `["p", "<pubkey>", "", "author"]`. |
+| `context` | no       | The surrounding block of prose, so clients can show the excerpt in situ. |
+| `alt`     | yes      | NIP-31 human-readable description (`"Highlight"`).                       |
+
+### Example — highlighting a community NIP
+
+```jsonc
+{
+  "kind": 9802,
+  "content": "Relays only index single-letter tags.",
+  "tags": [
+    ["a", "30817:<nip-author-pubkey>:<nip-d-tag>"],
+    ["p", "<nip-author-pubkey>", "", "author"],
+    ["context", "Kind = schema, tags = semantics. Relays only index single-letter tags. Use t for categories."],
+    ["comment", "This is the single most important rule for designing queryable events."],
+    ["alt", "Highlight"]
+  ]
+}
+```
+
+### Example — highlighting an official NIP (external URL source)
+
+```jsonc
+{
+  "kind": 9802,
+  "content": "the value is a 32-byte lowercase hex-encoded public key",
+  "tags": [
+    ["r", "https://github.com/nostr-protocol/nips/blob/master/01.md"],
+    ["comment", "Worth noting that pubkeys are hex here, not npub."],
+    ["alt", "Highlight"]
+  ]
+}
+```
+
+### Querying
+
+```ts
+// All highlights of a community NIP or article (addressable source)
+nostr.query([{ kinds: [9802], "#a": ["30817:<pubkey>:<d>"] }]);
+
+// All highlights of an official NIP (URL source)
+nostr.query([{ kinds: [9802], "#r": ["https://github.com/nostr-protocol/nips/blob/master/01.md"] }]);
+```
+
+NostrHub matches each highlight's `content` excerpt against the rendered prose
+(whitespace- and case-insensitively) to position the inline mark. Highlights are public
+user-generated content: no author filtering is applied to the display query.
+
+---
+
 ## Related standard kinds used by NostrHub
 
 These are **not** custom — NostrHub reuses standard NIPs:

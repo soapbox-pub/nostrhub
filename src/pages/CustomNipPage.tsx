@@ -6,7 +6,7 @@ import { GitFork, AlertCircle, Pencil, Trash2, History, GitCompare } from 'lucid
 import { Layout } from '@/components/Layout';
 import { BackLink, DetailHero } from '@/components/DetailHero';
 import { DetailSurface } from '@/components/DetailSurface';
-import { MarkdownContent } from '@/components/MarkdownContent';
+import { HighlightableMarkdown } from '@/components/HighlightableMarkdown';
 import { ApproveButton } from '@/components/ApproveButton';
 import { ExpertApprovers } from '@/components/ExpertApprovers';
 import { CommentsSection } from '@/components/comments/CommentsSection';
@@ -203,7 +203,10 @@ export function CustomNipPage({ naddr, eventId }: { naddr?: string; eventId?: st
                 label="Copy NIP markdown"
                 className="absolute right-4 top-4 sm:right-6 sm:top-6"
               />
-              <MarkdownContent content={nip.content} />
+              <HighlightableMarkdown
+                content={nip.content}
+                source={{ type: 'addressable', addr: nip.address, pubkey: nip.author }}
+              />
 
               <p className="mt-8 border-t border-border/60 pt-4 text-sm text-muted-foreground">
                 {isPinned ? 'This revision published' : 'Published'}{' '}

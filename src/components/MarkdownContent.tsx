@@ -10,6 +10,7 @@ import { EmbeddedNote } from '@/components/EmbeddedNote';
 import { EmbeddedNaddr } from '@/components/EmbeddedNaddr';
 import { sanitizeUrl } from '@/lib/sanitizeUrl';
 import { cn } from '@/lib/utils';
+import { MarkedText } from '@/components/markdownHighlight';
 
 interface MarkdownContentProps {
   content: string;
@@ -38,6 +39,14 @@ function resolveHref(href: string | undefined): string | undefined {
  *   @<prefix><data>       — @ prefix consumed
  *   #word                 — hashtag link
  */
+/**
+ * Render a plain-text leaf, wrapping any community-highlighted ranges in
+ * clickable <mark> elements when a highlight context is active.
+ */
+function PlainText({ text }: { text: string }) {
+  return <MarkedText text={text} />;
+}
+
 function NostrInlineContent({ text, inlineOnly }: { text: string; inlineOnly?: boolean }) {
   const nodes = useMemo(() => {
     const result: ReactNode[] = [];
@@ -51,7 +60,7 @@ function NostrInlineContent({ text, inlineOnly }: { text: string; inlineOnly?: b
       const [fullMatch, nostrPfx, nostrData, barePfx, bareData, hashtag] = match;
 
       if (match.index > lastIndex) {
-        result.push(<Fragment key={key++}>{text.slice(lastIndex, match.index)}</Fragment>);
+        result.push(<PlainText key={key++} text={text.slice(lastIndex, match.index)} />);
       }
 
       if (hashtag) {
@@ -114,7 +123,7 @@ function NostrInlineContent({ text, inlineOnly }: { text: string; inlineOnly?: b
     }
 
     if (lastIndex < text.length) {
-      result.push(<Fragment key={key}>{text.slice(lastIndex)}</Fragment>);
+      result.push(<PlainText key={key} text={text.slice(lastIndex)} />);
     }
 
     return result.length > 0 ? result : [text];
@@ -143,9 +152,11 @@ function NostrMentionInline({ pubkey, raw }: { pubkey: string; raw: string }) {
  */
 function enrichChildren(children: ReactNode, inlineOnly?: boolean): ReactNode {
   if (typeof children === 'string') {
-    // Only bother if there's a Nostr identifier or hashtag present.
+    // Only run the Nostr tokenizer if an identifier or hashtag is present;
+    // otherwise hand the bare text to <PlainText> so community highlights
+    // still get marked.
     if (!/nostr:|npub1|note1|nprofile1|nevent1|naddr1|#[\p{L}\p{N}_]/iu.test(children)) {
-      return children;
+      return <PlainText text={children} />;
     }
     return <NostrInlineContent text={children} inlineOnly={inlineOnly} />;
   }

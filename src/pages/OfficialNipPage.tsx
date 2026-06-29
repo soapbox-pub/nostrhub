@@ -5,7 +5,8 @@ import { GitFork, AlertCircle } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { BackLink, DetailHero, HeroExternalLink } from '@/components/DetailHero';
 import { DetailSurface } from '@/components/DetailSurface';
-import { MarkdownContent } from '@/components/MarkdownContent';
+import { HighlightableMarkdown } from '@/components/HighlightableMarkdown';
+import { officialNipHighlightSource } from '@/lib/highlightSource';
 import { ApproveButton } from '@/components/ApproveButton';
 import { ExpertApprovers } from '@/components/ExpertApprovers';
 import { CommentsSection } from '@/components/comments/CommentsSection';
@@ -106,7 +107,7 @@ const OfficialNipPage = () => {
             )}
           >
             <DetailSurface className="min-w-0">
-              <MarkdownContent content={data.content} />
+              <HighlightableMarkdown content={data.content} source={officialNipHighlightSource(code)} />
 
               <section className="mt-10 space-y-4 border-t border-border/60 pt-6">
                 <h2 className="text-xl font-semibold tracking-tight">Discussion</h2>

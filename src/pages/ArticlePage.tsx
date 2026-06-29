@@ -6,7 +6,8 @@ import { nip19 } from 'nostr-tools';
 import type { NostrEvent } from '@nostrify/nostrify';
 import { Layout } from '@/components/Layout';
 import { DetailSurface } from '@/components/DetailSurface';
-import { MarkdownContent } from '@/components/MarkdownContent';
+import { HighlightableMarkdown } from '@/components/HighlightableMarkdown';
+import { articleHighlightSource } from '@/lib/highlightSource';
 import { UserAvatar } from '@/components/UserAvatar';
 import { useAuthor } from '@/hooks/useAuthor';
 import { ARTICLE_KIND } from '@/hooks/useExpertPress';
@@ -153,7 +154,11 @@ export function ArticlePage({ pubkey, identifier }: ArticlePageProps) {
 
         <Separator />
 
-        <MarkdownContent content={event.content} className="text-base" />
+        <HighlightableMarkdown
+          content={event.content}
+          className="text-base"
+          source={articleHighlightSource(pubkey, ARTICLE_KIND, identifier)}
+        />
         </DetailSurface>
       </article>
     </Layout>
