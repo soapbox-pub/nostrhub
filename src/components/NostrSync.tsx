@@ -13,8 +13,9 @@ import { parseBlossomServerList } from '@/lib/appBlossom';
  *   only *used* when `useUserRelays` is enabled, but we keep `relayMetadata`
  *   in sync so the toggle has data to merge.
  * - BUD-03 Blossom server list (kind 10063)
- * - Encrypted app settings (kind 30078) — theme mode, experts, community cap,
- *   relay toggles, etc.
+ * - Encrypted app settings (kind 30078) — theme mode, community cap, relay
+ *   toggles, etc. (The experts list lives in its own kind 12022 event, synced
+ *   directly by useExperts — not here.)
  *
  * The Ditto profile theme (kind 16767) is applied live by <DittoThemeInjector/>,
  * not copied into config here.
@@ -166,14 +167,6 @@ export function NostrSync() {
         }
       } else if (isSwitch && current.theme !== 'system') {
         updates.theme = 'system';
-        changed = true;
-      }
-
-      if (
-        encryptedSettings.experts &&
-        JSON.stringify(encryptedSettings.experts) !== JSON.stringify(current.experts)
-      ) {
-        updates.experts = encryptedSettings.experts;
         changed = true;
       }
 

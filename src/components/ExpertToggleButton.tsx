@@ -24,12 +24,14 @@ export function ExpertToggleButton({
   className,
   iconClassName,
 }: ExpertToggleButtonProps) {
-  const { isExpert, toggleExpert } = useExperts();
+  const { isExpert, toggleExpert, publishExperts } = useExperts();
   const { user } = useCurrentUser();
   const { toast } = useToast();
 
+  // Editing the experts list publishes an event, so a login is required.
+  if (!user) return null;
   // Don't offer to mark yourself as an expert.
-  if (user?.pubkey === pubkey) return null;
+  if (user.pubkey === pubkey) return null;
 
   const expert = isExpert(pubkey);
 
@@ -49,6 +51,7 @@ export function ExpertToggleButton({
       variant={expert ? 'secondary' : 'outline'}
       size={iconOnly ? 'icon' : 'sm'}
       onClick={handleClick}
+      disabled={publishExperts.isPending}
       aria-pressed={expert}
       title={expert ? 'Remove from experts' : 'Add to experts'}
       className={cn(iconOnly && 'size-8', className)}

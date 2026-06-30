@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useSeoMeta } from '@unhead/react';
 import { nip19 } from 'nostr-tools';
-import { BadgeCheck, Blocks, FileText, FolderGit2, Globe, Package, QrCode } from 'lucide-react';
+import { BadgeCheck, Blocks, FileText, FolderGit2, Globe, GraduationCap, Package, QrCode } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { UserAvatar } from '@/components/UserAvatar';
 import { DittoIcon } from '@/components/icons/DittoIcon';
@@ -13,8 +13,10 @@ import { ContributionChart } from '@/components/ContributionChart';
 import { RepoCard, RepoCardSkeleton } from '@/components/git/RepoCard';
 import { CopyButton } from '@/components/git/CopyButton';
 import { ExpertToggleButton } from '@/components/ExpertToggleButton';
+import { ExpertCard } from '@/components/ExpertCard';
 import { useAuthor } from '@/hooks/useAuthor';
 import { useExperts } from '@/hooks/useExperts';
+import { usePublicExperts } from '@/hooks/usePublicExperts';
 import { useCustomNips } from '@/hooks/useCustomNips';
 import { useGitRepos } from '@/hooks/useGitRepos';
 import { useApps } from '@/hooks/useApps';
@@ -73,6 +75,7 @@ export function ProfilePage({ pubkey }: ProfilePageProps) {
   // Show all of this author's own listings, even with incomplete metadata.
   const appsQuery = useApps({ authors: [pubkey], requireFullMetadata: false });
   const releasesQuery = useReleases({ authors: [pubkey] });
+  const expertsListQuery = usePublicExperts(pubkey);
 
   const npub = useMemo(() => {
     try {
@@ -105,6 +108,7 @@ export function ProfilePage({ pubkey }: ProfilePageProps) {
   const repos = reposQuery.data ?? [];
   const apps = appsQuery.data ?? [];
   const releases = releasesQuery.data ?? [];
+  const profileExperts = expertsListQuery.data;
 
   return (
     <Layout className="max-w-5xl">
@@ -264,6 +268,15 @@ export function ProfilePage({ pubkey }: ProfilePageProps) {
                 </Badge>
               )}
             </TabsTrigger>
+            <TabsTrigger value="experts" className="gap-1.5">
+              <GraduationCap className="size-4" aria-hidden="true" />
+              Experts
+              {profileExperts && profileExperts.pubkeys.length > 0 && (
+                <Badge variant="secondary" className="h-5 px-1.5 text-[11px]">
+                  {profileExperts.pubkeys.length}
+                </Badge>
+              )}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="nips" className="mt-4">
@@ -335,6 +348,26 @@ export function ProfilePage({ pubkey }: ProfilePageProps) {
                   <ReleaseCard key={item.release.address} item={item} />
                 ))}
               </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="experts" className="mt-4">
+            {expertsListQuery.isLoading ? (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton key={i} className="h-48 rounded-xl" />
+                ))}
+              </div>
+            ) : profileExperts?.isPrivate ? (
+              <EmptyState message={`${displayName} keeps their experts list private.`} />
+            ) : profileExperts && profileExperts.pubkeys.length > 0 ? (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {profileExperts.pubkeys.map((pk) => (
+                  <ExpertCard key={pk} pubkey={pk} />
+                ))}
+              </div>
+            ) : (
+              <EmptyState message={`${displayName} hasn't shared an experts list yet.`} />
             )}
           </TabsContent>
         </Tabs>

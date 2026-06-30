@@ -43,7 +43,6 @@ export const AppConfigSchema = z.object({
   useUserRelays: z.boolean(),
   blossomServerMetadata: BlossomServerMetadataSchema,
   useAppBlossomServers: z.boolean(),
-  experts: z.array(z.string()),
   communityCap: z.number().nullable(),
   statsProvider: z.string(),
   statsRelay: z.string(),
@@ -82,7 +81,6 @@ export const NotificationSettingsSchema = z
 export const EncryptedSettingsSchema = z
   .object({
     theme: ThemeSchema.optional(),
-    experts: z.array(z.string()).optional(),
     communityCap: z.number().nullable().optional(),
     statsProvider: z.string().optional(),
     useAppBlossomServers: z.boolean().optional(),

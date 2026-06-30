@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { nip19 } from 'nostr-tools';
 import { useSeoMeta } from '@unhead/react';
 import { X, Plus, RotateCcw, Sun, Moon, Monitor } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { UserAvatar } from '@/components/UserAvatar';
 import { RelayInfoCard } from '@/components/RelayInfoCard';
+import { ExpertSearchInput } from '@/components/ExpertSearchInput';
 import { shortNpub } from '@/lib/nostr';
 import { useExperts } from '@/hooks/useExperts';
 import { useAppContext } from '@/hooks/useAppContext';
@@ -34,21 +34,6 @@ import { useTheme } from '@/hooks/useTheme';
 import { useActiveProfileTheme } from '@/hooks/useActiveProfileTheme';
 import { type Theme } from '@/contexts/AppContext';
 
-/** Resolve a hex pubkey, npub, or nprofile string to a hex pubkey. */
-function resolvePubkey(input: string): string | null {
-  const value = input.trim();
-  if (!value) return null;
-  if (/^[0-9a-f]{64}$/i.test(value)) return value.toLowerCase();
-  try {
-    const decoded = nip19.decode(value);
-    if (decoded.type === 'npub') return decoded.data;
-    if (decoded.type === 'nprofile') return decoded.data.pubkey;
-  } catch {
-    return null;
-  }
-  return null;
-}
-
 function ExpertRow({ pubkey, onRemove }: { pubkey: string; onRemove: () => void }) {
   const author = useAuthor(pubkey);
   const name = author.data?.metadata?.name || author.data?.metadata?.display_name || shortNpub(pubkey);
@@ -67,27 +52,62 @@ function ExpertRow({ pubkey, onRemove }: { pubkey: string; onRemove: () => void 
 }
 
 function ExpertsSettings() {
-  const { experts, addExpert, removeExpert, setExperts } = useExperts();
+  const { experts, isPrivate, publishExperts } = useExperts();
+  const { user } = useCurrentUser();
   const { toast } = useToast();
-  const [input, setInput] = useState('');
+  const [draft, setDraft] = useState<string[]>(experts);
+  const [makePrivate, setMakePrivate] = useState(isPrivate);
 
-  const handleAdd = () => {
-    const pubkey = resolvePubkey(input);
-    if (!pubkey) {
+  // Re-seed the staged draft when the loaded list (or its privacy mode) changes
+  // — e.g. once the event loads from relays, or another device updates it. This
+  // is the "adjust state while rendering" pattern, which avoids an effect.
+  const loadedKey = [...experts].sort().join(',');
+  const [seed, setSeed] = useState(`${loadedKey}|${isPrivate}`);
+  if (seed !== `${loadedKey}|${isPrivate}`) {
+    setSeed(`${loadedKey}|${isPrivate}`);
+    setDraft(experts);
+    setMakePrivate(isPrivate);
+  }
+
+  const nip44Supported = !!user?.signer.nip44;
+  const draftKey = [...draft].sort().join(',');
+  const dirty = makePrivate !== isPrivate || draftKey !== loadedKey;
+
+  const handleAdd = (pubkey: string) => {
+    if (draft.includes(pubkey)) {
+      toast({ title: 'Already an expert' });
+      return;
+    }
+    setDraft([...draft, pubkey]);
+  };
+
+  const handleSave = () => {
+    if (makePrivate && !nip44Supported) {
       toast({
-        title: 'Invalid identifier',
-        description: 'Enter a valid npub, nprofile, or 64-character hex pubkey.',
+        title: 'Private lists need NIP-44',
+        description: 'Your current signer cannot encrypt. Turn off Private, or use a NIP-44-capable signer.',
         variant: 'destructive',
       });
       return;
     }
-    if (experts.includes(pubkey)) {
-      toast({ title: 'Already an expert' });
-      setInput('');
-      return;
-    }
-    addExpert(pubkey);
-    setInput('');
+    publishExperts.mutate(
+      { pubkeys: draft, private: makePrivate },
+      {
+        onSuccess: () =>
+          toast({
+            title: 'Experts saved',
+            description: makePrivate
+              ? 'Your list is encrypted — only you can read it.'
+              : 'Your list is public and synced across your devices.',
+          }),
+        onError: (error) =>
+          toast({
+            title: 'Failed to save experts',
+            description: error instanceof Error ? error.message : 'Please try again.',
+            variant: 'destructive',
+          }),
+      },
+    );
   };
 
   return (
@@ -97,32 +117,25 @@ function ExpertsSettings() {
         <CardDescription>
           Experts anchor NostrHub's trust model. Their NIP approvals rank the homepage, and their
           follow lists derive the community used to filter discussion. They appear with a{' '}
-          <span className="text-primary">🎓</span> marker across the app.
+          <span className="text-primary">🎓</span> marker across the app. Your list is saved to
+          Nostr and syncs across your devices.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                handleAdd();
-              }
-            }}
-            placeholder="npub1… or hex pubkey"
-            aria-label="Add an expert by npub or hex pubkey"
-          />
-          <Button onClick={handleAdd} className="gap-1.5 sm:w-auto">
-            <Plus className="size-4" /> Add
-          </Button>
-        </div>
+        <ExpertSearchInput
+          onSelect={handleAdd}
+          existing={draft}
+          placeholder="Search by name, npub, or hex pubkey…"
+        />
 
-        {experts.length > 0 ? (
+        {draft.length > 0 ? (
           <ul className="divide-y divide-border/50">
-            {experts.map((pk) => (
-              <ExpertRow key={pk} pubkey={pk} onRemove={() => removeExpert(pk)} />
+            {draft.map((pk) => (
+              <ExpertRow
+                key={pk}
+                pubkey={pk}
+                onRemove={() => setDraft(draft.filter((p) => p !== pk))}
+              />
             ))}
           </ul>
         ) : (
@@ -132,17 +145,50 @@ function ExpertsSettings() {
         )}
 
         <div className="flex items-center justify-between border-t border-border/60 pt-4">
-          <p className="text-sm text-muted-foreground">{experts.length} expert(s)</p>
+          <p className="text-sm text-muted-foreground">{draft.length} expert(s)</p>
           <Button
             variant="ghost"
             size="sm"
             className="gap-1.5"
-            onClick={() => {
-              setExperts(DEFAULT_EXPERTS);
-              toast({ title: 'Experts reset to defaults' });
-            }}
+            onClick={() => setDraft(DEFAULT_EXPERTS)}
           >
             <RotateCcw className="size-4" /> Reset to defaults
+          </Button>
+        </div>
+
+        <div className="flex items-start justify-between gap-4 border-t border-border/60 pt-4">
+          <div className="space-y-0.5">
+            <Label htmlFor="experts-private" className="text-sm font-medium">
+              Private list
+            </Label>
+            <p className="text-sm text-muted-foreground">
+              Encrypt the list into the event so only you can read it. Off by default, so others
+              can see whom you trust.
+            </p>
+            {makePrivate && !nip44Supported && (
+              <p className="text-sm text-destructive">
+                Your current signer doesn't support NIP-44 encryption.
+              </p>
+            )}
+          </div>
+          <Switch
+            id="experts-private"
+            checked={makePrivate}
+            onCheckedChange={setMakePrivate}
+          />
+        </div>
+
+        <div className="flex items-center justify-between border-t border-border/60 pt-4">
+          {!user ? (
+            <p className="text-sm text-muted-foreground">Log in to save your experts list.</p>
+          ) : (
+            <span />
+          )}
+          <Button
+            onClick={handleSave}
+            disabled={!user || !dirty || publishExperts.isPending}
+          >
+            {publishExperts.isPending ? 'Saving…' : 'Save'}
           </Button>
         </div>
       </CardContent>

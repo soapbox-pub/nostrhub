@@ -37,7 +37,6 @@ export function TestApp({ children }: TestAppProps) {
       updatedAt: 0,
     },
     useAppBlossomServers: true,
-    experts: [],
     communityCap: 1000,
     statsProvider: '',
     statsRelay: '',
