@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { nip19 } from 'nostr-tools';
 import { useSeoMeta } from '@unhead/react';
 import { X, Plus, RotateCcw, Sun, Moon, Monitor } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { UserAvatar } from '@/components/UserAvatar';
 import { RelayInfoCard } from '@/components/RelayInfoCard';
+import { ExpertSearchInput } from '@/components/ExpertSearchInput';
 import { shortNpub } from '@/lib/nostr';
 import { useExperts } from '@/hooks/useExperts';
 import { useAppContext } from '@/hooks/useAppContext';
@@ -34,21 +34,6 @@ import { useTheme } from '@/hooks/useTheme';
 import { useActiveProfileTheme } from '@/hooks/useActiveProfileTheme';
 import { type Theme } from '@/contexts/AppContext';
 
-/** Resolve a hex pubkey, npub, or nprofile string to a hex pubkey. */
-function resolvePubkey(input: string): string | null {
-  const value = input.trim();
-  if (!value) return null;
-  if (/^[0-9a-f]{64}$/i.test(value)) return value.toLowerCase();
-  try {
-    const decoded = nip19.decode(value);
-    if (decoded.type === 'npub') return decoded.data;
-    if (decoded.type === 'nprofile') return decoded.data.pubkey;
-  } catch {
-    return null;
-  }
-  return null;
-}
-
 function ExpertRow({ pubkey, onRemove }: { pubkey: string; onRemove: () => void }) {
   const author = useAuthor(pubkey);
   const name = author.data?.metadata?.name || author.data?.metadata?.display_name || shortNpub(pubkey);
@@ -70,7 +55,6 @@ function ExpertsSettings() {
   const { experts, isPrivate, publishExperts } = useExperts();
   const { user } = useCurrentUser();
   const { toast } = useToast();
-  const [input, setInput] = useState('');
   const [draft, setDraft] = useState<string[]>(experts);
   const [makePrivate, setMakePrivate] = useState(isPrivate);
 
@@ -89,23 +73,12 @@ function ExpertsSettings() {
   const draftKey = [...draft].sort().join(',');
   const dirty = makePrivate !== isPrivate || draftKey !== loadedKey;
 
-  const handleAdd = () => {
-    const pubkey = resolvePubkey(input);
-    if (!pubkey) {
-      toast({
-        title: 'Invalid identifier',
-        description: 'Enter a valid npub, nprofile, or 64-character hex pubkey.',
-        variant: 'destructive',
-      });
-      return;
-    }
+  const handleAdd = (pubkey: string) => {
     if (draft.includes(pubkey)) {
       toast({ title: 'Already an expert' });
-      setInput('');
       return;
     }
     setDraft([...draft, pubkey]);
-    setInput('');
   };
 
   const handleSave = () => {
@@ -149,23 +122,11 @@ function ExpertsSettings() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                handleAdd();
-              }
-            }}
-            placeholder="npub1… or hex pubkey"
-            aria-label="Add an expert by npub or hex pubkey"
-          />
-          <Button onClick={handleAdd} className="gap-1.5 sm:w-auto">
-            <Plus className="size-4" /> Add
-          </Button>
-        </div>
+        <ExpertSearchInput
+          onSelect={handleAdd}
+          existing={draft}
+          placeholder="Search by name, npub, or hex pubkey…"
+        />
 
         {draft.length > 0 ? (
           <ul className="divide-y divide-border/50">
