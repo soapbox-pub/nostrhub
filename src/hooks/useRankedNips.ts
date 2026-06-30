@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useOfficialNips, type OfficialNip } from '@/hooks/useOfficialNips';
+import { useBuds, type Bud } from '@/hooks/useBuds';
 import { useCustomNips } from '@/hooks/useCustomNips';
 import { useNipApprovals, type NipTarget, nipTargetKey } from '@/hooks/useNipApprovals';
 import { useExperts } from '@/hooks/useExperts';
@@ -9,7 +10,7 @@ export interface RankedNip {
   key: string;
   target: NipTarget;
   title: string;
-  /** Official NIP number/code, when applicable. */
+  /** Official NIP or BUD number/code, when applicable. */
   number?: string;
   /** Underlying custom NIP, when applicable. */
   custom?: CustomNip;
@@ -41,6 +42,21 @@ export function officialToRanked(nip: OfficialNip): RankedNip {
   };
 }
 
+/** Adapt a Blossom BUD into the shape `NipCard` renders (no approval data). */
+export function budToRanked(bud: Bud): RankedNip {
+  const target = { type: 'bud', number: bud.number } as const;
+  return {
+    key: nipTargetKey(target),
+    target,
+    title: bud.title,
+    number: bud.number,
+    kinds: bud.eventKinds?.map((ek) => ek.kind),
+    expertCount: 0,
+    totalCount: 0,
+    expertApprovers: [],
+  };
+}
+
 /** Adapt a community NIP into the shape `NipCard` renders (no approval data). */
 export function customToRanked(nip: CustomNip): RankedNip {
   const target = { type: 'custom', address: nip.address } as const;
@@ -65,25 +81,28 @@ export function customToRanked(nip: CustomNip): RankedNip {
  */
 export function useRankedNips() {
   const officialQuery = useOfficialNips();
+  const budsQuery = useBuds();
   const customQuery = useCustomNips({ limit: 200 });
   const { expertSet } = useExperts();
 
   const official = officialQuery.data;
+  const buds = budsQuery.data;
   const custom = customQuery.data;
 
   // Build the full set of approval targets.
   const targets = useMemo<NipTarget[]>(() => {
     const t: NipTarget[] = [];
     for (const nip of official ?? []) t.push({ type: 'official', number: nip.number });
+    for (const bud of buds ?? []) t.push({ type: 'bud', number: bud.number });
     for (const nip of custom ?? []) t.push({ type: 'custom', address: nip.address });
     return t;
-  }, [official, custom]);
+  }, [official, buds, custom]);
 
   const approvalsQuery = useNipApprovals(targets, { expertsOnly: true });
   const approvals = approvalsQuery.data;
 
   const ranked = useMemo<RankedNip[]>(() => {
-    if (!official && !custom) return [];
+    if (!official && !buds && !custom) return [];
 
     const items: RankedNip[] = [];
 
@@ -97,6 +116,21 @@ export function useRankedNips() {
         number: nip.number,
         deprecated: nip.deprecated,
         kinds: nip.eventKinds?.map((ek) => ek.kind),
+        expertCount: a?.expertCount ?? 0,
+        totalCount: a?.totalCount ?? 0,
+        expertApprovers: a?.experts ?? [],
+      });
+    }
+
+    for (const bud of buds ?? []) {
+      const target: NipTarget = { type: 'bud', number: bud.number };
+      const a = approvals?.[nipTargetKey(target)];
+      items.push({
+        key: nipTargetKey(target),
+        target,
+        title: bud.title,
+        number: bud.number,
+        kinds: bud.eventKinds?.map((ek) => ek.kind),
         expertCount: a?.expertCount ?? 0,
         totalCount: a?.totalCount ?? 0,
         expertApprovers: a?.experts ?? [],
@@ -136,11 +170,15 @@ export function useRankedNips() {
         if (a.number && b.number) return a.number.localeCompare(b.number);
         return a.title.localeCompare(b.title);
       });
-  }, [official, custom, approvals, expertSet]);
+  }, [official, buds, custom, approvals, expertSet]);
 
   return {
     ranked,
-    isLoading: officialQuery.isLoading || customQuery.isLoading || approvalsQuery.isLoading,
+    isLoading:
+      officialQuery.isLoading ||
+      budsQuery.isLoading ||
+      customQuery.isLoading ||
+      approvalsQuery.isLoading,
     isError: officialQuery.isError,
   };
 }

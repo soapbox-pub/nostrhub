@@ -3,12 +3,13 @@ import { useNostr } from '@nostrify/react';
 import { useQuery } from '@tanstack/react-query';
 import type { NostrFilter } from '@nostrify/nostrify';
 import { useOfficialNips, type OfficialNip } from '@/hooks/useOfficialNips';
+import { useBuds, type Bud } from '@/hooks/useBuds';
 import { useCustomNips } from '@/hooks/useCustomNips';
 import { useCommunityAuthors } from '@/hooks/useCommunityAuthors';
 import { useNipLabels, type NipLabels } from '@/hooks/useNipLabels';
 import { useExperts } from '@/hooks/useExperts';
 import { nipTargetKey, type NipTarget } from '@/hooks/useNipApprovals';
-import { officialToRanked, type RankedNip } from '@/hooks/useRankedNips';
+import { officialToRanked, budToRanked, type RankedNip } from '@/hooks/useRankedNips';
 import {
   CUSTOM_NIP_KIND,
   isValidCustomNip,
@@ -90,6 +91,8 @@ export interface DirectoryNips {
   ranked: RankedNip[];
   /** All official NIPs in README order (for the "Official" filter). */
   official: RankedNip[];
+  /** All Blossom BUDs in README order (shown as a section under "Official"). */
+  buds: RankedNip[];
   /** Loading state for the curated (default) view. */
   isLoading: boolean;
   /** Loading state for the official index alone. */
@@ -109,6 +112,7 @@ export interface DirectoryNips {
  */
 export function useDirectoryNips(): DirectoryNips {
   const officialQuery = useOfficialNips();
+  const budsQuery = useBuds();
   const community = useCommunityAuthors();
   const customQuery = useCustomNips({
     authors: community.data?.authors,
@@ -119,6 +123,7 @@ export function useDirectoryNips(): DirectoryNips {
   const { expertSet } = useExperts();
 
   const officialNips = officialQuery.data;
+  const budsData = budsQuery.data;
   const customNips = customQuery.data;
   const labels = labelsQuery.data;
 
@@ -146,12 +151,35 @@ export function useDirectoryNips(): DirectoryNips {
     });
   }, [officialNips, labels]);
 
+  const buds = useMemo<RankedNip[]>(() => {
+    const byKey = labels?.byKey ?? {};
+    return (budsData ?? []).map((bud) => {
+      const base = budToRanked(bud);
+      const label = byKey[base.key];
+      if (!label) return base;
+      // BUDs have no author, so every approval counts.
+      return {
+        ...base,
+        expertApprovers: label.experts ?? [],
+        expertCount: label.experts?.length ?? 0,
+        totalCount: label.all?.length ?? 0,
+      };
+    });
+  }, [budsData, labels]);
+
   // Index official NIPs by number for label lookups.
   const officialByNumber = useMemo(() => {
     const map = new Map<string, OfficialNip>();
     for (const nip of officialNips ?? []) map.set(nip.number, nip);
     return map;
   }, [officialNips]);
+
+  // Index BUDs by number for label lookups.
+  const budsByNumber = useMemo(() => {
+    const map = new Map<string, Bud>();
+    for (const bud of budsData ?? []) map.set(bud.number, bud);
+    return map;
+  }, [budsData]);
 
   const ranked = useMemo<RankedNip[]>(() => {
     const byKey = labels?.byKey ?? {};
@@ -237,10 +265,29 @@ export function useDirectoryNips(): DirectoryNips {
       );
     }
 
+    // 4. Blossom BUDs that carry a label.
+    for (const target of labels?.targets ?? []) {
+      if (target.type !== 'bud') continue;
+      const key = nipTargetKey(target);
+      if (items.has(key)) continue;
+      const meta = budsByNumber.get(target.number);
+      if (!meta) continue; // BUD index not loaded / unknown BUD number.
+      items.set(
+        key,
+        applyApprovals({
+          key,
+          target,
+          title: meta.title,
+          number: meta.number,
+          kinds: meta.eventKinds?.map((ek) => ek.kind),
+        }),
+      );
+    }
+
     return Array.from(items.values()).sort((a, b) => {
-      // Official NIPs get a +1 ranking bonus over community drafts.
-      const aOfficial = a.target.type === 'official' ? 1 : 0;
-      const bOfficial = b.target.type === 'official' ? 1 : 0;
+      // Official NIPs and BUDs get a +1 ranking bonus over community drafts.
+      const aOfficial = a.target.type !== 'custom' ? 1 : 0;
+      const bOfficial = b.target.type !== 'custom' ? 1 : 0;
       const aExpert = a.expertCount + aOfficial;
       const bExpert = b.expertCount + bOfficial;
       if (bExpert !== aExpert) return bExpert - aExpert;
@@ -255,19 +302,21 @@ export function useDirectoryNips(): DirectoryNips {
     labeledCustomQuery.data,
     labels,
     officialByNumber,
+    budsByNumber,
     expertSet,
   ]);
 
   return {
     ranked,
     official,
+    buds,
     isLoading:
       officialQuery.isLoading ||
       community.isLoading ||
       customQuery.isLoading ||
       labelsQuery.isLoading ||
       labeledCustomQuery.isLoading,
-    isOfficialLoading: officialQuery.isLoading,
+    isOfficialLoading: officialQuery.isLoading || budsQuery.isLoading,
     isError: officialQuery.isError,
   };
 }

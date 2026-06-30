@@ -19,7 +19,7 @@ Implementation Possibility (NIP). The `content` field holds the NIP body as Mark
 | `title`   | yes      | no         | Human-readable NIP title.                                                   |
 | `k`       | no       | yes        | An event kind this NIP defines or concerns: `["k", "<kind>", "<name>"]`.    |
 | `a`       | no       | yes        | Fork reference to a **custom** NIP: `30817:<pubkey>:<d>` with `fork` marker. |
-| `i`       | no       | yes        | Fork reference to an **official** NIP (GitHub URL) with `fork` marker.       |
+| `i`       | no       | yes        | Fork reference to an **official** NIP or **Blossom BUD** (GitHub URL) with `fork` marker. |
 | `p`       | no       | yes        | Author of a forked custom NIP, to notify them of the fork.                  |
 
 #### `k` tag — kind number + human-readable name
@@ -89,6 +89,21 @@ Fork of an **official** NIP:
 }
 ```
 
+Fork of a **Blossom BUD** — identical to an official-NIP fork, but the `i` URL
+points at the Blossom repo:
+
+```jsonc
+{
+  "kind": 30817,
+  "content": "# Improved BUD-XX\n\n...",
+  "tags": [
+    ["d", "improved-bud-xx"],
+    ["title", "Improved BUD-XX"],
+    ["i", "https://github.com/hzrd149/blossom/blob/master/buds/XX.md", "fork"]
+  ]
+}
+```
+
 ### Querying
 
 ```ts
@@ -115,8 +130,9 @@ authored by the user's configured **Nostr Experts**.
 - **Target:** the NIP being approved
   - Custom NIP → `a` tag: `30817:<pubkey>:<d>`
   - Official NIP → `i` tag (NIP-73 external id / GitHub URL) or `r` tag (URL)
+  - Blossom BUD → `i` tag: `https://github.com/hzrd149/blossom/blob/master/buds/<NN>.md`
 - **Author (`p`):** for custom NIPs, the target event's author pubkey, so the approval
-  surfaces in their notifications. Official NIPs have no Nostr author, so no `p` tag is added.
+  surfaces in their notifications. Official NIPs and BUDs have no Nostr author, so no `p` tag is added.
 
 ### Example — approving a custom NIP
 
@@ -159,21 +175,65 @@ nostr.query([{
 }]);
 ```
 
-### Removing an approval
+---
 
-An approval is undone by requesting deletion ([NIP-09](https://github.com/nostr-protocol/nips/blob/master/09.md))
-of the user's own kind-1985 label event(s):
+## Blossom Specifications (BUDs)
+
+Alongside the official NIPs, NostrHub surfaces **BUDs** — [Blossom Upgrade Documents](https://github.com/hzrd149/blossom/tree/master/buds),
+the specification family for storing blobs of data on media servers (addressed by their
+SHA-256 hash). Like official NIPs, BUDs are **not** Nostr events: the index and each BUD's
+Markdown are fetched at runtime from the `hzrd149/blossom` GitHub repository, and BUDs have
+no Nostr author.
+
+BUDs are treated exactly like official NIPs throughout NostrHub — they can be approved,
+forked, highlighted, compared, referenced by NIP-89 app listings, and surfaced on event-kind
+pages — with one distinction: the **canonical external identifier** is the Blossom GitHub
+blob URL rather than the nostr-protocol/nips URL.
+
+| Concept                         | Identifier                                                              |
+| ------------------------------- | ----------------------------------------------------------------------- |
+| Official NIP (canonical `i`/`r` URL) | `https://github.com/nostr-protocol/nips/blob/master/<NN>.md`       |
+| Blossom BUD (canonical `i`/`r` URL)  | `https://github.com/hzrd149/blossom/blob/master/buds/<NN>.md`     |
+
+The two URL families are unambiguous (the BUD URL contains `hzrd149/blossom/.../buds/`), so a
+single `i`/`r` tag tells NostrHub whether it points at an official NIP or a BUD. BUDs are routed
+at `/bud/:number`; official NIPs remain at `/nip/:number`.
+
+### Approving a BUD
 
 ```jsonc
 {
-  "kind": 5,
+  "kind": 1985,
   "content": "",
   "tags": [
-    ["e", "<label-event-id>"],
-    ["k", "1985"]
+    ["L", "nostrhub"],
+    ["l", "approve", "nostrhub"],
+    ["i", "https://github.com/hzrd149/blossom/blob/master/buds/03.md"]
   ]
 }
 ```
+
+### Highlighting a BUD
+
+A BUD highlight is a kind 9802 event whose source is the BUD's canonical URL via an `r` tag,
+identical to an official-NIP highlight:
+
+```jsonc
+{
+  "kind": 9802,
+  "content": "Blobs are raw binary data addressed by the sha256 hash of the data.",
+  "tags": [
+    ["r", "https://github.com/hzrd149/blossom/blob/master/buds/00.md"],
+    ["comment", "Concise definition of a blob."],
+    ["alt", "Highlight"]
+  ]
+}
+```
+
+### NIP-89 app listings referencing a BUD
+
+A kind 31990 app listing references a BUD by adding its canonical URL as an `i` tag (or the
+marker form `["i", "bud-03", "bud"]`), the same way official NIPs are referenced.
 
 ---
 
@@ -551,6 +611,7 @@ A highlight references exactly one source:
 | Article (kind 30023) / custom NIP (30817) | `["a", "<kind>:<pubkey>:<d>"]`       |
 | Regular event                       | `["e", "<event-id>"]`                     |
 | Official NIP (fetched from GitHub)  | `["r", "https://github.com/nostr-protocol/nips/blob/master/<NN>.md"]` |
+| Blossom BUD (fetched from GitHub)   | `["r", "https://github.com/hzrd149/blossom/blob/master/buds/<NN>.md"]` |
 
 ### Tags
 

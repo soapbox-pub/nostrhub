@@ -8,7 +8,7 @@ import {
   APPROVE_LABEL_NAMESPACE,
   APPROVE_LABEL_VALUE,
 } from '@/lib/nips';
-import { nipNumberFromUrl } from '@/lib/apps';
+import { nipNumberFromUrl, budNumberFromUrl, isBudUrl } from '@/lib/apps';
 import { type NipTarget, nipTargetKey } from '@/hooks/useNipApprovals';
 
 export interface NipLabel {
@@ -77,8 +77,13 @@ export function useNipLabels() {
           if (name === 'a' && value) {
             note({ type: 'custom', address: value }, ev.pubkey);
           } else if (name === 'i' && value) {
-            const number = nipNumberFromUrl(value);
-            if (number) note({ type: 'official', number }, ev.pubkey);
+            if (isBudUrl(value)) {
+              const number = budNumberFromUrl(value);
+              if (number) note({ type: 'bud', number }, ev.pubkey);
+            } else {
+              const number = nipNumberFromUrl(value);
+              if (number) note({ type: 'official', number }, ev.pubkey);
+            }
           }
         }
       }

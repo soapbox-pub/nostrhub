@@ -3,6 +3,7 @@ import { Check } from 'lucide-react';
 import type { RankedNip } from '@/hooks/useRankedNips';
 import { useAuthor } from '@/hooks/useAuthor';
 import { useOfficialNip } from '@/hooks/useOfficialNips';
+import { useBud } from '@/hooks/useBuds';
 import { UserAvatar } from '@/components/UserAvatar';
 import { nipHref } from '@/lib/nips';
 import { shortNpub } from '@/lib/nostr';
@@ -22,14 +23,21 @@ export function NipCard({ nip }: { nip: RankedNip }) {
     ? authorMeta?.name || authorMeta?.display_name || shortNpub(nip.custom.author)
     : undefined;
 
-  // Custom NIPs carry their body inline; official NIPs need a lazy fetch.
-  const officialNip = useOfficialNip(nip.custom ? undefined : nip.number);
-  const rawContent = nip.custom?.content ?? officialNip.data?.content ?? '';
+  const isBud = nip.target.type === 'bud';
+  const isOfficial = nip.target.type === 'official';
+
+  // Custom NIPs carry their body inline; official NIPs and BUDs need a lazy fetch.
+  const officialNip = useOfficialNip(isOfficial ? nip.number : undefined);
+  const bud = useBud(isBud ? nip.number : undefined);
+  const rawContent =
+    nip.custom?.content ?? officialNip.data?.content ?? bud.data?.content ?? '';
   const preview = markdownPreview(rawContent);
 
   const approvers = nip.expertApprovers;
   const shown = approvers.slice(0, MAX_STACK);
   const extra = approvers.length - shown.length;
+
+  const codeLabel = isBud ? `BUD-${nip.number}` : nip.number ? `NIP-${nip.number}` : undefined;
 
   return (
     <Card className="group relative h-full overflow-clip border-border/70 bg-card/60 backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-[0_8px_40px_-8px] hover:shadow-primary/30">
@@ -44,9 +52,9 @@ export function NipCard({ nip }: { nip: RankedNip }) {
       >
         <CardContent className="flex h-full flex-col gap-3 px-4">
           <div className="flex-1 space-y-1.5">
-            {nip.number && (
+            {codeLabel && (
               <span className="font-mono text-sm font-semibold text-primary transition-[text-shadow] duration-300 group-hover:[text-shadow:0_0_12px_hsl(0_80%_62%/0.7)]">
-                NIP-{nip.number}
+                {codeLabel}
               </span>
             )}
             <h3 className="font-semibold leading-snug tracking-tight group-hover:text-primary">

@@ -8,23 +8,28 @@ import {
   APPROVE_LABEL_NAMESPACE,
   APPROVE_LABEL_VALUE,
 } from '@/lib/nips';
+import { budGithubUrl, budNumberFromUrl, isBudUrl } from '@/lib/apps';
 
 const NIPS_REPO_BASE = 'https://github.com/nostr-protocol/nips/blob/master';
 
-/** A NIP that can be approved: either a community-authored event or an official NIP. */
+/** A NIP that can be approved: a community-authored event, an official NIP, or a Blossom BUD. */
 export type NipTarget =
   | { type: 'custom'; address: string } // 30817:<pubkey>:<d>
-  | { type: 'official'; number: string };
+  | { type: 'official'; number: string }
+  | { type: 'bud'; number: string };
 
 /** The label target tag key + value for a NIP target. */
 function targetTag(target: NipTarget): [string, string] {
   if (target.type === 'custom') return ['a', target.address];
+  if (target.type === 'bud') return ['i', budGithubUrl(target.number)];
   return ['i', `${NIPS_REPO_BASE}/${target.number}.md`];
 }
 
 /** Stable key for a NIP target, used for maps and query keys. */
 export function nipTargetKey(target: NipTarget): string {
-  return target.type === 'custom' ? `a:${target.address}` : `nip:${target.number}`;
+  if (target.type === 'custom') return `a:${target.address}`;
+  if (target.type === 'bud') return `bud:${target.number}`;
+  return `nip:${target.number}`;
 }
 
 export interface ApprovalData {
@@ -75,6 +80,9 @@ export function useNipApprovals(targets: NipTarget[], opts: { expertsOnly?: bool
       const officialUrls = targets
         .filter((t) => t.type === 'official')
         .map((t) => `${NIPS_REPO_BASE}/${(t as { number: string }).number}.md`);
+      const budUrls = targets
+        .filter((t) => t.type === 'bud')
+        .map((t) => budGithubUrl((t as { number: string }).number));
 
       const filters: NostrFilter[] = [];
       const base: Partial<NostrFilter> = {
@@ -88,7 +96,7 @@ export function useNipApprovals(targets: NipTarget[], opts: { expertsOnly?: bool
       for (const addrs of chunk(customAddrs, 200)) {
         if (addrs.length) filters.push({ ...base, '#a': addrs } as NostrFilter);
       }
-      for (const urls of chunk(officialUrls, 200)) {
+      for (const urls of chunk([...officialUrls, ...budUrls], 200)) {
         if (urls.length) filters.push({ ...base, '#i': urls } as NostrFilter);
       }
       if (filters.length === 0) return result;
@@ -99,6 +107,10 @@ export function useNipApprovals(targets: NipTarget[], opts: { expertsOnly?: bool
 
       // Map a label event to the target key(s) it references.
       const keyForUrl = (url: string): string | null => {
+        if (isBudUrl(url)) {
+          const num = budNumberFromUrl(url);
+          return num ? `bud:${num}` : null;
+        }
         const m = url.match(/\/([A-F0-9]+)\.md$/i);
         return m ? `nip:${m[1]}` : null;
       };

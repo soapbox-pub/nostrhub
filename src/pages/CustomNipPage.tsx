@@ -24,7 +24,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useToast } from '@/hooks/useToast';
 import { useAppsForCustomNip } from '@/hooks/useAppsForNip';
 import { shortNpub } from '@/lib/nostr';
-import { uniqueRepoRefs } from '@/lib/apps';
+import { uniqueRepoRefs, isBudUrl } from '@/lib/apps';
 import { cn } from '@/lib/utils';
 import type { NipTarget } from '@/hooks/useNipApprovals';
 import { Button } from '@/components/ui/button';
@@ -169,7 +169,7 @@ export function CustomNipPage({ naddr, eventId }: { naddr?: string; eventId?: st
                 Forked from{' '}
                 {nip.fork.type === 'official' ? (
                   <a href={nip.fork.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                    an official NIP
+                    {isBudUrl(nip.fork.url) ? 'a Blossom BUD' : 'an official NIP'}
                   </a>
                 ) : (
                   <span className="font-mono">{nip.fork.address}</span>

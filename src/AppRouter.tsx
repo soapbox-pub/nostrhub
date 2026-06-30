@@ -7,6 +7,7 @@ import { RepoRoute } from "./pages/RepoRoute";
 import NotFound from "./pages/NotFound";
 import SettingsPage from "./pages/SettingsPage";
 import OfficialNipPage from "./pages/OfficialNipPage";
+import OfficialBudPage from "./pages/OfficialBudPage";
 import CreateNipPage from "./pages/CreateNipPage";
 import EditNipPage from "./pages/EditNipPage";
 import ComparePage from "./pages/ComparePage";
@@ -52,6 +53,7 @@ export function AppRouter() {
         <Route path="/chat" element={<Navigate to={`/chat/${DEFAULT_TOPIC}`} replace />} />
         <Route path="/chat/:topic" element={<CommunityPage />} />
         <Route path="/nip/:number" element={<OfficialNipPage />} />
+        <Route path="/bud/:number" element={<OfficialBudPage />} />
         <Route path="/k/:kind" element={<KindPage />} />
         <Route path="/create" element={<CreateNipPage />} />
         <Route path="/edit/:naddr" element={<EditNipPage />} />

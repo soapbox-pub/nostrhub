@@ -36,7 +36,7 @@ import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
-import { APP_PLATFORMS, APP_HANDLER_KIND, nipGithubUrl, parseAppEvent, type AppPlatform } from '@/lib/apps';
+import { APP_PLATFORMS, APP_HANDLER_KIND, nipGithubUrl, budGithubUrl, parseAppEvent, type AppPlatform } from '@/lib/apps';
 import type { CustomNip } from '@/lib/nips';
 import type { GitRepoAnnouncement } from '@/lib/git';
 import { GIT_REPO_KIND } from '@/lib/git';
@@ -131,8 +131,8 @@ interface PlatformEntry {
 }
 
 interface NipRefEntry {
-  type: 'official' | 'custom';
-  /** NIP number e.g. "01" — only when type='official'. */
+  type: 'official' | 'custom' | 'bud';
+  /** NIP number e.g. "01" (type='official') or BUD number (type='bud'). */
   number: string;
   /** "30817:<pubkey>:<d>" — only when type='custom'. */
   address: string;
@@ -322,12 +322,17 @@ function NipPicker({
   const chips = nipRefs.map((r) =>
     r.type === 'official'
       ? { key: `official:${r.number}`, label: `NIP-${r.number}` }
-      : { key: `custom:${r.address}`, label: `custom:…${r.address.slice(-8)}` },
+      : r.type === 'bud'
+        ? { key: `bud:${r.number}`, label: `BUD-${r.number}` }
+        : { key: `custom:${r.address}`, label: `custom:…${r.address.slice(-8)}` },
   );
   const removeByKey = (key: string) => {
     if (key.startsWith('official:')) {
       const num = key.slice('official:'.length);
       setNipRefs((prev) => prev.filter((r) => !(r.type === 'official' && r.number === num)));
+    } else if (key.startsWith('bud:')) {
+      const num = key.slice('bud:'.length);
+      setNipRefs((prev) => prev.filter((r) => !(r.type === 'bud' && r.number === num)));
     } else {
       const addr = key.slice('custom:'.length);
       setNipRefs((prev) => prev.filter((r) => !(r.type === 'custom' && r.address === addr)));
@@ -1028,7 +1033,9 @@ export function SubmitAppPage() {
     setNipRefs(prefillSource.nipRefs.map((r): NipRefEntry =>
       r.type === 'official'
         ? { type: 'official', number: r.number, address: '', relayHint: '' }
-        : { type: 'custom', number: '', address: r.address, relayHint: r.relayHint ?? '' },
+        : r.type === 'bud'
+          ? { type: 'bud', number: r.number, address: '', relayHint: '' }
+          : { type: 'custom', number: '', address: r.address, relayHint: r.relayHint ?? '' },
     ));
     setRepoRefs(prefillSource.repoRefs.map((r): RepoRefEntry => ({
       address: r.address, relayHint: r.relayHint ?? '', name: r.identifier,
@@ -1085,6 +1092,18 @@ export function SubmitAppPage() {
           prev.some((r) => r.type === 'official' && r.number === num)
             ? prev
             : [...prev, { type: 'official', number: num, address: '', relayHint: '' }],
+        );
+      }
+    }
+
+    const bud = searchParams.get('bud');
+    if (bud) {
+      const num = bud.replace(/^bud-?/i, '').padStart(2, '0');
+      if (/^[0-9A-Za-z]{2}$/.test(num)) {
+        setNipRefs((prev) =>
+          prev.some((r) => r.type === 'bud' && r.number === num)
+            ? prev
+            : [...prev, { type: 'bud', number: num, address: '', relayHint: '' }],
         );
       }
     }
@@ -1394,9 +1413,11 @@ export function SubmitAppPage() {
     }
     for (const t of tags) eventTags.push(['t', t]);
 
-    // NIP refs: official → NIP-73 GitHub URL `i` tag; custom → plain `a` tag.
+    // NIP refs: official → NIP-73 GitHub URL `i` tag; bud → Blossom URL `i`
+    // tag; custom → plain `a` tag.
     for (const ref of nipRefs) {
       if (ref.type === 'official') eventTags.push(['i', nipGithubUrl(ref.number)]);
+      else if (ref.type === 'bud') eventTags.push(['i', budGithubUrl(ref.number)]);
       else eventTags.push(['a', ref.address, ref.relayHint]);
     }
     // Repo refs: plain `a` tag — "30617:" prefix is unambiguous.
@@ -1946,7 +1967,7 @@ export function SubmitAppPage() {
                       <div className="divide-y divide-border/40 rounded-lg border border-border/60">
                         {([
                           { label: 'Kinds', icon: Blocks, value: kinds.length ? kinds.map((k) => String(k)).join(', ') : 'None yet', target: 2 },
-                          { label: 'NIPs', icon: BookOpen, value: nipRefs.length ? nipRefs.map((r) => r.type === 'official' ? `NIP-${r.number}` : 'custom').join(', ') : 'None linked', target: 2 },
+                          { label: 'NIPs', icon: BookOpen, value: nipRefs.length ? nipRefs.map((r) => r.type === 'official' ? `NIP-${r.number}` : r.type === 'bud' ? `BUD-${r.number}` : 'custom').join(', ') : 'None linked', target: 2 },
                           { label: 'Platforms', icon: MonitorSmartphone, value: platforms.length ? platforms.map((p) => PLATFORM_LABELS[p.platform]).join(', ') : 'None linked', target: 1 },
                           { label: 'Tags', icon: Tags, value: tags.length ? tags.join(', ') : 'None', target: 3 },
                           { label: 'Repos', icon: FolderGit2, value: repoRefs.length ? repoRefs.map((r) => r.name).join(', ') : 'None linked', target: 3 },

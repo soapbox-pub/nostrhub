@@ -34,11 +34,14 @@ interface CompareOption {
 /** Build a canonical {@link NipRef} for a ranked directory entry. */
 function refForNip(nip: RankedNip): NipRef {
   if (nip.target.type === 'official') return `official:${nip.target.number}`;
+  if (nip.target.type === 'bud') return `bud:${nip.target.number}`;
   return canonicalizeRef(nip.target.address);
 }
 
 function labelForNip(nip: RankedNip): string {
-  return nip.target.type === 'official' ? `NIP-${nip.number} · ${nip.title}` : nip.title;
+  if (nip.target.type === 'official') return `NIP-${nip.number} · ${nip.title}`;
+  if (nip.target.type === 'bud') return `BUD-${nip.number} · ${nip.title}`;
+  return nip.title;
 }
 
 /** A `<Select>` of every NIP option, emitting a canonical {@link NipRef}. */
@@ -107,18 +110,18 @@ const ComparePage = () => {
 
     const inject = (ref: NipRef | null, resolved: ResolvedNip | null | undefined) => {
       if (!ref) return;
+      const prefixLabel = ref.startsWith('official:')
+        ? `NIP-${ref.slice('official:'.length)}`
+        : ref.startsWith('bud:')
+          ? `BUD-${ref.slice('bud:'.length)}`
+          : null;
       if (resolved) {
         // Always prefer the resolved title (and overwrite a stale directory label).
-        const label = ref.startsWith('official:')
-          ? `NIP-${ref.slice('official:'.length)} · ${resolved.title}`
-          : resolved.title;
+        const label = prefixLabel ? `${prefixLabel} · ${resolved.title}` : resolved.title;
         byRef.set(ref, { ref, label });
       } else if (!byRef.has(ref)) {
         // Resolution pending/failed: keep the ref selectable with a fallback label.
-        byRef.set(ref, {
-          ref,
-          label: ref.startsWith('official:') ? `NIP-${ref.slice('official:'.length)}` : ref,
-        });
+        byRef.set(ref, { ref, label: prefixLabel ?? ref });
       }
     };
     inject(aRef, a.data);

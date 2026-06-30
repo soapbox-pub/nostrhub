@@ -7,6 +7,7 @@ import { UserAvatar } from '@/components/UserAvatar';
 import { useCustomNipByAddress } from '@/hooks/useCustomNips';
 import { useGitRepo } from '@/hooks/useGitRepo';
 import { useOfficialNips } from '@/hooks/useOfficialNips';
+import { useBuds } from '@/hooks/useBuds';
 import { sanitizeUrl } from '@/lib/sanitizeUrl';
 import type { CustomNip } from '@/lib/nips';
 import type { AppInfo, AppNipRef, AppRepoRef } from '@/lib/apps';
@@ -86,11 +87,11 @@ export function RepoChip({ repoRef }: { repoRef: AppRepoRef }) {
   return <Link to={to} className={CHIP_CLASS}>{body}</Link>;
 }
 
-/** A compact NIP row — official (resolved from the NIP index) or community. */
+/** A compact NIP row — official (resolved from the NIP index), BUD, or community. */
 export function NipChip({ nipRef }: { nipRef: AppNipRef }) {
-  return nipRef.type === 'official'
-    ? <OfficialNipChip number={nipRef.number} />
-    : <CustomNipChip address={nipRef.address} />;
+  if (nipRef.type === 'official') return <OfficialNipChip number={nipRef.number} />;
+  if (nipRef.type === 'bud') return <BudChip number={nipRef.number} />;
+  return <CustomNipChip address={nipRef.address} />;
 }
 
 function OfficialNipChip({ number }: { number: string }) {
@@ -103,6 +104,20 @@ function OfficialNipChip({ number }: { number: string }) {
     <Link to={`/nip/${number.toLowerCase()}`} className={CHIP_CLASS}>
       <span className="min-w-0 flex-1 truncate text-sm font-medium">
         <span className="font-mono text-primary">NIP-{number}</span>
+        {title && <span className="text-foreground/90"> · {title}</span>}
+      </span>
+    </Link>
+  );
+}
+
+function BudChip({ number }: { number: string }) {
+  const { data: buds } = useBuds();
+  const title = buds?.find((b) => b.number === number)?.title;
+
+  return (
+    <Link to={`/bud/${number}`} className={CHIP_CLASS}>
+      <span className="min-w-0 flex-1 truncate text-sm font-medium">
+        <span className="font-mono text-primary">BUD-{number}</span>
         {title && <span className="text-foreground/90"> · {title}</span>}
       </span>
     </Link>
@@ -232,7 +247,13 @@ export function RelatedNipsCard({ nipRefs }: { nipRefs: AppNipRef[] }) {
       <CardContent className="space-y-1.5">
         {nipRefs.map((nipRef) => (
           <NipChip
-            key={nipRef.type === 'official' ? `nip-${nipRef.number}` : nipRef.address}
+            key={
+              nipRef.type === 'official'
+                ? `nip-${nipRef.number}`
+                : nipRef.type === 'bud'
+                  ? `bud-${nipRef.number}`
+                  : nipRef.address
+            }
             nipRef={nipRef}
           />
         ))}

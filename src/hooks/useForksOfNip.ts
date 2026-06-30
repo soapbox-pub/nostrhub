@@ -2,16 +2,17 @@ import { useNostr } from '@nostrify/react';
 import { useQuery } from '@tanstack/react-query';
 import type { NostrEvent, NostrFilter } from '@nostrify/nostrify';
 import { CUSTOM_NIP_KIND, isValidCustomNip, parseCustomNip, type CustomNip } from '@/lib/nips';
-import { nipGithubUrl } from '@/lib/apps';
+import { nipGithubUrl, budGithubUrl } from '@/lib/apps';
 import { useExperts } from '@/hooks/useExperts';
 
 /**
- * Find expert-authored forks of a NIP.
+ * Find expert-authored forks of a NIP or BUD.
  *
  * Forks are community NIPs (kind 30817) that reference their source with a
  * `fork` marker (see NIP.md):
  *   - Fork of a custom NIP:   `["a", "30817:<pubkey>:<d>", "", "fork"]`
  *   - Fork of an official NIP: `["i", "<github-blob-url>", "fork"]`
+ *   - Fork of a BUD:           `["i", "<blossom-blob-url>", "fork"]`
  *
  * We constrain the relay query to the configured expert author set — a fork
  * by an expert is a meaningful signal, the same trust boundary used for NIP
@@ -19,7 +20,11 @@ import { useExperts } from '@/hooks/useExperts';
  * the filter is efficient; we then client-verify the `fork` marker.
  */
 function useForksOfNip(
-  ref: { type: 'custom'; address: string } | { type: 'official'; number: string } | undefined,
+  ref:
+    | { type: 'custom'; address: string }
+    | { type: 'official'; number: string }
+    | { type: 'bud'; number: string }
+    | undefined,
 ) {
   const { nostr } = useNostr();
   const { experts, expertSet } = useExperts();
@@ -28,7 +33,9 @@ function useForksOfNip(
   const refTag: { tag: '#a' | '#i'; value: string } | undefined = ref
     ? ref.type === 'custom'
       ? { tag: '#a', value: ref.address }
-      : { tag: '#i', value: nipGithubUrl(ref.number) }
+      : ref.type === 'bud'
+        ? { tag: '#i', value: budGithubUrl(ref.number) }
+        : { tag: '#i', value: nipGithubUrl(ref.number) }
     : undefined;
 
   const sortedExperts = [...experts].sort();
@@ -85,4 +92,9 @@ export function useForksOfCustomNip(address: string | undefined) {
 /** Expert-authored forks of an official NIP (by number, e.g. "01"). */
 export function useForksOfOfficialNip(number: string | undefined) {
   return useForksOfNip(number ? { type: 'official', number } : undefined);
+}
+
+/** Expert-authored forks of a Blossom BUD (by number, e.g. "01"). */
+export function useForksOfBud(number: string | undefined) {
+  return useForksOfNip(number ? { type: 'bud', number } : undefined);
 }

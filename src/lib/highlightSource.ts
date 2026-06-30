@@ -143,3 +143,13 @@ export function officialNipHighlightSource(code: string): HighlightSource {
   const url = sanitizeUrl(officialNipHighlightUrl(code))!;
   return { type: 'url', url };
 }
+
+/** The canonical URL identifier for a Blossom BUD highlight source. */
+export function budHighlightUrl(code: string): string {
+  return `https://github.com/hzrd149/blossom/blob/master/buds/${code}.md`;
+}
+
+export function budHighlightSource(code: string): HighlightSource {
+  const url = sanitizeUrl(budHighlightUrl(code))!;
+  return { type: 'url', url };
+}

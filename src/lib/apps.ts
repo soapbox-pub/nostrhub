@@ -36,10 +36,26 @@ export const APP_CATEGORY_TAGS = [
 /** GitHub blob base for official NIPs — same URL format used by NIP approvals and NIP forks. */
 export const NIPS_REPO_BASE = 'https://github.com/nostr-protocol/nips/blob/master';
 
+/** GitHub blob base for Blossom BUDs — same URL format used by BUD approvals and forks. */
+export const BUDS_REPO_BASE = 'https://github.com/hzrd149/blossom/blob/master/buds';
+
+/** Whether a GitHub blob URL points at a Blossom BUD (vs. an official NIP). */
+export function isBudUrl(url: string): boolean {
+  return /hzrd149\/blossom\/.*\/buds\/[A-Za-z0-9]+\.md$/.test(url);
+}
+
 /** Extract a NIP number from a GitHub blob URL, e.g. ".../blob/master/01.md" → "01". */
 export function nipNumberFromUrl(url: string): string | null {
+  if (isBudUrl(url)) return null;
   const m = url.match(/\/([A-F0-9]{2})\.md$/i);
   return m ? m[1].toUpperCase() : null;
+}
+
+/** Extract a BUD number from a Blossom blob URL, e.g. ".../buds/01.md" → "01". */
+export function budNumberFromUrl(url: string): string | null {
+  if (!isBudUrl(url)) return null;
+  const m = url.match(/\/buds\/([A-Za-z0-9]+)\.md$/);
+  return m ? m[1] : null;
 }
 
 /** Build the canonical GitHub blob URL for an official NIP number (e.g. "01" → full URL). */
@@ -47,14 +63,21 @@ export function nipGithubUrl(number: string): string {
   return `${NIPS_REPO_BASE}/${number.toUpperCase()}.md`;
 }
 
+/** Build the canonical GitHub blob URL for a BUD number (e.g. "01" → full URL). */
+export function budGithubUrl(number: string): string {
+  return `${BUDS_REPO_BASE}/${number}.md`;
+}
+
 /**
- * A NIP referenced by a kind 31990 app event.
+ * A spec referenced by a kind 31990 app event.
  * - `type: 'custom'` — a community NIP (kind 30817), addressed by naddr coordinate.
  * - `type: 'official'` — an official NIP by number (e.g. "01", "34").
+ * - `type: 'bud'` — a Blossom BUD by number (e.g. "01", "12").
  */
 export type AppNipRef =
   | { type: 'custom'; address: string; relayHint?: string }
-  | { type: 'official'; number: string };
+  | { type: 'official'; number: string }
+  | { type: 'bud'; number: string };
 
 /** A NIP-34 git repository (kind 30617) referenced by a kind 31990 app event. */
 export interface AppRepoRef {
@@ -156,9 +179,18 @@ export function parseAppEvent(event: NostrEvent): AppInfo | null {
         // value like "nip-01" → number "01"
         const num = tag[1].replace(/^nip-/i, '').padStart(2, '0');
         nipRefs.push({ type: 'official', number: num });
+      } else if (tag[2] === 'bud') {
+        // value like "bud-01" → number "01"
+        const num = tag[1].replace(/^bud-/i, '').padStart(2, '0');
+        nipRefs.push({ type: 'bud', number: num });
       } else {
-        const num = nipNumberFromUrl(tag[1]);
-        if (num) nipRefs.push({ type: 'official', number: num });
+        const budNum = budNumberFromUrl(tag[1]);
+        if (budNum) {
+          nipRefs.push({ type: 'bud', number: budNum });
+        } else {
+          const num = nipNumberFromUrl(tag[1]);
+          if (num) nipRefs.push({ type: 'official', number: num });
+        }
       }
       continue;
     }
@@ -266,7 +298,12 @@ export function uniqueNipRefs(apps: AppInfo[]): AppNipRef[] {
   const refs: AppNipRef[] = [];
   for (const app of apps) {
     for (const ref of app.nipRefs) {
-      const key = ref.type === 'official' ? `official:${ref.number}` : `custom:${ref.address}`;
+      const key =
+        ref.type === 'official'
+          ? `official:${ref.number}`
+          : ref.type === 'bud'
+            ? `bud:${ref.number}`
+            : `custom:${ref.address}`;
       if (seen.has(key)) continue;
       seen.add(key);
       refs.push(ref);

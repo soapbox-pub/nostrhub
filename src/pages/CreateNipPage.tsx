@@ -8,8 +8,10 @@ import { ResumeDraftsBanner } from '@/components/ResumeDraftsBanner';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useCustomNip } from '@/hooks/useCustomNips';
 import { useOfficialNip } from '@/hooks/useOfficialNips';
+import { useBud } from '@/hooks/useBuds';
 import { useDrafts, findDraft } from '@/hooks/useDrafts';
 import { CUSTOM_NIP_KIND } from '@/lib/nips';
+import { budGithubUrl } from '@/lib/apps';
 import { LoginArea } from '@/components/auth/LoginArea';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -40,11 +42,13 @@ const CreateNipPage = () => {
 
   const forkParam = searchParams.get('fork'); // custom NIP naddr
   const officialForkParam = searchParams.get('officialFork'); // official NIP code
+  const budForkParam = searchParams.get('budFork'); // Blossom BUD code
   const draftParam = searchParams.get('draft'); // resume a saved draft
   const statePrefill = useMemo(() => parseLocationState(location.state), [location.state]);
 
   const { data: customForkSource } = useCustomNip(forkParam ?? undefined);
   const { data: officialForkSource } = useOfficialNip(officialForkParam ?? undefined);
+  const { data: budForkSource } = useBud(budForkParam ?? undefined);
   const { drafts } = useDrafts();
   const loadedDraft = findDraft(drafts.data, draftParam);
 
@@ -90,14 +94,26 @@ const CreateNipPage = () => {
         forkLabel: `NIP-${officialForkParam.toUpperCase()}`,
       };
     }
+    if (budForkParam && budForkSource) {
+      const lines = budForkSource.content.split('\n');
+      const h2 = lines.find((l) => l.startsWith('## '));
+      const h1 = lines.find((l) => l.startsWith('# '));
+      const title = (h2 ?? h1)?.replace(/^#+\s+/, '').trim() ?? `BUD-${budForkParam}`;
+      return {
+        title,
+        content: budForkSource.content,
+        fork: { type: 'official', url: budGithubUrl(budForkParam) },
+        forkLabel: `BUD-${budForkParam}`,
+      };
+    }
     if (statePrefill) {
       return { title: statePrefill.title, content: statePrefill.content };
     }
     return undefined;
-  }, [draftParam, loadedDraft, forkParam, customForkSource, officialForkParam, officialForkSource, statePrefill]);
+  }, [draftParam, loadedDraft, forkParam, customForkSource, officialForkParam, officialForkSource, budForkParam, budForkSource, statePrefill]);
 
   // Remount the editor once fork/draft data resolves so its initial state hydrates.
-  const editorKey = `${forkParam ?? ''}:${officialForkParam ?? ''}:${loadedDraft?.slug ?? draftParam ?? ''}:${initial ? 'ready' : 'empty'}`;
+  const editorKey = `${forkParam ?? ''}:${officialForkParam ?? ''}:${budForkParam ?? ''}:${loadedDraft?.slug ?? draftParam ?? ''}:${initial ? 'ready' : 'empty'}`;
 
   return (
     <Layout>

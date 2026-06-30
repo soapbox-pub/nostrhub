@@ -77,9 +77,10 @@ export function parseCustomNip(event: NostrEvent): CustomNip {
   };
 }
 
-/** Internal route for a NIP, official (by number) or custom (by naddr). */
-export function nipHref(nip: { number?: string; custom?: { naddr: string } }): string {
+/** Internal route for a NIP, official (by number), BUD (by number), or custom (by naddr). */
+export function nipHref(nip: { number?: string; custom?: { naddr: string }; target?: { type: string } }): string {
   if (nip.custom) return `/${nip.custom.naddr}`;
+  if (nip.target?.type === 'bud') return `/bud/${nip.number}`;
   return `/nip/${nip.number}`;
 }
 

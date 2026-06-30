@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Search, Loader2, FileText, Users } from 'lucide-react';
 import { useNipSearch } from '@/hooks/useNipSearch';
 import { useOfficialNips } from '@/hooks/useOfficialNips';
+import { useBuds } from '@/hooks/useBuds';
 import { shortNpub } from '@/lib/nostr';
 import { useAuthor } from '@/hooks/useAuthor';
 import {
@@ -52,6 +53,7 @@ export function SearchBar({ className }: { className?: string }) {
 
   const { data: communityNips, isFetching: communityLoading } = useNipSearch(trimmed);
   const { data: officialNips } = useOfficialNips();
+  const { data: buds } = useBuds();
 
   // Client-side filter the official NIP index by title / number.
   const officialMatches = useMemo<SearchResult[]>(() => {
@@ -70,6 +72,23 @@ export function SearchBar({ className }: { className?: string }) {
       }));
   }, [trimmed, officialNips]);
 
+  // Client-side filter the Blossom BUD index by title / number.
+  const budMatches = useMemo<SearchResult[]>(() => {
+    if (!trimmed || !buds) return [];
+    const q = trimmed.toLowerCase();
+    return buds
+      .filter(
+        (b) => b.title.toLowerCase().includes(q) || `bud-${b.number}`.toLowerCase().includes(q),
+      )
+      .slice(0, MAX_OFFICIAL)
+      .map((b) => ({
+        href: `/bud/${b.number}`,
+        title: b.title,
+        subtitle: `BUD-${b.number}`,
+        kind: 'official' as const,
+      }));
+  }, [trimmed, buds]);
+
   const communityMatches = useMemo<SearchResult[]>(
     () =>
       (communityNips ?? []).map((n) => ({
@@ -82,8 +101,8 @@ export function SearchBar({ className }: { className?: string }) {
   );
 
   const results = useMemo(
-    () => [...officialMatches, ...communityMatches],
-    [officialMatches, communityMatches],
+    () => [...officialMatches, ...budMatches, ...communityMatches],
+    [officialMatches, budMatches, communityMatches],
   );
 
   // Reset the highlighted row whenever the result set changes (adjusting state

@@ -16,6 +16,7 @@ import { useAuthor } from '@/hooks/useAuthor';
 import { useCustomNipByAddress } from '@/hooks/useCustomNips';
 import { useGitRepo } from '@/hooks/useGitRepo';
 import { useOfficialNips } from '@/hooks/useOfficialNips';
+import { useBuds } from '@/hooks/useBuds';
 import { useZapstoreApp, ZAPSTORE_APP_KIND } from '@/hooks/useZapstoreSearch';
 import { shortNpub } from '@/lib/nostr';
 import { sanitizeUrl } from '@/lib/sanitizeUrl';
@@ -154,13 +155,31 @@ function CustomNipRefRow({ address }: { address: string }) {
   );
 }
 
-/** A NIP reference row — official or community. */
-function NipRefRow({ nipRef }: { nipRef: AppNipRef }) {
-  return nipRef.type === 'official' ? (
-    <OfficialNipRefRow number={nipRef.number} />
-  ) : (
-    <CustomNipRefRow address={nipRef.address} />
+/** A BUD reference — resolves the title from the live Blossom index. */
+function BudRefRow({ number }: { number: string }) {
+  const { data: buds } = useBuds();
+  const title = buds?.find((b) => b.number === number)?.title;
+
+  return (
+    <RefRow
+      to={`/bud/${number}`}
+      icon={<BookOpen className="size-4" aria-hidden="true" />}
+      title={
+        <>
+          <span className="font-mono text-primary">BUD-{number}</span>
+          {title && <span className="font-normal text-foreground/90"> · {title}</span>}
+        </>
+      }
+      sublabel="Blossom Upgrade Document"
+    />
   );
+}
+
+/** A NIP reference row — official, BUD, or community. */
+function NipRefRow({ nipRef }: { nipRef: AppNipRef }) {
+  if (nipRef.type === 'official') return <OfficialNipRefRow number={nipRef.number} />;
+  if (nipRef.type === 'bud') return <BudRefRow number={nipRef.number} />;
+  return <CustomNipRefRow address={nipRef.address} />;
 }
 
 /** A git repo reference (kind 30617) — resolves name and description. */
@@ -338,7 +357,13 @@ export function AppSidebar({ app, hideInstall = false }: { app: AppInfo; hideIns
           <CardContent className="space-y-1.5">
             {app.nipRefs.map((nipRef) => (
               <NipRefRow
-                key={nipRef.type === 'official' ? `nip-${nipRef.number}` : nipRef.address}
+                key={
+                  nipRef.type === 'official'
+                    ? `nip-${nipRef.number}`
+                    : nipRef.type === 'bud'
+                      ? `bud-${nipRef.number}`
+                      : nipRef.address
+                }
                 nipRef={nipRef}
               />
             ))}

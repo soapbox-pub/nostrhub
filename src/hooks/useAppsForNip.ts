@@ -1,7 +1,7 @@
 import { useNostr } from '@nostrify/react';
 import { useQuery } from '@tanstack/react-query';
 import type { NostrEvent } from '@nostrify/nostrify';
-import { APP_HANDLER_KIND, dedupeAppEvents, nipGithubUrl, type AppInfo } from '@/lib/apps';
+import { APP_HANDLER_KIND, dedupeAppEvents, nipGithubUrl, budGithubUrl, type AppInfo } from '@/lib/apps';
 
 /**
  * Find NIP-89 app listings (kind 31990) that explicitly reference a custom NIP
@@ -81,6 +81,39 @@ export function useAppsForOfficialNip(nipNumber: string | undefined) {
 
   return useQuery<AppInfo[]>({
     queryKey: ['apps-for-nip', 'official', nipNumber],
+    queryFn: async ({ signal }) => {
+      const events = await nostr
+        .query(
+          [{ kinds: [APP_HANDLER_KIND], '#i': [url!], limit: 50 }],
+          { signal: AbortSignal.any([signal, AbortSignal.timeout(8000)]) },
+        )
+        .catch(() => [] as NostrEvent[]);
+
+      // Confirm the `i` tag value matches exactly.
+      const filtered = events.filter((ev) =>
+        ev.tags.some(([n, v]) => n === 'i' && v === url),
+      );
+
+      return dedupeAppEvents(filtered);
+    },
+    enabled: Boolean(url),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/**
+ * Find NIP-89 app listings (kind 31990) that reference a Blossom BUD via a
+ * NIP-73 URL `i` tag pointing at the canonical Blossom GitHub blob URL:
+ *   `["i", "https://github.com/hzrd149/blossom/blob/master/buds/03.md"]`
+ *
+ * Same URL format used by BUD approvals (kind 1985) and BUD forks (kind 30817).
+ */
+export function useAppsForBud(budNumber: string | undefined) {
+  const { nostr } = useNostr();
+  const url = budNumber ? budGithubUrl(budNumber) : undefined;
+
+  return useQuery<AppInfo[]>({
+    queryKey: ['apps-for-nip', 'bud', budNumber],
     queryFn: async ({ signal }) => {
       const events = await nostr
         .query(

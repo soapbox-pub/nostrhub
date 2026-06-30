@@ -14,8 +14,8 @@ import type { AppInfo } from '@/lib/apps';
  *
  * Visibility rules:
  * - `repo` / `customNip` — shown only to the entity's owner.
- * - `officialNip` — official NIPs have no owner, so it's shown to any logged-in
- *   user ("built an app implementing this? link it").
+ * - `officialNip` / `bud` — these have no owner, so they're shown to any
+ *   logged-in user ("built an app implementing this? link it").
  *
  * In every case the nudge hides itself once the current user already has an app
  * listing referencing the entity, so creators aren't nagged after linking.
@@ -23,7 +23,8 @@ import type { AppInfo } from '@/lib/apps';
 type LinkTarget =
   | { kind: 'repo'; address: string; ownerPubkey: string; relayHint?: string; label: string }
   | { kind: 'customNip'; address: string; ownerPubkey: string; relayHint?: string; label: string }
-  | { kind: 'officialNip'; number: string; label: string };
+  | { kind: 'officialNip'; number: string; label: string }
+  | { kind: 'bud'; number: string; label: string };
 
 interface LinkAppNudgeProps {
   target: LinkTarget;
@@ -49,6 +50,9 @@ function refQuery(target: LinkTarget): string {
     case 'officialNip':
       params.set('officialNip', target.number);
       break;
+    case 'bud':
+      params.set('bud', target.number);
+      break;
   }
   return params.toString();
 }
@@ -66,8 +70,9 @@ function editHref(naddr: string, target: LinkTarget): string {
 export function LinkAppNudge({ target, linkedApps = [] }: LinkAppNudgeProps) {
   const { user } = useCurrentUser();
 
-  const isEntityOwner = target.kind !== 'officialNip' && user?.pubkey === target.ownerPubkey;
-  const eligible = target.kind === 'officialNip' ? Boolean(user) : isEntityOwner;
+  const ownerless = target.kind === 'officialNip' || target.kind === 'bud';
+  const isEntityOwner = !ownerless && user?.pubkey === target.ownerPubkey;
+  const eligible = ownerless ? Boolean(user) : isEntityOwner;
 
   // The current user's own app listings — to offer "add it to an existing app"
   // and to know whether they've already linked this entity.
@@ -88,10 +93,14 @@ export function LinkAppNudge({ target, linkedApps = [] }: LinkAppNudgeProps) {
 
   const ownApps = myApps.data ?? [];
   const noun =
-    target.kind === 'officialNip' ? 'NIP' : target.kind === 'customNip' ? 'NIP' : 'repository';
+    target.kind === 'bud'
+      ? 'BUD'
+      : target.kind === 'repo'
+        ? 'repository'
+        : 'NIP';
 
   const blurb =
-    target.kind === 'officialNip'
+    ownerless
       ? `Built an app that implements ${target.label}? Link it to your app listing so people can discover it here.`
       : `Connect ${target.label} to one of your apps. App listings tie your NIPs, repos, and releases together for discovery.`;
 

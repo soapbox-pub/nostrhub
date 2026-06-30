@@ -2,9 +2,11 @@ import { useQuery } from '@tanstack/react-query';
 import { nip19 } from 'nostr-tools';
 import { useNostr } from '@nostrify/react';
 import { CUSTOM_NIP_KIND, isValidCustomNip, parseCustomNip } from '@/lib/nips';
+import { isBudUrl, budNumberFromUrl } from '@/lib/apps';
 
 const NIPS_RAW_BASE = 'https://raw.githubusercontent.com/nostr-protocol/nips/refs/heads/master';
 const GITHUB_BLOB_BASE = 'https://github.com/nostr-protocol/nips/blob/master';
+const BLOSSOM_RAW_BASE = 'https://raw.githubusercontent.com/hzrd149/blossom/refs/heads/master';
 
 /** A resolved NIP document, regardless of whether it's official or custom. */
 export interface ResolvedNip {
@@ -32,9 +34,16 @@ export type NipRef = string;
 
 function officialCodeFromRef(ref: string): string | undefined {
   if (ref.startsWith('official:')) return ref.slice('official:'.length).toUpperCase();
+  if (isBudUrl(ref)) return undefined; // BUD URLs are handled separately.
   // Fork `i` tags store the raw GitHub URL: .../master/<CODE>.md
   const m = ref.match(/\/(?:blob\/master|refs\/heads\/master)\/([A-Za-z0-9]+)\.md$/);
   if (m) return m[1].toUpperCase();
+  return undefined;
+}
+
+function budCodeFromRef(ref: string): string | undefined {
+  if (ref.startsWith('bud:')) return ref.slice('bud:'.length);
+  if (isBudUrl(ref)) return budNumberFromUrl(ref) ?? undefined;
   return undefined;
 }
 
@@ -69,6 +78,8 @@ function customCoord(ref: string): { pubkey: string; identifier: string } | unde
  * Unrecognized refs are returned unchanged.
  */
 export function canonicalizeRef(ref: NipRef): NipRef {
+  const budCode = budCodeFromRef(ref);
+  if (budCode) return `bud:${budCode}`;
   const code = officialCodeFromRef(ref);
   if (code) return `official:${code}`;
   const coord = customCoord(ref);
@@ -84,6 +95,19 @@ export function useResolvedNip(ref: NipRef | undefined) {
     queryKey: ['resolved-nip', ref ?? ''],
     queryFn: async ({ signal }) => {
       if (!ref) return null;
+
+      const budCode = budCodeFromRef(ref);
+      if (budCode) {
+        const response = await fetch(`${BLOSSOM_RAW_BASE}/buds/${budCode}.md`, { signal });
+        if (!response.ok) throw new Error(`Failed to fetch BUD-${budCode}`);
+        const content = await response.text();
+        return {
+          title: extractTitle(content, `BUD-${budCode}`),
+          content,
+          href: `/bud/${budCode}`,
+          canonicalRef: `bud:${budCode}`,
+        };
+      }
 
       const code = officialCodeFromRef(ref);
       if (code) {

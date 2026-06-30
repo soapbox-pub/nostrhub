@@ -5,10 +5,11 @@ import { NipCard, NipCardSkeleton } from '@/components/NipCard';
 import { AppCard, AppCardSkeleton } from '@/components/AppCard';
 import { DiscoveryGrid, DiscoveryPage } from '@/components/DiscoveryGrid';
 import { useOfficialNips } from '@/hooks/useOfficialNips';
+import { useBuds } from '@/hooks/useBuds';
 import { useCustomNips } from '@/hooks/useCustomNips';
 import { useCommunityAuthors } from '@/hooks/useCommunityAuthors';
 import { useAppsForKind } from '@/hooks/useAppsForNip';
-import { officialToRanked, customToRanked, type RankedNip } from '@/hooks/useRankedNips';
+import { officialToRanked, budToRanked, customToRanked, type RankedNip } from '@/hooks/useRankedNips';
 import NotFound from '@/pages/NotFound';
 
 /** Does an official-index kind cell (e.g. "20" or "5000-5999") cover `kind`? */
@@ -45,6 +46,7 @@ export function KindPage() {
   const kindNum = valid ? Number(kindParam) : 0;
 
   const officialQuery = useOfficialNips();
+  const budsQuery = useBuds();
   const community = useCommunityAuthors();
   const customQuery = useCustomNips({
     kind: valid ? kindParam : undefined,
@@ -63,12 +65,22 @@ export function KindPage() {
     [officialQuery.data, kindNum],
   );
 
+  // BUDs whose Event Kinds entries cover this kind.
+  const buds = useMemo(
+    () =>
+      (budsQuery.data ?? []).filter((bud) =>
+        bud.eventKinds?.some((ek) => kindMatches(ek.kind, kindNum)),
+      ),
+    [budsQuery.data, kindNum],
+  );
+
   const nips = useMemo<RankedNip[]>(
     () => [
       ...officialNips.map(officialToRanked),
+      ...buds.map(budToRanked),
       ...(customQuery.data ?? []).map(customToRanked),
     ],
-    [officialNips, customQuery.data],
+    [officialNips, buds, customQuery.data],
   );
 
   // Index description for the exact kind (e.g. "Picture" for kind 20).
@@ -77,8 +89,12 @@ export function KindPage() {
       const ek = nip.eventKinds?.find((ek) => ek.kind === kindParam);
       if (ek?.description) return ek.description;
     }
+    for (const bud of budsQuery.data ?? []) {
+      const ek = bud.eventKinds?.find((ek) => ek.kind === kindParam);
+      if (ek?.description) return ek.description;
+    }
     return undefined;
-  }, [officialQuery.data, kindParam]);
+  }, [officialQuery.data, budsQuery.data, kindParam]);
 
   useSeoMeta({
     title: valid ? `Kind ${kindParam} | NostrHub` : 'Not Found | NostrHub',
@@ -90,7 +106,7 @@ export function KindPage() {
   if (!valid) return <NotFound />;
 
   const nipsLoading =
-    officialQuery.isLoading || community.isLoading || customQuery.isLoading;
+    officialQuery.isLoading || budsQuery.isLoading || community.isLoading || customQuery.isLoading;
 
   return (
     <DiscoveryPage
