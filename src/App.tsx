@@ -16,7 +16,7 @@ import { PlausibleProvider } from '@/components/PlausibleProvider';
 import { AppConfig } from '@/contexts/AppContext';
 import { DITTO_RELAY } from '@/lib/appRelays';
 import { SEARCH_RELAYS } from '@/lib/searchRelays';
-import { DEFAULT_EXPERTS, DEFAULT_COMMUNITY_CAP, DEFAULT_STATS_PROVIDER } from '@/lib/experts';
+import { DEFAULT_COMMUNITY_CAP, DEFAULT_STATS_PROVIDER } from '@/lib/experts';
 import AppRouter from './AppRouter';
 
 const head = createHead({
@@ -54,7 +54,6 @@ const defaultConfig: AppConfig = {
     updatedAt: 0,
   },
   useAppBlossomServers: true,
-  experts: DEFAULT_EXPERTS,
   communityCap: DEFAULT_COMMUNITY_CAP,
   statsProvider: DEFAULT_STATS_PROVIDER,
   statsRelay: DITTO_RELAY,

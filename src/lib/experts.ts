@@ -1,7 +1,18 @@
 /**
+ * Kind of the replaceable event that stores a user's "Nostr Experts" list.
+ *
+ * 12022 sits in the replaceable range (10000–19999) — one event per pubkey, no
+ * `d` tag — and is deliberately off the standard NIP-51 list kinds so it never
+ * collides with a real list. Experts are stored as `p` tags (public) or
+ * NIP-44-encrypted into `content` (private), mirroring NIP-51 list semantics.
+ */
+export const EXPERTS_LIST_KIND = 12022;
+
+/**
  * Default "Nostr Experts" — well-known Nostr protocol developers whose NIP
  * approvals are counted for ranking and whose follow lists derive the
- * community author set. Users can edit this list freely in Settings.
+ * community author set. Used as the read-fallback baseline until the user
+ * publishes their own list. Users can edit this list freely in Settings.
  *
  * These hex pubkeys were resolved from verifiable NIP-05 identifiers.
  */
