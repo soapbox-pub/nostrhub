@@ -9,7 +9,7 @@ import { DemoReelCard } from '@/components/DemoReelCard';
 import { NetworkUsersChart } from '@/components/NetworkUsersChart';
 import { ReleaseCard, ReleaseCardSkeleton } from '@/components/ReleaseCard';
 import { UserAvatar } from '@/components/UserAvatar';
-import { useExpertPress, useCommunityArticles } from '@/hooks/useExpertPress';
+import { useExpertPress } from '@/hooks/useExpertPress';
 import { useNostrSearch } from '@/hooks/useNostrSearch';
 import { useReleases } from '@/hooks/useReleases';
 import { customToRanked, type RankedNip } from '@/hooks/useRankedNips';
@@ -123,19 +123,7 @@ const Index = () => {
   const extraExperts = experts.length - shownExperts.length;
 
   const articles = press.data?.articles ?? [];
-  const [leadArticle] = articles;
-
-  // The lead Feature is the newest expert dispatch; the three supporting slots
-  // are the latest long-form posts from the wider community web-of-trust. A
-  // small buffer (8) survives dedupe-to-latest-per-address and dropping any
-  // entry that collides with the lead, without pulling the firehose.
-  const communityArticlesQuery = useCommunityArticles(community.data?.authors, 8);
-  const moreArticles = useMemo(() => {
-    const leadKey = leadArticle?.naddr;
-    return (communityArticlesQuery.data ?? [])
-      .filter((article) => article.naddr !== leadKey)
-      .slice(0, 3);
-  }, [communityArticlesQuery.data, leadArticle?.naddr]);
+  const [leadArticle, ...moreArticles] = articles;
   const pullQuotes = useMemo(
     () =>
       (press.data?.notes ?? [])
@@ -251,10 +239,10 @@ const Index = () => {
 
         {/* ── The features (expert long-form articles) ─────────────── */}
         {hasExperts && (press.isLoading || articles.length > 0) && (
-          <section className="space-y-5" aria-label="Feature articles">
+          <section className="space-y-5" aria-label="Feature articles from the experts">
             <Department
               title="The Features"
-              subtitle="A lead dispatch from the panel, then the latest long-form from the community."
+              subtitle="Long-form dispatches from the panel."
               action={
                 <Button asChild variant="outline" size="sm" className="rounded-full">
                   <Link to="/articles">Browse all articles</Link>
@@ -268,7 +256,7 @@ const Index = () => {
                 {leadArticle && <LeadArticleCard article={leadArticle} />}
                 {moreArticles.length > 0 && (
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {moreArticles.map((article) => (
+                    {moreArticles.slice(0, 3).map((article) => (
                       <ArticleCard key={article.naddr} article={article} />
                     ))}
                   </div>
