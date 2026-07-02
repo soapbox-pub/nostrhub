@@ -59,7 +59,7 @@ export function RepoListItem({ repo, showAuthor = true }: RepoListItemProps) {
       </div>
 
       {repo.description && (
-        <p className="line-clamp-2 max-w-prose text-sm leading-relaxed text-muted-foreground">
+        <p className="line-clamp-2 max-w-prose break-words text-sm leading-relaxed text-muted-foreground">
           {repo.description}
         </p>
       )}

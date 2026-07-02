@@ -21,7 +21,7 @@ export function RepoCard({ repo }: { repo: GitRepoAnnouncement }) {
   const authorUrl = useProfileUrl(repo.pubkey, metadata);
 
   return (
-    <Card className="group relative h-full overflow-clip border-border/70 bg-card/60 backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-[0_8px_40px_-8px] hover:shadow-primary/30">
+    <Card className="group relative h-full min-w-0 overflow-clip border-border/70 bg-card/60 backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-[0_8px_40px_-8px] hover:shadow-primary/30">
       <span
         aria-hidden="true"
         className="pointer-events-none absolute -right-8 -top-10 size-32 rounded-full bg-primary/20 opacity-0 blur-2xl transition-opacity duration-300 group-hover:opacity-100"
@@ -42,7 +42,7 @@ export function RepoCard({ repo }: { repo: GitRepoAnnouncement }) {
 
           {/* Description */}
           {repo.description && (
-            <p className="line-clamp-2 flex-1 text-sm text-muted-foreground">{repo.description}</p>
+            <p className="line-clamp-2 flex-1 break-words text-sm text-muted-foreground">{repo.description}</p>
           )}
 
           {/* Actions: copyable clone URI + optional Shakespeare edit */}

@@ -79,7 +79,7 @@ export function DiscoveryGrid<T>({
   className,
 }: DiscoveryGridProps<T>) {
   const layoutClass =
-    layout === 'list' ? 'space-y-2' : 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3';
+    layout === 'list' ? 'space-y-2' : 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3';
 
   if (isLoading) {
     return (

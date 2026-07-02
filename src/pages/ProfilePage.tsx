@@ -307,7 +307,7 @@ export function ProfilePage({ pubkey }: ProfilePageProps) {
             ) : repos.length === 0 ? (
               <EmptyState message={`${displayName} hasn't announced any repositories yet.`} />
             ) : (
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {repos.map((repo) => (
                   <RepoCard key={`${repo.pubkey}:${repo.identifier}`} repo={repo} />
                 ))}
