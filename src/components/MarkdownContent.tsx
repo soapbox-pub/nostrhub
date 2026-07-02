@@ -261,7 +261,7 @@ export function MarkdownContent({ content, className, inlineOnly }: MarkdownCont
     [content, components],
   );
 
-  return <div className={cn('text-[0.95rem] text-foreground', className)}>{rendered}</div>;
+  return <div className={cn('break-words text-[0.95rem] text-foreground', className)}>{rendered}</div>;
 }
 
 export default MarkdownContent;
