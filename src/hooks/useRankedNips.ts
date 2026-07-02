@@ -76,8 +76,10 @@ export function customToRanked(nip: CustomNip): RankedNip {
 /**
  * Unified, ranked list of NIPs (official + community), ordered by how many
  * experts have applied a `nostrhub.approve` label (the homepage curation
- * signal). Approvals are synced from experts only. A NIP authored by an expert
- * is treated as implicitly expert-endorsed and surfaces here as well.
+ * signal). Approvals are synced from experts only, and authorship is never
+ * treated as an approval — an expert must publish their own `nostrhub.approve`
+ * label to be counted, exactly like everyone else. Expert-authored NIPs still
+ * surface in the list for visibility, but without a fabricated approval badge.
  */
 export function useRankedNips() {
   const officialQuery = useOfficialNips();
@@ -140,22 +142,18 @@ export function useRankedNips() {
     for (const nip of custom ?? []) {
       const target: NipTarget = { type: 'custom', address: nip.address };
       const a = approvals?.[nipTargetKey(target)];
+      // Authorship is NOT an endorsement: everyone, experts included, must
+      // publish their own `nostrhub.approve` label to be counted as an approver.
       const expertAuthored = expertSet.has(nip.author);
-      // An expert authoring a NIP counts as an implicit expert endorsement.
-      // Only add to the count if that expert hasn't also explicitly approved.
-      const authoredBonus =
-        expertAuthored && !a?.experts.includes(nip.author) ? 1 : 0;
-      const expertApprovers =
-        authoredBonus > 0 ? [nip.author, ...(a?.experts ?? [])] : a?.experts ?? [];
       items.push({
         key: nipTargetKey(target),
         target,
         title: nip.title,
         custom: nip,
         kinds: nip.kinds,
-        expertCount: (a?.expertCount ?? 0) + authoredBonus,
-        totalCount: (a?.totalCount ?? 0) + authoredBonus,
-        expertApprovers,
+        expertCount: a?.expertCount ?? 0,
+        totalCount: a?.totalCount ?? 0,
+        expertApprovers: a?.experts ?? [],
         expertAuthored,
       });
     }

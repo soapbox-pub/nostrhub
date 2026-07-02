@@ -151,24 +151,20 @@ const Index = () => {
   );
   const latestNipApprovals = useNipApprovals(latestNipTargets, { expertsOnly: true });
 
-  // Merge approval data (and implicit expert-authorship) into each card's model.
+  // Merge genuine expert approval data into each card's model. Authorship is
+  // NOT an approval: everyone, experts included, must publish their own
+  // `nostrhub.approve` label to appear as an approver on the card.
   const latestNips = useMemo<RankedNip[]>(() => {
     const approvals = latestNipApprovals.data;
     return latestNipsBase.map((nip) => {
       const ranked = customToRanked(nip);
       const a = approvals?.[nipTargetKey(ranked.target)];
-      const expertAuthored = expertSet.has(nip.author);
-      // An expert authoring a NIP counts as an implicit expert endorsement,
-      // unless they've also explicitly approved it (avoid double-counting).
-      const authoredBonus = expertAuthored && !a?.experts.includes(nip.author) ? 1 : 0;
-      const expertApprovers =
-        authoredBonus > 0 ? [nip.author, ...(a?.experts ?? [])] : a?.experts ?? [];
       return {
         ...ranked,
-        expertCount: (a?.expertCount ?? 0) + authoredBonus,
-        totalCount: (a?.totalCount ?? 0) + authoredBonus,
-        expertApprovers,
-        expertAuthored,
+        expertCount: a?.expertCount ?? 0,
+        totalCount: a?.totalCount ?? 0,
+        expertApprovers: a?.experts ?? [],
+        expertAuthored: expertSet.has(nip.author),
       };
     });
   }, [latestNipsBase, latestNipApprovals.data, expertSet]);

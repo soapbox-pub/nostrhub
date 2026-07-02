@@ -191,10 +191,12 @@ export function useDirectoryNips(): DirectoryNips {
       author?: string,
     ): RankedNip => {
       const label = byKey[base.key];
-      // Approvals only count when they come from someone other than the
-      // author: experts self-labeling their own NIPs is not an endorsement.
-      const experts = (label?.experts ?? []).filter((pk) => pk !== author);
-      const all = (label?.all ?? []).filter((pk) => pk !== author);
+      // Only genuine `nostrhub.approve` labels count as approvals — authorship
+      // alone never does. A self-approval (the author publishing their own
+      // approve label) is legitimate and counts like any other, so we do not
+      // strip the author here.
+      const experts = label?.experts ?? [];
+      const all = label?.all ?? [];
       return {
         ...base,
         expertAuthored: author ? expertSet.has(author) : false,
