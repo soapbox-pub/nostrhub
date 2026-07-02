@@ -7,6 +7,7 @@ import type { NostrEvent } from '@nostrify/nostrify';
 import { Layout } from '@/components/Layout';
 import { DetailSurface } from '@/components/DetailSurface';
 import { HighlightableMarkdown } from '@/components/HighlightableMarkdown';
+import { CommentsSection } from '@/components/comments/CommentsSection';
 import { articleHighlightSource } from '@/lib/highlightSource';
 import { UserAvatar } from '@/components/UserAvatar';
 import { useAuthor } from '@/hooks/useAuthor';
@@ -159,6 +160,15 @@ export function ArticlePage({ pubkey, identifier }: ArticlePageProps) {
           className="text-base"
           source={articleHighlightSource(pubkey, ARTICLE_KIND, identifier)}
         />
+
+        <section className="mt-10 space-y-4 border-t border-border/60 pt-6">
+          <h2 className="text-xl font-semibold tracking-tight">Discussion</h2>
+          <CommentsSection
+            root={event}
+            emptyStateMessage="No discussion yet"
+            emptyStateSubtitle="Share your thoughts on this article with the community."
+          />
+        </section>
         </DetailSurface>
       </article>
     </Layout>
