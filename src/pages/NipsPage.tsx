@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useSeoMeta } from '@unhead/react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { PenLine, User, X } from 'lucide-react';
 import { NipCard, NipCardSkeleton } from '@/components/NipCard';
 import {
@@ -15,6 +15,12 @@ import { type RankedNip } from '@/hooks/useRankedNips';
 import { Button } from '@/components/ui/button';
 
 type Source = 'official' | 'community' | 'mine';
+
+const SOURCES: readonly Source[] = ['official', 'community', 'mine'];
+
+function parseSource(value: string | null): Source | undefined {
+  return SOURCES.includes(value as Source) ? (value as Source) : undefined;
+}
 
 function matchesSearch(nip: RankedNip, q: string): boolean {
   if (!q) return true;
@@ -46,8 +52,21 @@ function matchesBudSearch(bud: RankedNip, q: string): boolean {
  */
 export function NipsPage() {
   const { user } = useCurrentUser();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState('');
-  const [source, setSource] = useState<Source>();
+
+  // The active source filter is mirrored to the `?filter=` query param via
+  // replaceState so the selected toggle survives copying the URL and browser
+  // back/forward navigation without polluting the history stack.
+  const source = parseSource(searchParams.get('filter'));
+  const setSource = (next?: Source) => {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      if (next) params.set('filter', next);
+      else params.delete('filter');
+      return params;
+    }, { replace: true });
+  };
 
   const { ranked, official, buds, isLoading, isOfficialLoading } = useDirectoryNips();
 
