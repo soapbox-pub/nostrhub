@@ -132,7 +132,7 @@ export function DetailHero({
       {badges && <div className="flex flex-wrap items-center gap-1.5">{badges}</div>}
 
       {description && (
-        <p className="max-w-prose text-lg leading-relaxed text-muted-foreground">{description}</p>
+        <p className="max-w-prose break-words text-lg leading-relaxed text-muted-foreground">{description}</p>
       )}
 
       {meta && (
