@@ -231,8 +231,8 @@ export function ProfilePage({ pubkey }: ProfilePageProps) {
 
         {/* Contributions */}
         <Tabs defaultValue="nips" className="pt-2">
-          <TabsList>
-            <TabsTrigger value="nips" className="gap-1.5">
+          <TabsList variant="line" className="w-full justify-start gap-1 overflow-x-auto">
+            <TabsTrigger value="nips" className="flex-none gap-1.5">
               <FileText className="size-4" aria-hidden="true" />
               NIPs
               {nipsQuery.data && nips.length > 0 && (
@@ -241,7 +241,7 @@ export function ProfilePage({ pubkey }: ProfilePageProps) {
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="repos" className="gap-1.5">
+            <TabsTrigger value="repos" className="flex-none gap-1.5">
               <FolderGit2 className="size-4" aria-hidden="true" />
               Repositories
               {reposQuery.data && repos.length > 0 && (
@@ -250,7 +250,7 @@ export function ProfilePage({ pubkey }: ProfilePageProps) {
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="apps" className="gap-1.5">
+            <TabsTrigger value="apps" className="flex-none gap-1.5">
               <Blocks className="size-4" aria-hidden="true" />
               Apps
               {appsQuery.data && apps.length > 0 && (
@@ -259,7 +259,7 @@ export function ProfilePage({ pubkey }: ProfilePageProps) {
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="releases" className="gap-1.5">
+            <TabsTrigger value="releases" className="flex-none gap-1.5">
               <Package className="size-4" aria-hidden="true" />
               Releases
               {releasesQuery.data && releases.length > 0 && (
@@ -268,7 +268,7 @@ export function ProfilePage({ pubkey }: ProfilePageProps) {
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="experts" className="gap-1.5">
+            <TabsTrigger value="experts" className="flex-none gap-1.5">
               <GraduationCap className="size-4" aria-hidden="true" />
               Experts
               {profileExperts && profileExperts.pubkeys.length > 0 && (
