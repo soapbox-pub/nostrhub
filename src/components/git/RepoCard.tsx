@@ -21,54 +21,57 @@ export function RepoCard({ repo }: { repo: GitRepoAnnouncement }) {
   const authorUrl = useProfileUrl(repo.pubkey, metadata);
 
   return (
-    <Card className="group relative h-full overflow-clip border-border/70 bg-card/60 backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-[0_8px_40px_-8px] hover:shadow-primary/30">
+    <Card className="group relative h-full min-w-0 overflow-clip border-border/70 bg-card/60 backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-[0_8px_40px_-8px] hover:shadow-primary/30">
       <span
         aria-hidden="true"
         className="pointer-events-none absolute -right-8 -top-10 size-32 rounded-full bg-primary/20 opacity-0 blur-2xl transition-opacity duration-300 group-hover:opacity-100"
       />
+      <CardContent className="flex h-full flex-col gap-3 px-4">
+        {/* Header: name */}
+        <div className="flex items-start gap-3">
+          <div className="min-w-0 flex-1 space-y-0.5">
+            <h3 className="truncate font-semibold leading-snug tracking-tight group-hover:text-primary">
+              {repo.name}
+            </h3>
+          </div>
+        </div>
+
+        {/* Description */}
+        {repo.description && (
+          <p className="line-clamp-2 flex-1 break-words text-sm text-muted-foreground">{repo.description}</p>
+        )}
+
+        {/* Actions: copyable clone URI + optional Shakespeare edit — raised
+            above the card's overlay link so they stay clickable. */}
+        <div className="relative z-10 flex flex-wrap items-center gap-2">
+          <CloneUriPill repo={repo} className="max-w-full flex-1 basis-48" />
+          {isShakespeareRepo(repo) && (
+            <EditWithShakespeareButton repo={repo} variant="chip" />
+          )}
+        </div>
+
+        {/* Author + timestamp */}
+        <div className="mt-auto flex items-center gap-2 border-t border-border/50 pt-3">
+          <Link
+            to={authorUrl}
+            className="relative z-10 flex min-w-0 items-center gap-1.5 text-xs text-foreground/80 hover:text-primary"
+          >
+            <UserAvatar pubkey={repo.pubkey} size="sm" />
+            <span className="truncate">{nip05 ?? authorName}</span>
+          </Link>
+          <span className="ml-auto shrink-0 text-xs text-muted-foreground/60">
+            {formatDistanceToNow(new Date(repo.createdAt * 1000), { addSuffix: true })}
+          </span>
+        </div>
+      </CardContent>
+
+      {/* Stretched overlay link: makes the whole card navigate without
+          nesting the author link / clone button inside an <a>. */}
       <Link
         to={repoUrl}
-        className="relative block h-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <CardContent className="flex h-full flex-col gap-3 px-4">
-          {/* Header: name */}
-          <div className="flex items-start gap-3">
-            <div className="min-w-0 flex-1 space-y-0.5">
-              <h3 className="truncate font-semibold leading-snug tracking-tight group-hover:text-primary">
-                {repo.name}
-              </h3>
-            </div>
-          </div>
-
-          {/* Description */}
-          {repo.description && (
-            <p className="line-clamp-2 flex-1 text-sm text-muted-foreground">{repo.description}</p>
-          )}
-
-          {/* Actions: copyable clone URI + optional Shakespeare edit */}
-          <div className="flex flex-wrap items-center gap-2">
-            <CloneUriPill repo={repo} className="max-w-full flex-1 basis-48" />
-            {isShakespeareRepo(repo) && (
-              <EditWithShakespeareButton repo={repo} variant="chip" />
-            )}
-          </div>
-
-          {/* Author + timestamp */}
-          <div className="mt-auto flex items-center gap-2 border-t border-border/50 pt-3">
-            <Link
-              to={authorUrl}
-              onClick={(e) => e.stopPropagation()}
-              className="flex min-w-0 items-center gap-1.5 text-xs text-foreground/80 hover:text-primary"
-            >
-              <UserAvatar pubkey={repo.pubkey} size="sm" />
-              <span className="truncate">{nip05 ?? authorName}</span>
-            </Link>
-            <span className="ml-auto shrink-0 text-xs text-muted-foreground/60">
-              {formatDistanceToNow(new Date(repo.createdAt * 1000), { addSuffix: true })}
-            </span>
-          </div>
-        </CardContent>
-      </Link>
+        aria-label={repo.name}
+        className="absolute inset-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      />
     </Card>
   );
 }
