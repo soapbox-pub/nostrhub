@@ -110,7 +110,7 @@ function RelayInfoDetails({ info }: { info: RelayInfoDocument }) {
   return (
     <div className="mt-3 space-y-3">
       {info.description && (
-        <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+        <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-muted-foreground">
           {info.description}
         </p>
       )}
@@ -133,16 +133,18 @@ function RelayInfoDetails({ info }: { info: RelayInfoDocument }) {
             </Badge>
           )}
           {info.software && (
-            <Badge variant="outline" className="gap-1 text-xs">
-              <Server className="size-3" />
-              {info.software.replace(/^https?:\/\//, '')}
-              {info.version ? ` ${info.version}` : ''}
+            <Badge variant="outline" className="max-w-full gap-1 text-xs">
+              <Server className="size-3 shrink-0" />
+              <span className="min-w-0 truncate">
+                {info.software.replace(/^https?:\/\//, '')}
+                {info.version ? ` ${info.version}` : ''}
+              </span>
             </Badge>
           )}
           {info.contact && (
-            <Badge variant="outline" className="gap-1 text-xs">
-              <Mail className="size-3" />
-              {info.contact}
+            <Badge variant="outline" className="max-w-full gap-1 text-xs">
+              <Mail className="size-3 shrink-0" />
+              <span className="min-w-0 truncate">{info.contact}</span>
             </Badge>
           )}
         </div>
