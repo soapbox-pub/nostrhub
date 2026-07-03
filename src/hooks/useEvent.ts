@@ -46,16 +46,36 @@ export function useEvent(id: string, relayHints: string[] = []) {
         if (normalized) urls.add(normalized);
       }
 
-      const filter = { ids: [id], limit: 1 };
-      const opts = { signal: AbortSignal.any([signal, AbortSignal.timeout(8000)]) };
+      // Stream via `.req()` rather than `.query()`: the app pool is built with
+      // a 200ms `eoseTimeout`, which `query()` inherits — a fast general relay
+      // EOSEing empty would abort the group before a slower git relay can
+      // deliver the event. Streaming returns on the first match and gives
+      // stragglers a real window after the first EOSE.
+      const findEvent = async (
+        relayUrls: string[],
+        timeoutMs: number,
+      ): Promise<NostrEvent | null> => {
+        const reqSignal = AbortSignal.any([signal, AbortSignal.timeout(timeoutMs)]);
+        try {
+          for await (const msg of nostr.group(relayUrls).req(
+            [{ ids: [id], limit: 1 }],
+            { signal: reqSignal, eoseTimeout: 3000 },
+          )) {
+            if (msg[0] === 'EVENT') return msg[2];
+            if (msg[0] === 'EOSE' || msg[0] === 'CLOSED') break;
+          }
+        } catch {
+          // Aborted or relay error — treat as not found on this relay set.
+        }
+        return null;
+      };
 
-      const fromPool = await nostr.group([...urls].slice(0, 12)).query([filter], opts);
-      if (fromPool.length > 0) return fromPool[0];
+      const fromPool = await findEvent([...urls].slice(0, 12), 8000);
+      if (fromPool) return fromPool;
 
       // Fall back to the search relays, since events discovered via NIP-50
       // may only live there.
-      const fromSearch = await nostr.group(searchRelays).query([filter], opts);
-      return fromSearch[0] ?? null;
+      return findEvent(searchRelays, 5000);
     },
     enabled: Boolean(id),
     staleTime: 60 * 1000,

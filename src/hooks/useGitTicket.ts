@@ -97,11 +97,14 @@ export function useGitTicket(
 
       // Resolve recognized maintainers from the repo announcement so their
       // status events are honored too (callers rarely have them up front).
+      // Streamed via `.req()` — the pool's 200ms `eoseTimeout` would let a
+      // fast empty relay abort `.query()` before the git relays answer.
       let repoMaintainers: string[] = [];
       const [addrKind, addrOwner, ...addrDParts] = (repoAddress ?? '').split(':');
       if (addrKind === String(GIT_REPO_KIND) && addrOwner) {
+        let repoEvent: NostrEvent | undefined;
         try {
-          const [repoEvent] = await nostr.group([...urls].slice(0, 12)).query(
+          for await (const msg of nostr.group([...urls].slice(0, 12)).req(
             [
               {
                 kinds: [GIT_REPO_KIND],
@@ -110,12 +113,20 @@ export function useGitTicket(
                 limit: 1,
               },
             ],
-            { signal: AbortSignal.any([signal, AbortSignal.timeout(4000)]) },
-          );
-          if (repoEvent) repoMaintainers = parseRepoAnnouncement(repoEvent).maintainers;
+            {
+              signal: AbortSignal.any([signal, AbortSignal.timeout(4000)]),
+              eoseTimeout: 2000,
+            },
+          )) {
+            if (msg[0] === 'EOSE' || msg[0] === 'CLOSED') break;
+            if (msg[0] !== 'EVENT') continue;
+            // Addressable: keep the newest version across relays.
+            if (!repoEvent || msg[2].created_at > repoEvent.created_at) repoEvent = msg[2];
+          }
         } catch {
           // Repo announcement unavailable — owner + author trust still applies.
         }
+        if (repoEvent) repoMaintainers = parseRepoAnnouncement(repoEvent).maintainers;
       }
 
       const trustSet = new Set(
