@@ -8,8 +8,10 @@ import {
   GIT_ISSUE_KIND,
   GIT_PATCH_KIND,
   GIT_PR_KIND,
+  GIT_REPO_KIND,
   GIT_STATUS_KINDS,
   parseGitTicket,
+  parseRepoAnnouncement,
   statusFromKind,
   type GitItemStatus,
   type GitTicket,
@@ -92,14 +94,50 @@ export function useGitTicket(
 
       const repoAddress = ticketEvent.tags.find(([n]) => n === 'a')?.[1];
       const ownerPubkey = repoAddress?.split(':')[1];
+
+      // Resolve recognized maintainers from the repo announcement so their
+      // status events are honored too (callers rarely have them up front).
+      let repoMaintainers: string[] = [];
+      const [addrKind, addrOwner, ...addrDParts] = (repoAddress ?? '').split(':');
+      if (addrKind === String(GIT_REPO_KIND) && addrOwner) {
+        try {
+          const [repoEvent] = await nostr.group([...urls].slice(0, 12)).query(
+            [
+              {
+                kinds: [GIT_REPO_KIND],
+                authors: [addrOwner],
+                '#d': [addrDParts.join(':')],
+                limit: 1,
+              },
+            ],
+            { signal: AbortSignal.any([signal, AbortSignal.timeout(4000)]) },
+          );
+          if (repoEvent) repoMaintainers = parseRepoAnnouncement(repoEvent).maintainers;
+        } catch {
+          // Repo announcement unavailable — owner + author trust still applies.
+        }
+      }
+
       const trustSet = new Set(
-        [ownerPubkey, parsed.pubkey, ...maintainers].filter((p): p is string => Boolean(p)),
+        [ownerPubkey, parsed.pubkey, ...maintainers, ...repoMaintainers].filter(
+          (p): p is string => Boolean(p),
+        ),
       );
 
-      // Most-recent trusted status event for this ticket.
+      // Most-recent trusted status event for this ticket. A status only
+      // applies when it references this ticket as its *root* (`e` tag with a
+      // "root" marker, or unmarked) — status events also carry "mention"/
+      // "reply" `e` tags pointing at related tickets (e.g. ngit closes
+      // superseded PRs with events that merely mention the replacement), and
+      // those must not flip this ticket's state.
       let latest: NostrEvent | undefined;
       for (const status of statuses) {
         if (!trustSet.has(status.pubkey)) continue;
+        const refsAsRoot = status.tags.some(
+          ([n, v, , marker]) =>
+            n === 'e' && v === eventId && (marker === 'root' || marker === undefined || marker === ''),
+        );
+        if (!refsAsRoot) continue;
         if (!latest || status.created_at > latest.created_at) latest = status;
       }
 

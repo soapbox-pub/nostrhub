@@ -98,7 +98,7 @@ function TopLevelComment({
           </span>
         </div>
         <div className="p-4 text-sm leading-relaxed">
-          <NoteContent event={comment} disableNoteEmbeds disableMediaEmbeds />
+          <NoteContent event={comment} disableNoteEmbeds />
         </div>
         <div className="flex items-center gap-1 border-t border-border/60 px-3 py-1.5">
           <Button

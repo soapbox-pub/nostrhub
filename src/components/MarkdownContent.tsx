@@ -169,6 +169,10 @@ function extractText(node: ReactNode): string {
   return '';
 }
 
+/** Media extensions rendered inline when a bare URL is autolinked. */
+const IMAGE_URL_RE = /\.(png|jpe?g|gif|webp|avif)(\?[^\s]*)?$/i;
+const VIDEO_URL_RE = /\.(mp4|webm|mov|m4v)(\?[^\s]*)?$/i;
+
 function buildComponents(inlineOnly?: boolean): Components {
   // Enrich Nostr tokens, then overlay community highlights across the whole block.
   const block = (children: ReactNode, inline?: boolean) => (
@@ -184,6 +188,33 @@ function buildComponents(inlineOnly?: boolean): Components {
       const safe = resolveHref(href);
       const external = safe?.startsWith('http');
       if (!safe) return <span>{children}</span>;
+      // A bare media URL (autolinked by remark-gfm, so the link text is the
+      // URL itself) renders as inline media, GitHub/Gitworkshop-style.
+      if (external && !inlineOnly) {
+        const text = extractText(children).trim();
+        if (text === href?.trim() || text === safe) {
+          if (IMAGE_URL_RE.test(safe)) {
+            return (
+              <img
+                src={safe}
+                alt=""
+                className="my-4 max-w-full rounded-lg border border-border/60"
+                loading="lazy"
+              />
+            );
+          }
+          if (VIDEO_URL_RE.test(safe)) {
+            return (
+              <video
+                src={safe}
+                controls
+                preload="metadata"
+                className="my-4 max-h-[480px] max-w-full rounded-lg border border-border/60"
+              />
+            );
+          }
+        }
+      }
       return (
         <a
           href={safe}

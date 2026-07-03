@@ -139,7 +139,7 @@ export function Comment({ root, comment, depth = 0, maxDepth = 3, limit, communi
             </div>
 
             <div className="text-sm leading-relaxed">
-              <NoteContent event={comment} disableNoteEmbeds disableMediaEmbeds />
+              <NoteContent event={comment} disableNoteEmbeds />
             </div>
 
             <div className="flex items-center justify-between pt-2">

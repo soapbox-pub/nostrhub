@@ -4,6 +4,7 @@ import { ScrollToTop } from "./components/ScrollToTop";
 import Index from "./pages/Index";
 import { NIP19Page } from "./pages/NIP19Page";
 import { RepoRoute } from "./pages/RepoRoute";
+import { GitTicketRoute, RepoTabRedirect } from "./pages/RepoSubRoutes";
 import NotFound from "./pages/NotFound";
 import SettingsPage from "./pages/SettingsPage";
 import OfficialNipPage from "./pages/OfficialNipPage";
@@ -66,6 +67,19 @@ export function AppRouter() {
             two-segment routes above (e.g. /repos/new, /chat/:topic) take
             precedence over this dynamic pair. */}
         <Route path="/:owner/:repo" element={<RepoRoute />} />
+        {/* Gitworkshop-compatible paths, including the NIP-34 clone-URI form
+            with a relay-hint segment (/{owner}/{relay}/{repo}) and ticket
+            permalinks under /prs/ and /issues/. Static "prs"/"issues" segments
+            outrank the dynamic :relay segment, so the list paths win. */}
+        <Route path="/:owner/:relay/:repo" element={<RepoRoute />} />
+        <Route path="/:owner/:repo/issues" element={<RepoTabRedirect tab="issues" />} />
+        <Route path="/:owner/:repo/prs" element={<RepoTabRedirect tab="pulls" />} />
+        <Route path="/:owner/:relay/:repo/issues" element={<RepoTabRedirect tab="issues" />} />
+        <Route path="/:owner/:relay/:repo/prs" element={<RepoTabRedirect tab="pulls" />} />
+        <Route path="/:owner/:repo/issues/:nip19" element={<GitTicketRoute />} />
+        <Route path="/:owner/:repo/prs/:nip19" element={<GitTicketRoute />} />
+        <Route path="/:owner/:relay/:repo/issues/:nip19" element={<GitTicketRoute />} />
+        <Route path="/:owner/:relay/:repo/prs/:nip19" element={<GitTicketRoute />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>

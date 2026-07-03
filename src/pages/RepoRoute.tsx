@@ -12,18 +12,21 @@ import { looksLikeNip05 } from '@/lib/nip05';
 import { isNostrId } from '@/lib/nostrId';
 
 /**
- * Resolves the `/:owner/:repo` route to a repository owner pubkey and `d`
- * identifier, then renders {@link GitRepoPage}.
+ * Resolves the `/:owner/:repo` and `/:owner/:relay/:repo` routes to a
+ * repository owner pubkey and `d` identifier, then renders {@link GitRepoPage}.
  *
  * The `owner` segment may be:
  * - a NIP-05 identifier (`user@domain.com`) or bare domain (`domain.com` → `_`)
  * - an `npub` / `nprofile` bech32 string
  * - a raw 64-char hex pubkey
  *
- * The `repo` segment is the percent-encoded `d` tag value.
+ * The optional `relay` segment is a percent-encoded relay hint whose `wss://`
+ * scheme may be omitted (NIP-34 clone-URI convention, matching Gitworkshop
+ * URLs like `/vitorpamplona.com/relay.ngit.dev/amethyst`). The `repo` segment
+ * is the percent-encoded `d` tag value.
  */
 export function RepoRoute() {
-  const { owner, repo } = useParams<{ owner: string; repo: string }>();
+  const { owner, relay, repo } = useParams<{ owner: string; relay?: string; repo: string }>();
 
   const identifier = useMemo(() => {
     if (!repo) return undefined;
@@ -33,6 +36,25 @@ export function RepoRoute() {
       return repo;
     }
   }, [repo]);
+
+  // Optional relay-hint segment: percent-decoded, `wss://` assumed when the
+  // scheme is omitted. An unparseable hint is ignored rather than 404ing.
+  const relayHint = useMemo(() => {
+    if (!relay) return undefined;
+    let value: string;
+    try {
+      value = decodeURIComponent(relay);
+    } catch {
+      value = relay;
+    }
+    if (!/^wss?:\/\//i.test(value)) value = `wss://${value}`;
+    try {
+      const url = new URL(value);
+      return url.protocol === 'wss:' || url.protocol === 'ws:' ? url.href : undefined;
+    } catch {
+      return undefined;
+    }
+  }, [relay]);
 
   // NIP-05 / bare-domain owners must be resolved over the network.
   const isNip05 = !!owner && looksLikeNip05(owner);
@@ -88,7 +110,13 @@ export function RepoRoute() {
     return <NotFound />;
   }
 
-  return <GitRepoPage pubkey={pubkey} identifier={identifier} />;
+  return (
+    <GitRepoPage
+      pubkey={pubkey}
+      identifier={identifier}
+      relays={relayHint ? [relayHint] : undefined}
+    />
+  );
 }
 
 export default RepoRoute;
