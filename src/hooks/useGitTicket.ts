@@ -8,7 +8,9 @@ import {
   GIT_ISSUE_KIND,
   GIT_PATCH_KIND,
   GIT_PR_KIND,
+  GIT_PR_UPDATE_KIND,
   GIT_REPO_KIND,
+  GIT_STATUS_APPLIED_KIND,
   GIT_STATUS_KINDS,
   parseGitTicket,
   parseRepoAnnouncement,
@@ -17,12 +19,40 @@ import {
   type GitTicket,
 } from '@/lib/git';
 
+/** Merge/apply details extracted from the newest kind 1631 status event. */
+export interface GitMergeInfo {
+  /** The merge commit id (`merge-commit`, or ngit's non-spec `merge-commit-id`). */
+  mergeCommit?: string;
+  /** Commit ids the patch/PR landed as on the target branch (`applied-as-commits`). */
+  appliedCommits: string[];
+}
+
 export interface SingleGitTicket extends GitTicket {
   status: GitItemStatus;
   /** Repo announcement address (`30617:pubkey:d`) from the ticket's `a` tag. */
   repoAddress?: string;
   /** Branch name suggested by the PR (`branch-name` tag), if any. */
   branchName?: string;
+  /**
+   * Trusted status events (1630-1633) that reference this ticket as their
+   * root, oldest first — for rendering lifecycle entries in the timeline.
+   */
+  statusEvents: NostrEvent[];
+  /** Trusted PR updates (kind 1619) for this PR, oldest first. */
+  prUpdates: NostrEvent[];
+  /** Current tip commit: the latest trusted PR update's `c`, else the PR's. */
+  tipCommit?: string;
+  /** Most recent common ancestor with the target branch (`merge-base`). */
+  mergeBase?: string;
+  /**
+   * The event whose `refs/nostr/<event-id>` ref carries the current tip on
+   * GRASP servers (the latest PR update, else the PR itself).
+   */
+  tipEventId: string;
+  /** Clone URLs advertised by the PR and its updates (https only). */
+  prCloneUrls: string[];
+  /** Merge/apply details when the ticket was merged or applied. */
+  mergeInfo?: GitMergeInfo;
 }
 
 function normalizeRelayUrl(url: string): string | undefined {
@@ -69,12 +99,17 @@ export function useGitTicket(
       const reqSignal = AbortSignal.any([signal, AbortSignal.timeout(8000)]);
       let ticketEvent: NostrEvent | undefined;
       const statuses: NostrEvent[] = [];
+      const updates: NostrEvent[] = [];
 
       try {
         for await (const msg of nostr.group([...urls].slice(0, 12)).req(
           [
             { ids: [eventId], kinds: [GIT_ISSUE_KIND, GIT_PR_KIND, GIT_PATCH_KIND] },
             { kinds: [...GIT_STATUS_KINDS], '#e': [eventId], limit: 100 },
+            // PR updates reference their PR via a NIP-22 `E` tag; some clients
+            // use lowercase `e`, so query both.
+            { kinds: [GIT_PR_UPDATE_KIND], '#E': [eventId], limit: 50 },
+            { kinds: [GIT_PR_UPDATE_KIND], '#e': [eventId], limit: 50 },
           ],
           { signal: reqSignal, eoseTimeout: 4000 },
         )) {
@@ -82,6 +117,7 @@ export function useGitTicket(
           if (msg[0] !== 'EVENT') continue;
           const ev = msg[2];
           if (ev.id === eventId) ticketEvent = ev;
+          else if (ev.kind === GIT_PR_UPDATE_KIND) updates.push(ev);
           else statuses.push(ev);
         }
       } catch {
@@ -135,28 +171,84 @@ export function useGitTicket(
         ),
       );
 
-      // Most-recent trusted status event for this ticket. A status only
+      // Trusted status events for this ticket, oldest first. A status only
       // applies when it references this ticket as its *root* (`e` tag with a
       // "root" marker, or unmarked) — status events also carry "mention"/
       // "reply" `e` tags pointing at related tickets (e.g. ngit closes
       // superseded PRs with events that merely mention the replacement), and
       // those must not flip this ticket's state.
-      let latest: NostrEvent | undefined;
-      for (const status of statuses) {
-        if (!trustSet.has(status.pubkey)) continue;
-        const refsAsRoot = status.tags.some(
-          ([n, v, , marker]) =>
-            n === 'e' && v === eventId && (marker === 'root' || marker === undefined || marker === ''),
-        );
-        if (!refsAsRoot) continue;
-        if (!latest || status.created_at > latest.created_at) latest = status;
-      }
+      const trustedStatuses = statuses
+        .filter((status) => {
+          if (!trustSet.has(status.pubkey)) return false;
+          return status.tags.some(
+            ([n, v, , marker]) =>
+              n === 'e' &&
+              v === eventId &&
+              (marker === 'root' || marker === undefined || marker === ''),
+          );
+        })
+        .sort((a, b) => a.created_at - b.created_at);
+
+      const latest = trustedStatuses[trustedStatuses.length - 1];
+
+      // Trusted PR updates, oldest first — they move the tip, so only the
+      // PR author / owner / maintainers count.
+      const trustedUpdates = updates
+        .filter((update) => {
+          if (!trustSet.has(update.pubkey)) return false;
+          return update.tags.some(
+            ([n, v]) => (n === 'E' || n === 'e') && v === eventId,
+          );
+        })
+        .sort((a, b) => a.created_at - b.created_at);
+
+      const firstTag = (ev: NostrEvent, name: string) =>
+        ev.tags.find(([n]) => n === name)?.[1];
+      const latestUpdate = trustedUpdates[trustedUpdates.length - 1];
+
+      // Clone URLs from the PR + its updates (https only, deduped).
+      const prCloneUrls = [
+        ...new Set(
+          [ticketEvent, ...trustedUpdates]
+            .flatMap((ev) => ev.tags.filter(([n]) => n === 'clone').flatMap((t) => t.slice(1)))
+            .filter((u) => {
+              try {
+                return new URL(u).protocol === 'https:';
+              } catch {
+                return false;
+              }
+            }),
+        ),
+      ];
+
+      // Merge/apply details from the newest 1631 status.
+      const applied = [...trustedStatuses]
+        .reverse()
+        .find((s) => s.kind === GIT_STATUS_APPLIED_KIND);
+      const mergeInfo: GitMergeInfo | undefined = applied
+        ? {
+            mergeCommit:
+              firstTag(applied, 'merge-commit') ?? firstTag(applied, 'merge-commit-id'),
+            appliedCommits: applied.tags
+              .filter(([n]) => n === 'applied-as-commits')
+              .flatMap((t) => t.slice(1)),
+          }
+        : undefined;
 
       return {
         ...parsed,
         status: statusFromKind(latest?.kind, parsed.kind),
         repoAddress,
-        branchName: ticketEvent.tags.find(([n]) => n === 'branch-name')?.[1],
+        branchName: firstTag(ticketEvent, 'branch-name'),
+        statusEvents: trustedStatuses,
+        prUpdates: trustedUpdates,
+        tipCommit: (latestUpdate && firstTag(latestUpdate, 'c')) ?? firstTag(ticketEvent, 'c'),
+        mergeBase:
+          (latestUpdate && firstTag(latestUpdate, 'merge-base')) ??
+          firstTag(ticketEvent, 'merge-base'),
+        tipEventId: latestUpdate?.id ?? eventId,
+        prCloneUrls,
+        mergeInfo,
       };
     },
     enabled: Boolean(eventId),
