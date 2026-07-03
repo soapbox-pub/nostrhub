@@ -244,7 +244,7 @@ export function RelatedNipsCard({ nipRefs }: { nipRefs: AppNipRef[] }) {
           Related NIPs
         </SidebarCardTitle>
       </CardHeader>
-      <CardContent className="space-y-1.5">
+      <CardContent className="max-h-72 space-y-1.5 overflow-y-auto overscroll-contain">
         {nipRefs.map((nipRef) => (
           <NipChip
             key={

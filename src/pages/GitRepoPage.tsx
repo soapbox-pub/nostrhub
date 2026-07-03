@@ -286,7 +286,7 @@ export function GitRepoPage({ pubkey, identifier, relays }: GitRepoPageProps) {
     : state?.createdAt;
 
   return (
-    <Layout className="max-w-6xl">
+    <Layout wide className="max-w-none">
       <BackLink to="/repos">Back to Repositories</BackLink>
 
       {isLoading ? (

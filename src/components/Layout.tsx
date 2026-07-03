@@ -20,6 +20,11 @@ interface LayoutProps {
   /** Constrain the main content width. Defaults to a comfortable reading width. */
   className?: string;
   /**
+   * Widen the outer content container (which otherwise caps at `max-w-6xl`)
+   * for GitHub-style work surfaces like repositories and merge requests.
+   */
+  wide?: boolean;
+  /**
    * App-style full-bleed mode: the main area fills exactly the space below the
    * sticky header with no container, padding, or footer. Used for full-height
    * experiences like chat. `children` becomes the sole flex child of `<main>`.
@@ -66,7 +71,7 @@ function Logo({ onClick }: { onClick?: () => void }) {
   );
 }
 
-export function Layout({ children, sidebar, className, fullBleed = false }: LayoutProps) {
+export function Layout({ children, sidebar, className, wide = false, fullBleed = false }: LayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
@@ -149,7 +154,12 @@ export function Layout({ children, sidebar, className, fullBleed = false }: Layo
       {fullBleed ? (
         <main className={cn('min-h-0 flex-1', className)}>{children}</main>
       ) : (
-        <main className="container mx-auto max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
+        <main
+          className={cn(
+            'container mx-auto flex-1 px-4 py-6 sm:px-6 sm:py-8',
+            wide ? 'max-w-7xl' : 'max-w-6xl',
+          )}
+        >
           {sidebar ? (
             <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_320px]">
               <div className={cn('min-w-0', className)}>

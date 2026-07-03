@@ -71,8 +71,11 @@ function streamToAsyncIterator(
 /**
  * Build an isomorphic-git {@link HttpClient} that buffers request bodies and,
  * when `proxyTemplate` is non-empty, routes requests through a CORS proxy.
+ *
+ * `signal` aborts in-flight transfers — isomorphic-git has no cancellation of
+ * its own, so this is the only way to put a deadline on a fetch/clone.
  */
-export function makeGitHttp(proxyTemplate = ''): HttpClient {
+export function makeGitHttp(proxyTemplate = '', signal?: AbortSignal): HttpClient {
   return {
     async request(req: GitHttpRequest): Promise<GitHttpResponse> {
       const method = req.method ?? 'GET';
@@ -92,6 +95,7 @@ export function makeGitHttp(proxyTemplate = ''): HttpClient {
       }
 
       const init: RequestInit = { method, headers };
+      if (signal) init.signal = signal;
       const body = await collectBody(req.body as AsyncIterableIterator<Uint8Array> | undefined);
       if (body) init.body = new Blob([new Uint8Array(body)]);
 

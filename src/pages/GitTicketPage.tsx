@@ -201,7 +201,7 @@ export function GitTicketPage({ eventId }: GitTicketPageProps) {
   });
 
   return (
-    <Layout className="max-w-6xl">
+    <Layout wide className="max-w-none">
       <BackLink
         to={hasRepo ? (isPatch ? repoUrl : `${repoUrl}?tab=${isIssue ? 'issues' : 'pulls'}`) : '/repos'}
       >
