@@ -57,8 +57,96 @@ export interface CloneSnapshotOptions {
 }
 
 /**
- * Shallow-clone the repository metadata and return a snapshot for browsing.
- * Tries each clone URL in order until one succeeds.
+ * Build a snapshot the cheap way: a `filter blob:none` partial fetch that
+ * transfers only the commit + tree objects (a few hundred KB even for huge
+ * repositories), with file contents lazily fetched one blob at a time when
+ * read. Requires the server to advertise the `filter` capability — GRASP
+ * servers do.
+ */
+async function partialSnapshot(
+  url: string,
+  ref: string | undefined,
+  signal?: AbortSignal,
+): Promise<RepoSnapshot> {
+  const { fetchRefAdvertisement, fetchPackObjects, commitTreeOid, parseTree } = await import(
+    '@/lib/gitCommitFetch'
+  );
+
+  const adv = await fetchRefAdvertisement(url, signal);
+  if (!adv.caps.has('filter')) throw new Error('server does not support partial fetch');
+
+  const headOid = ref
+    ? (adv.refs.get(`refs/heads/${ref}`) ??
+      adv.refs.get(`refs/tags/${ref}`) ??
+      adv.refs.get(ref))
+    : (adv.refs.get('HEAD') ?? (adv.headSymref ? adv.refs.get(adv.headSymref) : undefined));
+  if (!headOid) throw new Error(`ref not found: ${ref ?? 'HEAD'}`);
+
+  const objects = await fetchPackObjects({
+    repoUrl: url,
+    wants: [headOid],
+    depth: 1,
+    filter: 'blob:none',
+    signal,
+  });
+
+  const commitObj = objects.get(headOid);
+  if (commitObj?.type !== 'commit') throw new Error('head commit missing from pack');
+  const rootTree = commitTreeOid(commitObj.data);
+  if (!rootTree) throw new Error('commit has no tree');
+
+  // Walk the tree objects to build the hierarchy + a path → blob-oid index.
+  const root: RepoTreeFile[] = [];
+  const blobOids = new Map<string, string>();
+  let fileCount = 0;
+
+  const walk = (treeOid: string, basePath: string, into: RepoTreeFile[]) => {
+    const tree = objects.get(treeOid);
+    if (tree?.type !== 'tree') return;
+    for (const entry of parseTree(tree.data)) {
+      const path = basePath ? `${basePath}/${entry.name}` : entry.name;
+      if (entry.mode === '40000' || entry.mode === '040000') {
+        const children: RepoTreeFile[] = [];
+        into.push({ path, name: entry.name, type: 'dir', children });
+        walk(entry.oid, path, children);
+      } else if (entry.mode !== '160000') {
+        // Blobs and symlinks; submodules ('160000') are skipped.
+        into.push({ path, name: entry.name, type: 'file' });
+        blobOids.set(path, entry.oid);
+        fileCount++;
+      }
+    }
+  };
+  walk(rootTree, '', root);
+
+  // Lazy per-file blob fetch (the server allows want-by-blob-id for partial
+  // clones), cached per snapshot.
+  const blobCache = new Map<string, Uint8Array>();
+  const readFile = async (filepath: string): Promise<Uint8Array> => {
+    const oid = blobOids.get(filepath);
+    if (!oid) throw new Error(`No such file: ${filepath}`);
+    const cached = blobCache.get(oid);
+    if (cached) return cached;
+    const fetched = await fetchPackObjects({ repoUrl: url, wants: [oid] });
+    const blob = fetched.get(oid);
+    if (blob?.type !== 'blob') throw new Error(`Could not fetch ${filepath}`);
+    blobCache.set(oid, blob.data);
+    return blob.data;
+  };
+
+  return {
+    tree: sortTree(root),
+    fileCount,
+    commit: headOid,
+    mirror: new URL(url).hostname,
+    readFile,
+  };
+}
+
+/**
+ * Fetch the repository metadata and return a snapshot for browsing. Tries
+ * each clone URL in order: first a cheap commits+trees partial fetch, then a
+ * full isomorphic-git shallow clone for servers without `filter` support.
  */
 export async function cloneRepoSnapshot(options: CloneSnapshotOptions): Promise<RepoSnapshot> {
   const { cloneUrls, ref, corsProxy, signal } = options;
@@ -66,6 +154,21 @@ export async function cloneRepoSnapshot(options: CloneSnapshotOptions): Promise<
     throw new Error('This repository has no clone URLs to browse.');
   }
 
+  const errors: string[] = [];
+
+  // Pass 1: partial fetch (tiny — no blobs are transferred up front).
+  for (const url of cloneUrls) {
+    signal?.throwIfAborted();
+    try {
+      return await partialSnapshot(url, ref, signal);
+    } catch (err) {
+      errors.push(
+        `${new URL(url).hostname}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
+
+  // Pass 2: full shallow clone via isomorphic-git (downloads all blobs).
   // Lazy-load the heavy git machinery so it never lands in the main bundle.
   const [{ default: git }, { createMemFs }, { makeGitHttp }] = await Promise.all([
     import('isomorphic-git'),
@@ -73,8 +176,7 @@ export async function cloneRepoSnapshot(options: CloneSnapshotOptions): Promise<
     import('@/lib/gitHttp'),
   ]);
 
-  const http = makeGitHttp(corsProxy ?? '');
-  const errors: string[] = [];
+  const http = makeGitHttp(corsProxy ?? '', signal);
 
   for (const url of cloneUrls) {
     signal?.throwIfAborted();

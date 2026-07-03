@@ -1,16 +1,17 @@
 /**
- * Minimal git smart-HTTP (protocol v0) client that fetches *commit objects
- * only* from a repository, using the `filter tree:0` partial-clone capability.
+ * Minimal git smart-HTTP (protocol v0) client with partial-clone filters.
  *
- * A commits-only pack is tiny (a few hundred bytes per commit) regardless of
- * repository size, which makes ahead/behind computation affordable in the
- * browser — a full isomorphic-git shallow fetch of a large repo downloads
- * every tree and blob and can run to hundreds of megabytes.
+ * Fetches packs containing only the object types asked for — `filter tree:0`
+ * for commits-only history (ahead/behind counts), `filter blob:none` for
+ * commit+tree file listings, or single lazy blobs by id. These packs are tiny
+ * regardless of repository size, unlike a full shallow fetch (isomorphic-git
+ * has no filter support and downloads every tree and blob, which for large
+ * repos means enormous packfiles).
  *
  * Only what's needed is implemented: pkt-line framing, the v0 ref
  * advertisement, a `want`/`deepen`/`filter` upload-pack request, side-band
- * demuxing, and a packfile parser that inflates commits (with ref/ofs-delta
- * resolution) and extracts their parent ids.
+ * demuxing, and a packfile parser (with ref/ofs-delta resolution) exposing
+ * commits, trees, and blobs.
  */
 
 import pako from 'pako';
@@ -97,22 +98,28 @@ export async function fetchRefAdvertisement(
 
 // ————————————————————————— commit fetch —————————————————————————
 
-export interface CommitGraphOptions {
+export interface GitObject {
+  type: 'commit' | 'tree' | 'blob' | 'tag';
+  data: Uint8Array;
+}
+
+export interface PackFetchOptions {
   repoUrl: string;
-  /** Commit ids to fetch history for (must be advertised by the server). */
+  /** Object ids to fetch (commits must be advertised; blobs work lazily). */
   wants: string[];
-  /** Shallow depth from each want. */
-  depth: number;
+  /** Shallow depth from each want; omit for blob/tag wants. */
+  depth?: number;
+  /** Partial-clone filter, e.g. `tree:0` (commits only) or `blob:none`. */
+  filter?: string;
   signal?: AbortSignal;
 }
 
 /**
- * Fetch the commit graph reachable from `wants` (to `depth`) as a map of
- * commit id → parent ids, using `filter tree:0` so no trees or blobs are
- * transferred.
+ * Fetch a pack for `wants` and parse it into an object map (id → object).
+ * With a `filter`, the server omits the filtered object types entirely.
  */
-export async function fetchCommitGraph(options: CommitGraphOptions): Promise<Map<string, string[]>> {
-  const { repoUrl, wants, depth, signal } = options;
+export async function fetchPackObjects(options: PackFetchOptions): Promise<Map<string, GitObject>> {
+  const { repoUrl, wants, depth, filter, signal } = options;
   const base = repoUrl.replace(/\/+$/, '');
   const uniqueWants = [...new Set(wants)];
   if (uniqueWants.length === 0) return new Map();
@@ -123,8 +130,8 @@ export async function fetchCommitGraph(options: CommitGraphOptions): Promise<Map
   uniqueWants.forEach((want, i) => {
     request += pktLine(i === 0 ? `want ${want} ${caps}\n` : `want ${want}\n`);
   });
-  request += pktLine(`deepen ${depth}\n`);
-  request += pktLine('filter tree:0\n');
+  if (depth !== undefined) request += pktLine(`deepen ${depth}\n`);
+  if (filter) request += pktLine(`filter ${filter}\n`);
   request += '0000';
   request += pktLine('done\n');
 
@@ -159,7 +166,30 @@ export async function fetchCommitGraph(options: CommitGraphOptions): Promise<Map
     off += chunk.length;
   }
 
-  return parseCommitPack(pack);
+  return parsePack(pack);
+}
+
+export interface CommitGraphOptions {
+  repoUrl: string;
+  /** Commit ids to fetch history for (must be advertised by the server). */
+  wants: string[];
+  /** Shallow depth from each want. */
+  depth: number;
+  signal?: AbortSignal;
+}
+
+/**
+ * Fetch the commit graph reachable from `wants` (to `depth`) as a map of
+ * commit id → parent ids, using `filter tree:0` so no trees or blobs are
+ * transferred.
+ */
+export async function fetchCommitGraph(options: CommitGraphOptions): Promise<Map<string, string[]>> {
+  const objects = await fetchPackObjects({ ...options, filter: 'tree:0' });
+  const graph = new Map<string, string[]>();
+  for (const [oid, obj] of objects) {
+    if (obj.type === 'commit') graph.set(oid, parseParents(obj.data));
+  }
+  return graph;
 }
 
 // ————————————————————————— pack parsing —————————————————————————
@@ -241,7 +271,12 @@ function applyDelta(base: Uint8Array, delta: Uint8Array): Uint8Array {
   return out;
 }
 
-const TYPE_NAMES: Record<number, string> = { 1: 'commit', 2: 'tree', 3: 'blob', 4: 'tag' };
+const TYPE_NAMES: Record<number, GitObject['type']> = {
+  1: 'commit',
+  2: 'tree',
+  3: 'blob',
+  4: 'tag',
+};
 
 /** `sha1("<type> <len>\0" + data)` as hex — a git object id. */
 async function objectOid(type: string, data: Uint8Array): Promise<string> {
@@ -268,6 +303,38 @@ function parseParents(commit: Uint8Array): string[] {
   return parents;
 }
 
+/** The root `tree <oid>` header line of a raw commit object. */
+export function commitTreeOid(commit: Uint8Array): string | undefined {
+  const oid = /^tree ([0-9a-f]{40})$/m.exec(decoder.decode(commit))?.[1];
+  return oid;
+}
+
+export interface TreeEntry {
+  /** Octal mode string, e.g. `100644`, `40000` (dir), `160000` (submodule). */
+  mode: string;
+  name: string;
+  oid: string;
+}
+
+/** Parse a raw tree object: `<mode> <name>\0<20-byte oid>` entries. */
+export function parseTree(tree: Uint8Array): TreeEntry[] {
+  const entries: TreeEntry[] = [];
+  let i = 0;
+  while (i < tree.length) {
+    const space = tree.indexOf(0x20, i);
+    const nul = tree.indexOf(0x00, space);
+    if (space === -1 || nul === -1) break;
+    const mode = decoder.decode(tree.subarray(i, space));
+    const name = decoder.decode(tree.subarray(space + 1, nul));
+    const oid = [...tree.subarray(nul + 1, nul + 21)]
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+    entries.push({ mode, name, oid });
+    i = nul + 21;
+  }
+  return entries;
+}
+
 interface PackEntry {
   offset: number;
   type: number;
@@ -276,8 +343,8 @@ interface PackEntry {
   baseOid?: string;
 }
 
-/** Parse a packfile into commit id → parent ids (non-commit objects ignored). */
-async function parseCommitPack(pack: Uint8Array): Promise<Map<string, string[]>> {
+/** Parse a packfile into an object map (id → typed object). */
+async function parsePack(pack: Uint8Array): Promise<Map<string, GitObject>> {
   if (pack.length < 12 || decoder.decode(pack.subarray(0, 4)) !== 'PACK') {
     throw new Error('Not a packfile');
   }
@@ -321,16 +388,14 @@ async function parseCommitPack(pack: Uint8Array): Promise<Map<string, string[]>>
 
   // Resolve deltas in passes (bases can themselves be deltas).
   const byOffset = new Map<number, { type: number; data: Uint8Array }>();
-  const byOid = new Map<string, { type: number; data: Uint8Array }>();
-  const graph = new Map<string, string[]>();
+  const objects = new Map<string, GitObject>();
 
   const record = async (offset: number, type: number, data: Uint8Array) => {
     byOffset.set(offset, { type, data });
     const typeName = TYPE_NAMES[type];
     if (!typeName) return;
     const oid = await objectOid(typeName, data);
-    byOid.set(oid, { type, data });
-    if (type === 1) graph.set(oid, parseParents(data));
+    objects.set(oid, { type: typeName, data });
   };
 
   let pending = entries;
@@ -345,7 +410,12 @@ async function parseCommitPack(pack: Uint8Array): Promise<Map<string, string[]>>
         entry.baseOffset !== undefined
           ? byOffset.get(entry.baseOffset)
           : entry.baseOid
-            ? byOid.get(entry.baseOid)
+            ? (() => {
+                const base = objects.get(entry.baseOid);
+                if (!base) return undefined;
+                const type = Object.entries(TYPE_NAMES).find(([, n]) => n === base.type)?.[0];
+                return type ? { type: Number(type), data: base.data } : undefined;
+              })()
             : undefined;
       if (!resolvedBase) {
         next.push(entry);
@@ -357,5 +427,5 @@ async function parseCommitPack(pack: Uint8Array): Promise<Map<string, string[]>>
     pending = next;
   }
 
-  return graph;
+  return objects;
 }
