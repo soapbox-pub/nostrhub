@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { NostrEvent } from '@nostrify/nostrify';
 import { nip19 } from 'nostr-tools';
 import { useAuthor } from '@/hooks/useAuthor';
+import { useCommentAnchor } from '@/hooks/useCommentAnchor';
 import { useComments } from '@/hooks/useComments';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useNostrPublish } from '@/hooks/useNostrPublish';
@@ -14,6 +15,7 @@ import { UserAvatar } from '@/components/UserAvatar';
 import { shortNpub } from '@/lib/nostr';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   DropdownMenu,
@@ -53,7 +55,8 @@ interface CommentProps {
 
 export function Comment({ root, comment, depth = 0, maxDepth = 3, limit, communityAuthors }: CommentProps) {
   const [showReplyForm, setShowReplyForm] = useState(false);
-  const [showReplies, setShowReplies] = useState(depth < 2);
+  // `null` until the user toggles; the default is derived below.
+  const [repliesToggle, setRepliesToggle] = useState<boolean | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const author = useAuthor(comment.pubkey);
@@ -62,6 +65,8 @@ export function Comment({ root, comment, depth = 0, maxDepth = 3, limit, communi
   const { mutate: publishEvent, isPending: isDeleting } = useNostrPublish();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { ref: anchorRef, isTarget: isAnchorTarget, domId: anchorId } = useCommentAnchor(comment.id);
+  const { hash } = useLocation();
 
   const metadata = author.data?.metadata;
   const displayName = metadata?.name ?? metadata?.display_name ?? shortNpub(comment.pubkey);
@@ -71,6 +76,14 @@ export function Comment({ root, comment, depth = 0, maxDepth = 3, limit, communi
 
   const replies = commentsData?.getDirectReplies(comment.id) || [];
   const hasReplies = replies.length > 0;
+
+  // A `#comment-<id>` permalink pointing into this comment's collapsed subtree
+  // must default it open, or the anchor target would never mount.
+  const targetId = hash.startsWith('#comment-') ? hash.slice('#comment-'.length) : undefined;
+  const containsTarget = Boolean(
+    targetId && commentsData?.getDescendants(comment.id).some((d) => d.id === targetId),
+  );
+  const showReplies = repliesToggle ?? (depth < 2 || containsTarget);
 
   const handleDelete = () => {
     publishEvent(
@@ -101,7 +114,11 @@ export function Comment({ root, comment, depth = 0, maxDepth = 3, limit, communi
 
   return (
     <div className={`space-y-3 ${depth > 0 ? 'ml-6 border-l-2 border-muted pl-4' : ''}`}>
-      <Card className="bg-card/50">
+      <Card
+        ref={anchorRef}
+        id={anchorId}
+        className={cn('bg-card/50 scroll-mt-20', isAnchorTarget && 'ring-2 ring-primary/60')}
+      >
         <CardContent className="p-4">
           <div className="space-y-3">
             <div className="flex items-start justify-between">
@@ -138,7 +155,7 @@ export function Comment({ root, comment, depth = 0, maxDepth = 3, limit, communi
                 </Button>
 
                 {hasReplies && (
-                  <Collapsible open={showReplies} onOpenChange={setShowReplies}>
+                  <Collapsible open={showReplies} onOpenChange={setRepliesToggle}>
                     <CollapsibleTrigger asChild>
                       <Button variant="ghost" size="sm" className="h-8 px-2 text-xs">
                         {showReplies ? (
@@ -201,7 +218,7 @@ export function Comment({ root, comment, depth = 0, maxDepth = 3, limit, communi
       )}
 
       {hasReplies && depth < maxDepth && (
-        <Collapsible open={showReplies} onOpenChange={setShowReplies}>
+        <Collapsible open={showReplies} onOpenChange={setRepliesToggle}>
           <CollapsibleContent className="space-y-3">
             {replies.map((reply) => (
               <Comment

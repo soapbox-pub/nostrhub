@@ -4,9 +4,9 @@ import NotFound from './NotFound';
 import { ArticlePage } from './ArticlePage';
 import { AppPage } from './AppPage';
 import { CustomNipPage } from './CustomNipPage';
+import { EventRoute } from './EventRoute';
 import { GitRepoPage } from './GitRepoPage';
 import { GitTicketPage } from './GitTicketPage';
-import { NotePage } from './NotePage';
 import { ProfilePage } from './ProfilePage';
 import { Nip05ProfileRoute } from './Nip05ProfileRoute';
 import { ZapstoreAppPage } from './ZapstoreAppPage';
@@ -14,7 +14,12 @@ import { ZapstoreReleasePage } from './ZapstoreReleasePage';
 import { ARTICLE_KIND } from '@/hooks/useExpertPress';
 import { CUSTOM_NIP_KIND } from '@/lib/nips';
 import { APP_HANDLER_KIND } from '@/lib/apps';
-import { GIT_REPO_KIND, GIT_STATE_KIND, GIT_ISSUE_KIND, GIT_PR_KIND } from '@/lib/git';
+import {
+  GIT_REPO_KIND,
+  GIT_STATE_KIND,
+  GIT_ISSUE_KIND,
+  GIT_PR_KIND,
+} from '@/lib/git';
 import { GRAPH_NODE_KIND } from '@/lib/planGraph';
 import { ZAPSTORE_APP_KIND, ZAPSTORE_RELEASE_KIND } from '@/lib/zapstore';
 import { looksLikeNip05 } from '@/lib/nip05';
@@ -49,7 +54,8 @@ export function NIP19Page() {
       return <ProfilePage pubkey={decoded.data.pubkey} />;
 
     case 'note':
-      return <NotePage id={decoded.data} />;
+      // Kind unknown — fetch and route to the canonical page.
+      return <EventRoute id={decoded.data} />;
 
     case 'nevent':
       // A pinned custom-NIP revision (kind 30817) renders the NIP detail page
@@ -57,11 +63,17 @@ export function NIP19Page() {
       if (decoded.data.kind === CUSTOM_NIP_KIND) {
         return <CustomNipPage eventId={decoded.data.id} />;
       }
-      // NIP-34 issues (1621) and merge requests (1618) get a dedicated page.
+      // NIP-34 issues (1621) and merge requests (1618) get the ticket page
+      // directly — no fetch round-trip needed. (Patches, 1617, go through the
+      // resolver below: only fetching reveals whether one is the series root
+      // or a reply that should walk up to it.)
       if (decoded.data.kind === GIT_ISSUE_KIND || decoded.data.kind === GIT_PR_KIND) {
         return <GitTicketPage eventId={decoded.data.id} />;
       }
-      return <NotePage id={decoded.data.id} />;
+      // Everything else (statuses, PR updates, comments, notes, missing kind
+      // hints) is fetched and routed to wherever it canonically lives —
+      // comments on an issue open the issue anchored at that comment, etc.
+      return <EventRoute id={decoded.data.id} relays={decoded.data.relays} />;
 
     case 'naddr': {
       // Community NIPs (kind 30817) get a dedicated detail page.

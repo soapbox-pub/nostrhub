@@ -9,6 +9,8 @@ export const GIT_STATE_KIND = 30618;
 export const GIT_PATCH_KIND = 1617;
 /** NIP-34 pull request. */
 export const GIT_PR_KIND = 1618;
+/** NIP-34 pull request update (changes the tip of a referenced PR). */
+export const GIT_PR_UPDATE_KIND = 1619;
 /** NIP-34 issue. */
 export const GIT_ISSUE_KIND = 1621;
 
@@ -25,14 +27,14 @@ export const GIT_STATUS_KINDS = [
   GIT_STATUS_DRAFT_KIND,
 ] as const;
 
-/** Resolved lifecycle state of an issue or PR, derived from status events. */
-export type GitItemStatus = 'open' | 'draft' | 'closed' | 'merged' | 'resolved';
+/** Resolved lifecycle state of an issue, patch, or PR, derived from status events. */
+export type GitItemStatus = 'open' | 'draft' | 'closed' | 'merged' | 'resolved' | 'applied';
 
-/** A parsed NIP-34 issue (kind 1621) or pull request (kind 1618). */
+/** A parsed NIP-34 issue (kind 1621), patch (1617), or pull request (kind 1618). */
 export interface GitTicket {
   event: NostrEvent;
-  /** Issue (1621) or pull request (1618). */
-  kind: typeof GIT_ISSUE_KIND | typeof GIT_PR_KIND;
+  /** Issue (1621), patch (1617), or pull request (1618). */
+  kind: typeof GIT_ISSUE_KIND | typeof GIT_PR_KIND | typeof GIT_PATCH_KIND;
   /** Header line, from the `subject` tag, falling back to the first content line. */
   subject: string;
   /** Markdown body. */
@@ -46,7 +48,8 @@ export interface GitTicket {
 
 /**
  * Map the most-recent status event kind to a lifecycle state. `ticketKind`
- * disambiguates kind 1631 (merged for PRs vs. resolved for issues).
+ * disambiguates kind 1631 (merged for PRs, applied for patches, resolved for
+ * issues).
  */
 export function statusFromKind(
   statusKind: number | undefined,
@@ -58,17 +61,37 @@ export function statusFromKind(
     case GIT_STATUS_DRAFT_KIND:
       return 'draft';
     case GIT_STATUS_APPLIED_KIND:
-      return ticketKind === GIT_ISSUE_KIND ? 'resolved' : 'merged';
+      if (ticketKind === GIT_ISSUE_KIND) return 'resolved';
+      if (ticketKind === GIT_PATCH_KIND) return 'applied';
+      return 'merged';
     default:
       return 'open';
   }
 }
 
-/** Parse a NIP-34 issue or pull request event into a display ticket. */
+/**
+ * Extract a display subject for a patch (kind 1617) from its
+ * `git format-patch` content: the `Subject:` header line, with any
+ * `[PATCH ...]` prefix stripped.
+ */
+function patchSubject(content: string): string | undefined {
+  const subject = /^Subject:\s*(.+)$/m.exec(content)?.[1]?.trim();
+  if (!subject) return undefined;
+  return subject.replace(/^\[PATCH[^\]]*\]\s*/, '').trim() || subject;
+}
+
+/** Parse a NIP-34 issue, patch, or pull request event into a display ticket. */
 export function parseGitTicket(event: NostrEvent): GitTicket | null {
-  if (event.kind !== GIT_ISSUE_KIND && event.kind !== GIT_PR_KIND) return null;
+  if (
+    event.kind !== GIT_ISSUE_KIND &&
+    event.kind !== GIT_PR_KIND &&
+    event.kind !== GIT_PATCH_KIND
+  ) {
+    return null;
+  }
   const subject =
     firstTagValue(event, 'subject')?.trim() ||
+    (event.kind === GIT_PATCH_KIND ? patchSubject(event.content) : undefined) ||
     event.content.split('\n').find((l) => l.trim())?.trim() ||
     '(no subject)';
   const labels = [...new Set(tagValues(event, 't').map((t) => t.toLowerCase()))];

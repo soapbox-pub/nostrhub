@@ -34,6 +34,7 @@ const STATUS_META: Record<
   closed: { label: 'Closed', icon: XCircle, className: 'text-destructive' },
   merged: { label: 'Merged', icon: GitMerge, className: 'text-nebula' },
   resolved: { label: 'Resolved', icon: CheckCircle2, className: 'text-nebula' },
+  applied: { label: 'Applied', icon: CheckCircle2, className: 'text-nebula' },
 };
 
 const OPEN_STATES: GitItemStatus[] = ['open', 'draft'];

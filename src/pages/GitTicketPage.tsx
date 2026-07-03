@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   CircleDashed,
   CircleDot,
+  FileDiff,
   GitMerge,
   GitPullRequest,
   XCircle,
@@ -14,6 +15,7 @@ import { Layout } from '@/components/Layout';
 import { BackLink } from '@/components/DetailHero';
 import { DetailSurface } from '@/components/DetailSurface';
 import { MarkdownContent } from '@/components/MarkdownContent';
+import { PatchDiff } from '@/components/git/PatchDiff';
 import { TicketTimeline } from '@/components/git/TicketTimeline';
 import { useGitTicket } from '@/hooks/useGitTicket';
 import { useGitRepo } from '@/hooks/useGitRepo';
@@ -21,7 +23,7 @@ import { useAuthor } from '@/hooks/useAuthor';
 import { useProfileUrl } from '@/hooks/useProfileUrl';
 import { useRepoUrl } from '@/hooks/useRepoUrl';
 import { shortNpub } from '@/lib/nostr';
-import { GIT_ISSUE_KIND, type GitItemStatus } from '@/lib/git';
+import { GIT_ISSUE_KIND, GIT_PATCH_KIND, type GitItemStatus } from '@/lib/git';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -41,6 +43,7 @@ const STATUS_META: Record<
   closed: { label: 'Closed', icon: XCircle, className: 'bg-destructive text-destructive-foreground' },
   merged: { label: 'Merged', icon: GitMerge, className: 'bg-nebula text-white' },
   resolved: { label: 'Resolved', icon: CheckCircle2, className: 'bg-nebula text-white' },
+  applied: { label: 'Applied', icon: CheckCircle2, className: 'bg-nebula text-white' },
 };
 
 /** GitHub-style filled status pill. */
@@ -71,10 +74,11 @@ function TicketSkeleton() {
 }
 
 /**
- * Detail page for a NIP-34 issue (kind 1621) or merge request (kind 1618),
- * laid out like a GitHub issue/PR: a full-width title with a `#shortid`, a
- * status pill + "opened this …" meta line, then a timeline of avatar-gutter
- * comment cards starting with the original post's Markdown body.
+ * Detail page for a NIP-34 issue (kind 1621), merge request (kind 1618), or
+ * patch (kind 1617), laid out like a GitHub issue/PR: a full-width title with
+ * a `#shortid`, a status pill + "opened this …" meta line, then a timeline of
+ * avatar-gutter comment cards starting with the original post's body (Markdown
+ * for issues/MRs, a colored diff for patches).
  */
 export function GitTicketPage({ eventId }: GitTicketPageProps) {
   const { data: ticket, isLoading, isError } = useGitTicket(eventId);
@@ -94,8 +98,9 @@ export function GitTicketPage({ eventId }: GitTicketPageProps) {
   const hasRepo = Boolean(ticket?.repoAddress);
 
   const isIssue = ticket?.kind === GIT_ISSUE_KIND;
-  const noun = isIssue ? 'Issue' : 'Merge request';
-  const verb = isIssue ? 'issue' : 'merge request';
+  const isPatch = ticket?.kind === GIT_PATCH_KIND;
+  const noun = isIssue ? 'Issue' : isPatch ? 'Patch' : 'Merge request';
+  const verb = noun.toLowerCase();
   const shortId = eventId.slice(0, 7);
 
   useSeoMeta({
@@ -104,7 +109,9 @@ export function GitTicketPage({ eventId }: GitTicketPageProps) {
 
   return (
     <Layout className="max-w-6xl">
-      <BackLink to={hasRepo ? `${repoUrl}?tab=${isIssue ? 'issues' : 'pulls'}` : '/repos'}>
+      <BackLink
+        to={hasRepo ? (isPatch ? repoUrl : `${repoUrl}?tab=${isIssue ? 'issues' : 'pulls'}`) : '/repos'}
+      >
         {hasRepo ? `Back to ${repoName || 'repository'}` : 'Back to Repositories'}
       </BackLink>
 
@@ -130,7 +137,11 @@ export function GitTicketPage({ eventId }: GitTicketPageProps) {
               <StatusPill status={ticket.status} />
               {!isIssue && (
                 <span className="inline-flex items-center gap-1">
-                  <GitPullRequest className="size-4" aria-hidden="true" />
+                  {isPatch ? (
+                    <FileDiff className="size-4" aria-hidden="true" />
+                  ) : (
+                    <GitPullRequest className="size-4" aria-hidden="true" />
+                  )}
                 </span>
               )}
               <span className="flex flex-wrap items-center gap-1">
@@ -186,7 +197,9 @@ export function GitTicketPage({ eventId }: GitTicketPageProps) {
                     </Badge>
                   </div>
                   <div className="p-4 sm:p-5">
-                    {ticket.content.trim() ? (
+                    {isPatch ? (
+                      <PatchDiff content={ticket.content} />
+                    ) : ticket.content.trim() ? (
                       <MarkdownContent content={ticket.content} />
                     ) : (
                       <p className="text-sm italic text-muted-foreground">

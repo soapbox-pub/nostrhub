@@ -6,6 +6,7 @@ import { getEffectiveRelays } from '@/lib/appRelays';
 import {
   GIT_DISCOVERY_RELAYS,
   GIT_ISSUE_KIND,
+  GIT_PATCH_KIND,
   GIT_PR_KIND,
   GIT_STATUS_KINDS,
   parseGitTicket,
@@ -33,8 +34,8 @@ function normalizeRelayUrl(url: string): string | undefined {
 }
 
 /**
- * Fetch a single NIP-34 issue (1621) or merge request (1618) by event id, along
- * with its status events, and resolve its lifecycle state.
+ * Fetch a single NIP-34 issue (1621), patch (1617), or merge request (1618) by
+ * event id, along with its status events, and resolve its lifecycle state.
  *
  * Status is honored only from the ticket's author or a recognized maintainer
  * (the repo owner is passed via `maintainers`), preventing status spoofing.
@@ -70,7 +71,7 @@ export function useGitTicket(
       try {
         for await (const msg of nostr.group([...urls].slice(0, 12)).req(
           [
-            { ids: [eventId], kinds: [GIT_ISSUE_KIND, GIT_PR_KIND] },
+            { ids: [eventId], kinds: [GIT_ISSUE_KIND, GIT_PR_KIND, GIT_PATCH_KIND] },
             { kinds: [...GIT_STATUS_KINDS], '#e': [eventId], limit: 100 },
           ],
           { signal: reqSignal, eoseTimeout: 4000 },

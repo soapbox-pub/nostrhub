@@ -4,6 +4,7 @@ import type { NostrEvent } from '@nostrify/nostrify';
 import { formatDistanceToNow } from 'date-fns';
 import { MessageSquare, Reply } from 'lucide-react';
 import { useAuthor } from '@/hooks/useAuthor';
+import { useCommentAnchor } from '@/hooks/useCommentAnchor';
 import { useComments } from '@/hooks/useComments';
 import { useCommunityAuthors } from '@/hooks/useCommunityAuthors';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -15,6 +16,7 @@ import { Comment } from '@/components/comments/Comment';
 import { shortNpub } from '@/lib/nostr';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 
 /** One avatar-gutter row in the timeline. */
 function TimelineItem({
@@ -68,8 +70,8 @@ function TopLevelComment({
   const [showReply, setShowReply] = useState(false);
   const author = useAuthor(comment.pubkey);
   const profileUrl = useProfileUrl(comment.pubkey, author.data?.metadata);
-  const name =
-    author.data?.metadata?.name ||
+  const { ref: anchorRef, isTarget: isAnchorTarget, domId: anchorId } = useCommentAnchor(comment.id);
+  const name =    author.data?.metadata?.name ||
     author.data?.metadata?.display_name ||
     shortNpub(comment.pubkey);
 
@@ -78,7 +80,14 @@ function TopLevelComment({
 
   return (
     <div className="space-y-3">
-      <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+      <div
+        ref={anchorRef}
+        id={anchorId}
+        className={cn(
+          'overflow-hidden rounded-xl border bg-card shadow-sm scroll-mt-20',
+          isAnchorTarget && 'ring-2 ring-primary/60',
+        )}
+      >
         <div className="flex items-center gap-2 border-b border-border/60 bg-muted/40 px-4 py-2.5 text-sm">
           <Link to={profileUrl} className="font-semibold hover:text-primary">
             {name}
