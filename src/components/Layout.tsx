@@ -37,14 +37,14 @@ const NAV_ITEMS = [
   { to: '/nips', label: 'NIPs' },
   { to: '/apps', label: 'Apps' },
   { to: '/repos', label: 'Repos' },
-  { to: '/plan', label: 'Plan' },
+  { to: '/chat', label: 'Chat' },
 ];
 
 /** Secondary destinations surfaced in the footer to keep the header uncluttered. */
 const FOOTER_NAV_ITEMS = [
   { to: '/releases', label: 'Releases' },
   { to: '/articles', label: 'Articles' },
-  { to: '/chat', label: 'Chat' },
+  { to: '/plan', label: 'Plan' },
   { to: '/stats', label: 'Stats' },
   { to: '/experts', label: 'Experts' },
 ];
