@@ -259,8 +259,16 @@ export function NoteContent({
     const text = event.content;
     // Match: BOLT11 invoices | URLs | nostr:-prefixed NIP-19 ids | @-prefixed or bare NIP-19 ids | hashtags
     // BOLT11: optional "lightning:" prefix + lnbc/lntb/lnbcrt/lntbs + bech32 data (case-insensitive)
-    // NIP-19 ids can appear anywhere (with optional @ prefix that gets consumed)
-    const regex = /(?:lightning:)?(ln(?:bc|tb|bcrt|tbs)\d*[munp]?1[023456789acdefghjklmnpqrstuvwxyz]+)|((?:https?|wss?):\/\/[^\s]+)|nostr:(npub1|note1|nprofile1|nevent1|naddr1)([023456789acdefghjklmnpqrstuvwxyz]+)|@?(npub1|note1|nprofile1|nevent1|naddr1)([023456789acdefghjklmnpqrstuvwxyz]+)|(#[\p{L}\p{N}_]+)/giu;
+    // A `nostr:` id can appear anywhere, but a bare one must start at a token
+    // boundary (with an optional @ prefix that gets consumed) so an identifier
+    // embedded in a larger token — `ncontainer.io/npub1…/alpine:latest`,
+    // `npub1….txt` — stays plain text instead of becoming a mention. The
+    // boundary is a captured character (path separators, dots, colons, URL
+    // punctuation and word characters are excluded, along with `@`, which the
+    // pattern consumes itself); a lookbehind would be cleaner but the leading
+    // `^|` alternation keeps the pattern usable on engines without lookbehind
+    // support, and the consumed character is handed back to the preceding text.
+    const regex = /(?:lightning:)?(ln(?:bc|tb|bcrt|tbs)\d*[munp]?1[023456789acdefghjklmnpqrstuvwxyz]+)|((?:https?|wss?):\/\/[^\s]+)|nostr:(npub1|note1|nprofile1|nevent1|naddr1)([023456789acdefghjklmnpqrstuvwxyz]+)|(^|[^\p{L}\p{N}_/:.@+=?&%#~\\-])@?(npub1|note1|nprofile1|nevent1|naddr1)([023456789acdefghjklmnpqrstuvwxyz]+)|(#[\p{L}\p{N}_]+)/giu;
 
     const result: ContentToken[] = [];
     let lastIndex = 0;
@@ -271,10 +279,17 @@ export function NoteContent({
       let [fullMatch] = match;
       const bolt11 = match[1];
       let url = match[2];
-      const hashtag = match[7];
-      const { 3: nostrPrefix, 4: nostrData, 5: barePrefix, 6: bareData } = match;
-      const index = match.index;
+      const hashtag = match[8];
+      const { 3: nostrPrefix, 4: nostrData, 5: bareBoundary, 6: barePrefix, 7: bareData } = match;
+      let index = match.index;
       hadMatches = true;
+
+      // The character preceding a bare NIP-19 id was consumed to prove the id
+      // starts a token. It belongs to the text before the match, so hand it back.
+      if (bareBoundary) {
+        index += bareBoundary.length;
+        fullMatch = fullMatch.slice(bareBoundary.length);
+      }
 
       // Add text before this match
       if (index > lastIndex) {
