@@ -107,7 +107,10 @@ export function AppsPage() {
   const communityReady = communityAuthors !== undefined;
 
   const browse = useAppSearch(communityReady ? 'sort:hot' : '', communityAuthors);
-  const results = useAppSearch(searching && communityReady ? `${query} sort:hot` : '', communityAuthors);
+  // The typed query goes to the relay as-is. Appending `sort:hot` (as browse
+  // does) makes the search relays return zero kind 31990 results, since app
+  // listings carry none of the engagement the hot ranking keys on.
+  const results = useAppSearch(searching && communityReady ? query : '', communityAuthors);
   // "Your apps": author-scoped pool query (the hot/search lists may not
   // include the user's own listings), incomplete metadata included.
   const myApps = useApps({
