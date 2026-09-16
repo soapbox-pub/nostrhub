@@ -18,7 +18,9 @@ import {
  *
  * When the query is the bare browse sentinel `'sort:hot'` and the search relay
  * returns fewer than 50 results, recent events are fetched from the general
- * pool in parallel and appended (deduped) as a backfill.
+ * pool in parallel and appended (deduped) as a backfill. Typed queries are
+ * sent verbatim: combining a search term with `sort:hot` yields no kind 31990
+ * matches on the search relays, and there is no backfill for that path.
  *
  * Results are restricted to the community web-of-trust `authors` set (when
  * provided) for spam resistance — applied relay-side and re-checked client-side
