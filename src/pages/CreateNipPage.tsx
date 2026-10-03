@@ -6,12 +6,13 @@ import { Layout } from '@/components/Layout';
 import { NipEditor, type NipEditorInitial } from '@/components/NipEditor';
 import { ResumeDraftsBanner } from '@/components/ResumeDraftsBanner';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { useCustomNip } from '@/hooks/useCustomNips';
+import { useCustomNip, useCustomNipByAddress } from '@/hooks/useCustomNips';
 import { useOfficialNip } from '@/hooks/useOfficialNips';
 import { useBud } from '@/hooks/useBuds';
 import { useDrafts, findDraft } from '@/hooks/useDrafts';
-import { CUSTOM_NIP_KIND } from '@/lib/nips';
-import { budGithubUrl } from '@/lib/apps';
+import { useGithubHeadCommit } from '@/hooks/useGithubHeadCommit';
+import { CUSTOM_NIP_KIND, parseForkTags, type NipFork } from '@/lib/nips';
+import { budGithubUrl, budNumberFromUrl, nipNumberFromUrl } from '@/lib/apps';
 import { LoginArea } from '@/components/auth/LoginArea';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -35,6 +36,15 @@ function parseLocationState(state: unknown): CreateNipLocationState | undefined 
   };
 }
 
+/** Human label for a fork source restored from draft tags. */
+function forkLabelFor(fork: NipFork, customTitle: string | undefined): string {
+  if (fork.type === 'custom') return customTitle ?? 'a community NIP';
+  const bud = budNumberFromUrl(fork.url);
+  if (bud) return `BUD-${bud}`;
+  const nip = nipNumberFromUrl(fork.url);
+  return nip ? `NIP-${nip}` : 'an official NIP';
+}
+
 const CreateNipPage = () => {
   const { user } = useCurrentUser();
   const [searchParams] = useSearchParams();
@@ -51,6 +61,25 @@ const CreateNipPage = () => {
   const { data: budForkSource } = useBud(budForkParam ?? undefined);
   const { drafts } = useDrafts();
   const loadedDraft = findDraft(drafts.data, draftParam);
+
+  // Pin the GitHub commit an official NIP / BUD fork starts from. Waits for the
+  // lookup (it resolves to null on failure) so the editor hydrates once.
+  const officialForkUrl = officialForkParam
+    ? `${GITHUB_BASE}/${officialForkParam.toUpperCase()}.md`
+    : budForkParam
+      ? budGithubUrl(budForkParam)
+      : undefined;
+  const forkCommit = useGithubHeadCommit(officialForkUrl);
+  const forkCommitReady = !officialForkUrl || !forkCommit.isLoading;
+
+  // A resumed draft keeps its fork markers; label custom sources by title.
+  const draftFork = useMemo(
+    () => (loadedDraft ? parseForkTags(loadedDraft.template.tags) : undefined),
+    [loadedDraft],
+  );
+  const { data: draftForkSource } = useCustomNipByAddress(
+    draftFork?.type === 'custom' ? draftFork.address : undefined,
+  );
 
   useSeoMeta({
     title: 'Draft a NIP | NostrHub',
@@ -70,6 +99,9 @@ const CreateNipPage = () => {
           .filter(([n, v]) => n === 'k' && v)
           .map(([, kind, name]) => ({ kind, name: name ?? '' })),
         draftSlug: loadedDraft.slug,
+        fork: draftFork,
+        forkLabel: draftFork ? forkLabelFor(draftFork, draftForkSource?.title) : undefined,
+        status: findTag('status') === 'review' ? 'review' : undefined,
       };
     }
     if (forkParam && customForkSource) {
@@ -80,21 +112,25 @@ const CreateNipPage = () => {
           kind,
           name: customForkSource.kindNames[kind] ?? '',
         })),
-        fork: { type: 'custom', address: customForkSource.address, authorPubkey: customForkSource.author },
+        fork: { type: 'custom', address: customForkSource.address, eventId: customForkSource.event.id },
         forkLabel: customForkSource.title,
       };
     }
-    if (officialForkParam && officialForkSource) {
+    if (officialForkParam && officialForkSource && forkCommitReady) {
       const heading = officialForkSource.content.split('\n').find((l) => l.startsWith('# '));
       const title = heading ? heading.replace(/^#\s+/, '').trim() : `NIP-${officialForkParam}`;
       return {
         title,
         content: officialForkSource.content,
-        fork: { type: 'official', url: `${GITHUB_BASE}/${officialForkParam.toUpperCase()}.md` },
+        fork: {
+          type: 'official',
+          url: `${GITHUB_BASE}/${officialForkParam.toUpperCase()}.md`,
+          commit: forkCommit.data ?? undefined,
+        },
         forkLabel: `NIP-${officialForkParam.toUpperCase()}`,
       };
     }
-    if (budForkParam && budForkSource) {
+    if (budForkParam && budForkSource && forkCommitReady) {
       const lines = budForkSource.content.split('\n');
       const h2 = lines.find((l) => l.startsWith('## '));
       const h1 = lines.find((l) => l.startsWith('# '));
@@ -102,7 +138,7 @@ const CreateNipPage = () => {
       return {
         title,
         content: budForkSource.content,
-        fork: { type: 'official', url: budGithubUrl(budForkParam) },
+        fork: { type: 'official', url: budGithubUrl(budForkParam), commit: forkCommit.data ?? undefined },
         forkLabel: `BUD-${budForkParam}`,
       };
     }
@@ -110,9 +146,10 @@ const CreateNipPage = () => {
       return { title: statePrefill.title, content: statePrefill.content };
     }
     return undefined;
-  }, [draftParam, loadedDraft, forkParam, customForkSource, officialForkParam, officialForkSource, budForkParam, budForkSource, statePrefill]);
+  }, [draftParam, loadedDraft, draftFork, draftForkSource, forkParam, customForkSource, officialForkParam, officialForkSource, budForkParam, budForkSource, forkCommit.data, forkCommitReady, statePrefill]);
 
   // Remount the editor once fork/draft data resolves so its initial state hydrates.
+  // The fork label is excluded so a late-arriving source title doesn't wipe edits.
   const editorKey = `${forkParam ?? ''}:${officialForkParam ?? ''}:${budForkParam ?? ''}:${loadedDraft?.slug ?? draftParam ?? ''}:${initial ? 'ready' : 'empty'}`;
 
   return (

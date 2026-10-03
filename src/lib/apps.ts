@@ -95,6 +95,25 @@ export interface AppZapstoreRef {
   relayHint?: string;
 }
 
+/** Whether an app displays (`read`) and/or publishes (`write`) a kind. */
+export type KindSupport = 'read' | 'write';
+
+const KIND_SUPPORT_VALUES: readonly KindSupport[] = ['read', 'write'];
+
+/** Short human label for declared kind support, e.g. "reads & writes". */
+export function kindSupportLabel(support: KindSupport[]): string {
+  const reads = support.includes('read');
+  const writes = support.includes('write');
+  if (reads && writes) return 'reads & writes';
+  return reads ? 'reads' : writes ? 'writes' : '';
+}
+
+/** Build a 31990 `k` tag, appending read/write markers when known. */
+export function buildKindTag(kind: number, support: KindSupport[] | undefined): string[] {
+  const markers = KIND_SUPPORT_VALUES.filter((v) => support?.includes(v));
+  return ['k', String(kind), ...markers];
+}
+
 /** Parsed app data from a kind 31990 event. */
 export interface AppInfo {
   event: NostrEvent;
@@ -107,6 +126,12 @@ export interface AppInfo {
   nip05?: string;
   /** Event kinds the app declares it can handle (`k` tags). */
   supportedKinds: number[];
+  /**
+   * How the app supports each kind, from the optional markers after the kind
+   * in its `k` tag (`["k", "1111", "read", "write"]`). An empty or missing
+   * entry means the listing doesn't say (plain NIP-89 `k` tags).
+   */
+  kindSupport: Record<number, KindSupport[]>;
   /** Platforms the app ships on (platform-named tags). */
   platforms: AppPlatform[];
   /** Category hashtags (`t` tags). */
@@ -148,6 +173,15 @@ export function parseAppEvent(event: NostrEvent): AppInfo | null {
         .filter((k) => Number.isInteger(k) && k >= 0),
     ),
   ).sort((a, b) => a - b);
+
+  const kindSupport: Record<number, KindSupport[]> = {};
+  for (const [name, value, ...markers] of event.tags) {
+    if (name !== 'k') continue;
+    const kind = parseInt(value, 10);
+    if (!Number.isInteger(kind) || kind < 0) continue;
+    const support = KIND_SUPPORT_VALUES.filter((v) => markers.includes(v));
+    if (support.length > 0) kindSupport[kind] = support;
+  }
 
   const platforms = new Set<AppPlatform>();
   for (const [name] of event.tags) {
@@ -220,6 +254,7 @@ export function parseAppEvent(event: NostrEvent): AppInfo | null {
     website: metadata.website,
     nip05: metadata.nip05,
     supportedKinds,
+    kindSupport,
     platforms: Array.from(platforms),
     hashtags,
     nipRefs,

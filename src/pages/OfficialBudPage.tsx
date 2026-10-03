@@ -8,9 +8,10 @@ import { DetailSurface } from '@/components/DetailSurface';
 import { HighlightableMarkdown } from '@/components/HighlightableMarkdown';
 import { budHighlightSource } from '@/lib/highlightSource';
 import { ApproveButton } from '@/components/ApproveButton';
+import { FollowNipButton } from '@/components/FollowNipButton';
 import { ExpertApprovers } from '@/components/ExpertApprovers';
 import { CommentsSection } from '@/components/comments/CommentsSection';
-import { RelatedReposCard, UsedByAppsCard, ExpertForksCard } from '@/components/CrossRefCards';
+import { RelatedReposCard, UsedByAppsCard, ForksCard } from '@/components/CrossRefCards';
 import { LinkAppNudge } from '@/components/LinkAppNudge';
 import { useBud } from '@/hooks/useBuds';
 import { useAppsForBud } from '@/hooks/useAppsForNip';
@@ -45,7 +46,7 @@ const OfficialBudPage = () => {
   const apps = appsForBud.data ?? [];
   const repoRefs = uniqueRepoRefs(apps);
 
-  // Expert-authored forks of this BUD (curation signal).
+  // Community forks of this BUD, expert forks first.
   const forksQuery = useForksOfBud(code || undefined);
   const forks = forksQuery.data ?? [];
 
@@ -91,6 +92,7 @@ const OfficialBudPage = () => {
             primaryAction={<ApproveButton target={target} />}
             actions={
               <>
+                <FollowNipButton target={target} />
                 <Button variant="outline" size="sm" asChild className="gap-1.5">
                   <Link to={`/create?budFork=${code}`}>
                     <GitFork className="size-4" aria-hidden="true" /> Fork
@@ -131,7 +133,7 @@ const OfficialBudPage = () => {
                   linkedApps={apps}
                 />
                 <UsedByAppsCard apps={apps} />
-                <ExpertForksCard forks={forks} isLoading={forksQuery.isLoading} />
+                <ForksCard forks={forks} isLoading={forksQuery.isLoading} />
                 <RelatedReposCard repoRefs={repoRefs} />
               </aside>
             )}

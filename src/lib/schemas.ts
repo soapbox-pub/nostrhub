@@ -70,6 +70,17 @@ export const NotificationSettingsSchema = z
   .passthrough();
 
 /**
+ * A NIP the user follows for notifications. `target` is the NIP's canonical
+ * reference: a `30817:<pubkey>:<d>` coordinate for community NIPs, or the
+ * GitHub blob URL for official NIPs and BUDs. `since` (Unix seconds) is when
+ * the follow began; only activity after it is surfaced.
+ */
+export const FollowedNipSchema = z.object({
+  target: z.string(),
+  since: z.number(),
+});
+
+/**
  * Cross-device app settings synced via an encrypted kind 30078 event. A subset
  * of AppConfig — device-local secrets (the AI apiKey) are excluded. All fields
  * are optional so partial snapshots validate.
@@ -93,10 +104,13 @@ export const EncryptedSettingsSchema = z
     analyticsEnabled: z.boolean().optional(),
     /** Notification read-state. */
     notifications: NotificationSettingsSchema.optional(),
+    /** NIPs followed for update / comment / fork notifications. */
+    followedNips: z.array(FollowedNipSchema).optional(),
     /** Logical clock: ms timestamp of the last write, used to order cross-device updates. */
     lastSync: z.number().optional(),
   })
   .passthrough();
 
 export type NotificationSettings = z.infer<typeof NotificationSettingsSchema>;
+export type FollowedNip = z.infer<typeof FollowedNipSchema>;
 export type EncryptedSettings = z.infer<typeof EncryptedSettingsSchema>;

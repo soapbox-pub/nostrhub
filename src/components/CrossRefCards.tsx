@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { nip19 } from 'nostr-tools';
-import { Blocks, BookOpen, FolderGit2, GitFork, LayoutGrid } from 'lucide-react';
+import { BadgeCheck, Blocks, BookOpen, FolderGit2, GitFork, LayoutGrid } from 'lucide-react';
+import type { NipForkEntry } from '@/hooks/useForksOfNip';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { UserAvatar } from '@/components/UserAvatar';
@@ -10,7 +11,7 @@ import { useOfficialNips } from '@/hooks/useOfficialNips';
 import { useBuds } from '@/hooks/useBuds';
 import { sanitizeUrl } from '@/lib/sanitizeUrl';
 import type { CustomNip } from '@/lib/nips';
-import type { AppInfo, AppNipRef, AppRepoRef } from '@/lib/apps';
+import { kindSupportLabel, type AppInfo, type AppNipRef, type AppRepoRef } from '@/lib/apps';
 
 /**
  * Cross-reference sidebar cards. NIP-89 app listings (kind 31990) are the
@@ -41,9 +42,24 @@ export function SidebarCardTitle({ icon, children }: { icon: React.ReactNode; ch
   );
 }
 
+/**
+ * How an app supports the given kinds, from its `k` tag markers, e.g.
+ * "30817 reads & writes · 1111 reads". Empty when the listing doesn't say.
+ */
+function supportSummary(app: AppInfo, kinds: string[]): string {
+  return kinds
+    .map((k) => {
+      const support = app.kindSupport[Number(k)];
+      return support ? `${k} ${kindSupportLabel(support)}` : null;
+    })
+    .filter(Boolean)
+    .join(' · ');
+}
+
 /** A compact app row for cross-reference lists. */
-export function AppChip({ app }: { app: AppInfo }) {
+export function AppChip({ app, kinds }: { app: AppInfo; kinds?: string[] }) {
   const icon = sanitizeUrl(app.picture);
+  const support = kinds ? supportSummary(app, kinds) : '';
   return (
     <Link to={`/${app.naddr}`} className={CHIP_CLASS}>
       <span className="grid size-7 shrink-0 place-items-center overflow-hidden rounded-lg bg-muted">
@@ -51,7 +67,10 @@ export function AppChip({ app }: { app: AppInfo }) {
           ? <img src={icon} alt="" className="size-full object-cover" />
           : <Blocks className="size-4 text-muted-foreground" aria-hidden="true" />}
       </span>
-      <span className="min-w-0 flex-1 truncate text-sm font-medium">{app.name}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-medium">{app.name}</span>
+        {support && <span className="block truncate text-xs text-muted-foreground">{support}</span>}
+      </span>
     </Link>
   );
 }
@@ -156,8 +175,11 @@ function CustomNipChip({ address }: { address: string }) {
   return <Link to={to} className={CHIP_CLASS}>{body}</Link>;
 }
 
-/** Sidebar card: apps whose NIP-89 listing references this NIP or repo. */
-export function UsedByAppsCard({ apps }: { apps: AppInfo[] }) {
+/**
+ * Sidebar card: apps whose NIP-89 listing references this NIP or repo. Pass the
+ * NIP's `kinds` to show whether each app reads or writes them.
+ */
+export function UsedByAppsCard({ apps, kinds }: { apps: AppInfo[]; kinds?: string[] }) {
   if (apps.length === 0) return null;
   return (
     <Card className="gap-2">
@@ -167,7 +189,7 @@ export function UsedByAppsCard({ apps }: { apps: AppInfo[] }) {
         </SidebarCardTitle>
       </CardHeader>
       <CardContent className="space-y-1.5">
-        {apps.map((app) => <AppChip key={app.address} app={app} />)}
+        {apps.map((app) => <AppChip key={app.address} app={app} kinds={kinds} />)}
       </CardContent>
     </Card>
   );
@@ -191,25 +213,27 @@ export function RelatedReposCard({ repoRefs }: { repoRefs: AppRepoRef[] }) {
 }
 
 /** A compact fork row — links to the forked community NIP, with author avatar. */
-function ForkChip({ fork }: { fork: CustomNip }) {
+function ForkChip({ fork, byExpert }: { fork: CustomNip; byExpert: boolean }) {
   return (
     <Link to={`/${fork.naddr}`} className={CHIP_CLASS}>
       <UserAvatar pubkey={fork.author} size="sm" />
       <span className="min-w-0 flex-1 truncate text-sm font-medium">{fork.title}</span>
+      {byExpert && (
+        <BadgeCheck className="size-4 shrink-0 text-primary" aria-label="Forked by an expert" />
+      )}
     </Link>
   );
 }
 
 /**
- * Sidebar card: expert-authored forks of this NIP. The count in the title
- * reflects only forks authored by the configured expert set (a meaningful
- * curation signal), matching how approvals and ranking are scoped.
+ * Sidebar card: community forks of this NIP, expert-authored forks first
+ * (marked with a check) since they're the stronger curation signal.
  */
-export function ExpertForksCard({
+export function ForksCard({
   forks,
   isLoading,
 }: {
-  forks: CustomNip[];
+  forks: NipForkEntry[];
   isLoading?: boolean;
 }) {
   if (!isLoading && forks.length === 0) return null;
@@ -225,10 +249,10 @@ export function ExpertForksCard({
           )}
         </SidebarCardTitle>
       </CardHeader>
-      <CardContent className="space-y-1.5">
+      <CardContent className="max-h-72 space-y-1.5 overflow-y-auto overscroll-contain">
         {isLoading
           ? <ChipSkeleton />
-          : forks.map((fork) => <ForkChip key={fork.address} fork={fork} />)}
+          : forks.map(({ nip, byExpert }) => <ForkChip key={nip.address} fork={nip} byExpert={byExpert} />)}
       </CardContent>
     </Card>
   );

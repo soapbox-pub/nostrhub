@@ -28,8 +28,57 @@ export interface CustomNip {
   /** naddr-encoded reference for routing. */
   naddr: string;
   /** Fork reference, if this NIP is a fork. */
-  fork?: { type: 'custom'; address: string } | { type: 'official'; url: string };
+  fork?: NipFork;
+  /** `review` when the author published this as a public draft asking for feedback. */
+  status?: NipStatus;
 }
+
+/**
+ * Where a forked NIP came from. Besides the source itself, a fork may pin the
+ * exact version it was taken from, so "what changed since the fork" can be
+ * diffed later:
+ *  - custom source:   the source revision's event id (`["e", <id>, "", "fork"]`)
+ *  - official source: the GitHub commit SHA (`["fork-commit", <sha>]`)
+ */
+export type NipFork =
+  | { type: 'custom'; address: string; eventId?: string }
+  | { type: 'official'; url: string; commit?: string };
+
+const HEX_ID = /^[0-9a-f]{64}$/;
+const GIT_SHA = /^[0-9a-f]{40}$/;
+
+/** Read the fork markers (see NIP.md) out of a kind-30817 tag list. */
+export function parseForkTags(tags: string[][]): NipFork | undefined {
+  const forkA = tags.find(([n, , , marker]) => n === 'a' && marker === 'fork');
+  if (forkA?.[1]) {
+    const eventId = tags.find(([n, v, , marker]) => n === 'e' && marker === 'fork' && HEX_ID.test(v ?? ''))?.[1];
+    return { type: 'custom', address: forkA[1], eventId };
+  }
+  const forkI = tags.find(([n, , marker]) => n === 'i' && marker === 'fork');
+  if (forkI?.[1]) {
+    const commit = tags.find(([n, v]) => n === 'fork-commit' && GIT_SHA.test(v ?? ''))?.[1];
+    return { type: 'official', url: forkI[1], commit };
+  }
+  return undefined;
+}
+
+/** Serialize a fork reference back into kind-30817 tags. */
+export function buildForkTags(fork: NipFork): string[][] {
+  if (fork.type === 'custom') {
+    const tags: string[][] = [['a', fork.address, '', 'fork']];
+    if (fork.eventId) tags.push(['e', fork.eventId, '', 'fork']);
+    // Notify the source author of the fork.
+    const pubkey = fork.address.split(':')[1];
+    if (pubkey && HEX_ID.test(pubkey)) tags.push(['p', pubkey]);
+    return tags;
+  }
+  const tags: string[][] = [['i', fork.url, 'fork']];
+  if (fork.commit) tags.push(['fork-commit', fork.commit]);
+  return tags;
+}
+
+/** Review status of a custom NIP. Absent means a normal, published NIP. */
+export type NipStatus = 'review';
 
 const tag = (event: NostrEvent, name: string): string | undefined =>
   event.tags.find(([n]) => n === name)?.[1];
@@ -53,11 +102,8 @@ export function parseCustomNip(event: NostrEvent): CustomNip {
     if (name?.trim()) kindNames[kind] = name.trim();
   }
 
-  let fork: CustomNip['fork'];
-  const forkA = event.tags.find(([n, , , marker]) => n === 'a' && marker === 'fork');
-  const forkI = event.tags.find(([n, , marker]) => n === 'i' && marker === 'fork');
-  if (forkA?.[1]) fork = { type: 'custom', address: forkA[1] };
-  else if (forkI?.[1]) fork = { type: 'official', url: forkI[1] };
+  const fork = parseForkTags(event.tags);
+  const status: NipStatus | undefined = tag(event, 'status') === 'review' ? 'review' : undefined;
 
   const address = `${CUSTOM_NIP_KIND}:${event.pubkey}:${identifier}`;
   const naddr = nip19.naddrEncode({ kind: CUSTOM_NIP_KIND, pubkey: event.pubkey, identifier });
@@ -74,6 +120,7 @@ export function parseCustomNip(event: NostrEvent): CustomNip {
     address,
     naddr,
     fork,
+    status,
   };
 }
 

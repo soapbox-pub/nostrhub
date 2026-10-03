@@ -12,9 +12,20 @@ import { budGithubUrl, budNumberFromUrl, isBudUrl } from '@/lib/apps';
 
 const NIPS_REPO_BASE = 'https://github.com/nostr-protocol/nips/blob/master';
 
-/** A NIP that can be approved: a community-authored event, an official NIP, or a Blossom BUD. */
+/** One specific revision of a community NIP. */
+export interface NipRevision {
+  id: string;
+  createdAt: number;
+}
+
+/**
+ * A NIP that can be approved: a community-authored event, an official NIP, or a
+ * Blossom BUD. A custom target may carry the revision being viewed: approvals
+ * then pin that revision (`e` tag), and approvals of other revisions are
+ * reported as stale.
+ */
 export type NipTarget =
-  | { type: 'custom'; address: string } // 30817:<pubkey>:<d>
+  | { type: 'custom'; address: string; revision?: NipRevision } // 30817:<pubkey>:<d>
   | { type: 'official'; number: string }
   | { type: 'bud'; number: string };
 
@@ -42,6 +53,22 @@ export interface ApprovalData {
   totalCount: number;
   /** Label event ids keyed by author pubkey (used to delete one's own approval). */
   eventIdsByAuthor: Record<string, string[]>;
+  /**
+   * Approvers whose latest approval is for an earlier revision than the one
+   * the target pins. Only computed for custom targets that carry a revision.
+   */
+  staleAuthors: string[];
+}
+
+/**
+ * Whether an approval covers `revision`. Approvals pinning a revision (`e` tag)
+ * must match it exactly; legacy approvals without one are judged by time — an
+ * approval published before the revision existed can't have covered it.
+ */
+function approvalCoversRevision(approval: NostrEvent, revision: NipRevision): boolean {
+  const pinned = approval.tags.find(([n]) => n === 'e')?.[1];
+  if (pinned) return pinned === revision.id;
+  return approval.created_at >= revision.createdAt;
 }
 
 export type ApprovalMap = Record<string, ApprovalData>;
@@ -64,15 +91,30 @@ export function useNipApprovals(targets: NipTarget[], opts: { expertsOnly?: bool
   const { experts, expertSet } = useExperts();
   const expertsOnly = opts.expertsOnly ?? false;
 
-  const targetKeys = useMemo(() => targets.map(nipTargetKey).sort(), [targets]);
+  const targetKeys = useMemo(
+    () =>
+      targets
+        .map((t) => (t.type === 'custom' && t.revision ? `${nipTargetKey(t)}@${t.revision.id}` : nipTargetKey(t)))
+        .sort(),
+    [targets],
+  );
   const expertsKey = useMemo(() => [...experts].sort().join(','), [experts]);
 
   return useQuery<ApprovalMap>({
     queryKey: ['nip-approvals', expertsOnly, expertsKey, targetKeys.join('|')],
     queryFn: async ({ signal }) => {
       const result: ApprovalMap = {};
+      const revisions = new Map<string, NipRevision>();
       for (const t of targets) {
-        result[nipTargetKey(t)] = { experts: [], all: [], expertCount: 0, totalCount: 0, eventIdsByAuthor: {} };
+        result[nipTargetKey(t)] = {
+          experts: [],
+          all: [],
+          expertCount: 0,
+          totalCount: 0,
+          eventIdsByAuthor: {},
+          staleAuthors: [],
+        };
+        if (t.type === 'custom' && t.revision) revisions.set(nipTargetKey(t), t.revision);
       }
       if (targets.length === 0) return result;
 
@@ -119,6 +161,8 @@ export function useNipApprovals(targets: NipTarget[], opts: { expertsOnly?: bool
       const seen = new Map<string, Set<string>>();
       // Track every label event id per (target, author) so a user can delete their own.
       const eventIds = new Map<string, Map<string, string[]>>();
+      // Each author's newest approval per target, to judge which revision it covers.
+      const latestByAuthor = new Map<string, Map<string, NostrEvent>>();
       for (const ev of events) {
         for (const tagArr of ev.tags) {
           const [name, value] = tagArr;
@@ -132,6 +176,10 @@ export function useNipApprovals(targets: NipTarget[], opts: { expertsOnly?: bool
           const byAuthor = eventIds.get(key)!;
           if (!byAuthor.has(ev.pubkey)) byAuthor.set(ev.pubkey, []);
           byAuthor.get(ev.pubkey)!.push(ev.id);
+          if (!latestByAuthor.has(key)) latestByAuthor.set(key, new Map());
+          const latest = latestByAuthor.get(key)!;
+          const prev = latest.get(ev.pubkey);
+          if (!prev || ev.created_at > prev.created_at) latest.set(ev.pubkey, ev);
         }
       }
 
@@ -140,12 +188,19 @@ export function useNipApprovals(targets: NipTarget[], opts: { expertsOnly?: bool
         const expertApprovers = all.filter((pk) => expertSet.has(pk));
         const eventIdsByAuthor: Record<string, string[]> = {};
         for (const [pk, ids] of eventIds.get(key) ?? []) eventIdsByAuthor[pk] = ids;
+        const revision = revisions.get(key);
+        const staleAuthors = revision
+          ? [...(latestByAuthor.get(key) ?? [])]
+              .filter(([, ev]) => !approvalCoversRevision(ev, revision))
+              .map(([pk]) => pk)
+          : [];
         result[key] = {
           experts: expertApprovers,
           all,
           expertCount: expertApprovers.length,
           totalCount: all.length,
           eventIdsByAuthor,
+          staleAuthors,
         };
       }
 
@@ -172,6 +227,9 @@ export function useApproveNip() {
       // approval surfaces in their notifications. Official NIPs have no
       // Nostr author, so no `p` tag applies.
       if (target.type === 'custom') {
+        // Pin the exact revision being approved, so later edits don't
+        // silently inherit the approval.
+        if (target.revision) tags.push(['e', target.revision.id]);
         const authorPubkey = target.address.split(':')[1];
         if (authorPubkey) tags.push(['p', authorPubkey]);
       }
@@ -185,7 +243,21 @@ export function useApproveNip() {
       queryClient.setQueriesData<ApprovalMap>({ queryKey: ['nip-approvals'] }, (prev) => {
         if (!prev || !(key in prev)) return prev;
         const entry = prev[key];
-        if (entry.all.includes(event.pubkey)) return prev;
+        if (entry.all.includes(event.pubkey)) {
+          // Re-approving the current revision clears a stale approval.
+          if (!entry.staleAuthors.includes(event.pubkey)) return prev;
+          return {
+            ...prev,
+            [key]: {
+              ...entry,
+              staleAuthors: entry.staleAuthors.filter((pk) => pk !== event.pubkey),
+              eventIdsByAuthor: {
+                ...entry.eventIdsByAuthor,
+                [event.pubkey]: [...(entry.eventIdsByAuthor[event.pubkey] ?? []), event.id],
+              },
+            },
+          };
+        }
         const all = [...entry.all, event.pubkey];
         const experts = isExpert ? [...entry.experts, event.pubkey] : entry.experts;
         return {
@@ -253,6 +325,7 @@ export function useUnapproveNip() {
             ...entry,
             all,
             experts,
+            staleAuthors: entry.staleAuthors.filter((pk) => pk !== pubkey),
             expertCount: experts.length,
             totalCount: all.length,
             eventIdsByAuthor,

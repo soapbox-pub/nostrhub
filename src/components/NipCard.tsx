@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Check } from 'lucide-react';
+import { Check, MessageSquareDashed } from 'lucide-react';
 import type { RankedNip } from '@/hooks/useRankedNips';
 import { useAuthor } from '@/hooks/useAuthor';
 import { useOfficialNip } from '@/hooks/useOfficialNips';
@@ -63,6 +63,12 @@ export function NipCard({ nip }: { nip: RankedNip }) {
             {nip.deprecated && (
               <Badge variant="outline" className="text-xs text-muted-foreground">
                 Deprecated
+              </Badge>
+            )}
+            {nip.custom?.status === 'review' && (
+              <Badge variant="outline" className="gap-1 border-primary/40 text-xs text-primary">
+                <MessageSquareDashed className="size-3" aria-hidden="true" />
+                Open for review
               </Badge>
             )}
             {preview && (

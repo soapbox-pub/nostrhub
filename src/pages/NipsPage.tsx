@@ -14,9 +14,15 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { type RankedNip } from '@/hooks/useRankedNips';
 import { Button } from '@/components/ui/button';
 
-type Source = 'official' | 'community' | 'mine';
+type Source = 'official' | 'community' | 'review' | 'mine';
 
-const SOURCES: readonly Source[] = ['official', 'community', 'mine'];
+const SOURCES: readonly Source[] = ['official', 'community', 'review', 'mine'];
+
+const SOURCE_LABEL: Record<'official' | 'community' | 'review', string> = {
+  official: 'Official',
+  community: 'Community',
+  review: 'Open for review',
+};
 
 function parseSource(value: string | null): Source | undefined {
   return SOURCES.includes(value as Source) ? (value as Source) : undefined;
@@ -85,6 +91,7 @@ export function NipsPage() {
 
     return base.filter((nip) => {
       if (source === 'community' && !nip.custom) return false;
+      if (source === 'review' && nip.custom?.status !== 'review') return false;
       if (source === 'mine' && nip.custom?.author !== user?.pubkey) return false;
       return matchesSearch(nip, q);
     });
@@ -134,7 +141,7 @@ export function NipsPage() {
                 {source === 'mine' && <X className="size-3" aria-hidden="true" />}
               </FilterPill>
             )}
-            {(['official', 'community'] as const).map((value) => {
+            {(['official', 'community', 'review'] as const).map((value) => {
               const active = source === value;
               return (
                 <FilterPill
@@ -142,7 +149,7 @@ export function NipsPage() {
                   active={active}
                   onClick={() => setSource(active ? undefined : value)}
                 >
-                  {value === 'official' ? 'Official' : 'Community'}
+                  {SOURCE_LABEL[value]}
                   {active && <X className="size-3" aria-hidden="true" />}
                 </FilterPill>
               );

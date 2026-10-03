@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { NostrEvent } from '@nostrify/nostrify';
 import { useNostrPublish } from '@/hooks/useNostrPublish';
-import { CUSTOM_NIP_KIND, type CustomNip } from '@/lib/nips';
+import { CUSTOM_NIP_KIND, buildForkTags, type CustomNip, type NipFork, type NipStatus } from '@/lib/nips';
 
 /** An event kind a NIP concerns, with a required human-readable name. */
 export interface NipKind {
@@ -17,9 +17,9 @@ export interface SaveNipParams {
   content: string;
   kinds: NipKind[];
   /** Fork source, if creating a fork. */
-  fork?:
-    | { type: 'custom'; address: string; authorPubkey: string }
-    | { type: 'official'; url: string };
+  fork?: NipFork;
+  /** `review` publishes the NIP as a public draft open for feedback. */
+  status?: NipStatus;
   /** When editing, preserve fork tags from the original event. */
   original?: CustomNip;
 }
@@ -34,25 +34,11 @@ export function buildNipTags(params: SaveNipParams): string[][] {
     ...params.kinds.map(({ kind, name }) => ['k', kind, name.trim()]),
   ];
 
-  // New fork.
-  if (params.fork) {
-    if (params.fork.type === 'custom') {
-      tags.push(['a', params.fork.address, '', 'fork']);
-      tags.push(['p', params.fork.authorPubkey]);
-    } else {
-      tags.push(['i', params.fork.url, 'fork']);
-    }
-  } else if (params.original?.fork) {
-    // Preserve existing fork markers when editing.
-    const f = params.original.fork;
-    if (f.type === 'custom') {
-      tags.push(['a', f.address, '', 'fork']);
-      const p = params.original.event.tags.find(([n]) => n === 'p')?.[1];
-      if (p) tags.push(['p', p]);
-    } else {
-      tags.push(['i', f.url, 'fork']);
-    }
-  }
+  if (params.status) tags.push(['status', params.status]);
+
+  // A new fork, or the existing fork markers preserved when editing.
+  const fork = params.fork ?? params.original?.fork;
+  if (fork) tags.push(...buildForkTags(fork));
 
   return tags;
 }

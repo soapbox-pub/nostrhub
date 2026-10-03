@@ -1,9 +1,10 @@
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { nip19 } from 'nostr-tools';
-import { AlertCircle, History } from 'lucide-react';
+import { AlertCircle, GitCompare, History } from 'lucide-react';
 import type { NostrEvent } from '@nostrify/nostrify';
 import { useNipRevisions, type NipRevisionsArgs } from '@/hooks/useNipRevisions';
+import { revisionRef } from '@/hooks/useResolvedNip';
 import {
   Dialog,
   DialogContent,
@@ -63,7 +64,8 @@ export function RevisionsDialog({ open, onOpenChange, target, relays }: Revision
             <History className="size-5" aria-hidden="true" /> Revisions
           </DialogTitle>
           <DialogDescription>
-            Past versions of this NIP. Select one to view that exact revision.
+            Past versions of this NIP. Select one to view that exact revision, or compare it with
+            the version before it.
           </DialogDescription>
         </DialogHeader>
 
@@ -89,8 +91,9 @@ export function RevisionsDialog({ open, onOpenChange, target, relays }: Revision
                 const date = new Date(event.created_at * 1000);
                 const isLatest = index === 0;
                 const preview = previewLine(event.content);
+                const previous = revisions[index + 1];
                 return (
-                  <li key={event.id}>
+                  <li key={event.id} className="relative">
                     <button
                       type="button"
                       onClick={() => handleOpenRevision(event)}
@@ -121,7 +124,19 @@ export function RevisionsDialog({ open, onOpenChange, target, relays }: Revision
                       {preview && (
                         <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{preview}</p>
                       )}
+                      {/* Reserve room for the compare link overlaid below. */}
+                      {previous && <span className="mt-1 block h-5" aria-hidden="true" />}
                     </button>
+                    {previous && (
+                      <Link
+                        to={`/compare?a=${revisionRef(previous)}&b=${revisionRef(event)}`}
+                        onClick={() => onOpenChange(false)}
+                        className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-sm text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <GitCompare className="size-3.5" aria-hidden="true" />
+                        Compare with previous
+                      </Link>
+                    )}
                   </li>
                 );
               })}

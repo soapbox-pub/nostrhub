@@ -4,9 +4,16 @@ import type { NostrEvent, NostrFilter } from '@nostrify/nostrify';
 import { CUSTOM_NIP_KIND, isValidCustomNip, parseCustomNip, type CustomNip } from '@/lib/nips';
 import { nipGithubUrl, budGithubUrl } from '@/lib/apps';
 import { useExperts } from '@/hooks/useExperts';
+import { useCommunityAuthors } from '@/hooks/useCommunityAuthors';
+
+/** A fork of a NIP, flagged when its author is one of the configured experts. */
+export interface NipForkEntry {
+  nip: CustomNip;
+  byExpert: boolean;
+}
 
 /**
- * Find expert-authored forks of a NIP or BUD.
+ * Find community forks of a NIP or BUD, expert-authored forks first.
  *
  * Forks are community NIPs (kind 30817) that reference their source with a
  * `fork` marker (see NIP.md):
@@ -14,10 +21,10 @@ import { useExperts } from '@/hooks/useExperts';
  *   - Fork of an official NIP: `["i", "<github-blob-url>", "fork"]`
  *   - Fork of a BUD:           `["i", "<blossom-blob-url>", "fork"]`
  *
- * We constrain the relay query to the configured expert author set — a fork
- * by an expert is a meaningful signal, the same trust boundary used for NIP
- * approvals and ranking. The reference tag (`#a` / `#i`) is relay-indexed, so
- * the filter is efficient; we then client-verify the `fork` marker.
+ * The reference tag (`#a` / `#i`) is relay-indexed, so the filter is narrow
+ * without an author constraint. Results are then scoped to the community author
+ * set (the same spam boundary used for comments and chat), and the `fork`
+ * marker is verified client-side.
  */
 function useForksOfNip(
   ref:
@@ -27,7 +34,8 @@ function useForksOfNip(
     | undefined,
 ) {
   const { nostr } = useNostr();
-  const { experts, expertSet } = useExperts();
+  const { expertSet } = useExperts();
+  const community = useCommunityAuthors();
 
   // The relay-indexed reference tag identifying this NIP as a fork source.
   const refTag: { tag: '#a' | '#i'; value: string } | undefined = ref
@@ -38,23 +46,18 @@ function useForksOfNip(
         : { tag: '#i', value: nipGithubUrl(ref.number) }
     : undefined;
 
-  const sortedExperts = [...experts].sort();
+  const authorSet = community.data?.authorSet;
 
-  return useQuery<CustomNip[]>({
-    queryKey: ['nip-forks', refTag?.tag, refTag?.value, sortedExperts],
+  return useQuery<NipForkEntry[]>({
+    queryKey: ['nip-forks', refTag?.tag, refTag?.value, community.dataUpdatedAt, [...expertSet].sort()],
     queryFn: async ({ signal }) => {
-      const filter: NostrFilter = {
-        kinds: [CUSTOM_NIP_KIND],
-        authors: experts,
-        limit: 100,
-      };
+      const filter: NostrFilter = { kinds: [CUSTOM_NIP_KIND], limit: 200 };
       filter[refTag!.tag] = [refTag!.value];
       const events = await nostr
         .query([filter], { signal: AbortSignal.any([signal, AbortSignal.timeout(8000)]) })
         .catch(() => [] as NostrEvent[]);
 
-      // Verify each event is a valid custom NIP, is authored by an expert, and
-      // carries the reference tag with the `fork` marker (not just any `a`/`i`).
+      // Carries the reference tag with the `fork` marker (not just any `a`/`i`).
       const isFork = (ev: NostrEvent) =>
         ev.tags.some(([n, v, c, marker]) => {
           if (refTag!.tag === '#a') {
@@ -67,7 +70,7 @@ function useForksOfNip(
       const latest = new Map<string, NostrEvent>();
       for (const ev of events) {
         if (!isValidCustomNip(ev)) continue;
-        if (!expertSet.has(ev.pubkey)) continue;
+        if (!expertSet.has(ev.pubkey) && !authorSet?.has(ev.pubkey)) continue;
         if (!isFork(ev)) continue;
         const d = ev.tags.find(([n]) => n === 'd')?.[1] ?? '';
         const key = `${ev.pubkey}:${d}`;
@@ -76,25 +79,25 @@ function useForksOfNip(
       }
 
       return Array.from(latest.values())
-        .map(parseCustomNip)
-        .sort((a, b) => b.createdAt - a.createdAt);
+        .map((ev) => ({ nip: parseCustomNip(ev), byExpert: expertSet.has(ev.pubkey) }))
+        .sort((a, b) => Number(b.byExpert) - Number(a.byExpert) || b.nip.createdAt - a.nip.createdAt);
     },
-    enabled: Boolean(refTag) && experts.length > 0,
+    enabled: Boolean(refTag) && !!authorSet,
     staleTime: 5 * 60 * 1000,
   });
 }
 
-/** Expert-authored forks of a community NIP (by `30817:<pubkey>:<d>` address). */
+/** Community forks of a community NIP (by `30817:<pubkey>:<d>` address). */
 export function useForksOfCustomNip(address: string | undefined) {
   return useForksOfNip(address ? { type: 'custom', address } : undefined);
 }
 
-/** Expert-authored forks of an official NIP (by number, e.g. "01"). */
+/** Community forks of an official NIP (by number, e.g. "01"). */
 export function useForksOfOfficialNip(number: string | undefined) {
   return useForksOfNip(number ? { type: 'official', number } : undefined);
 }
 
-/** Expert-authored forks of a Blossom BUD (by number, e.g. "01"). */
+/** Community forks of a Blossom BUD (by number, e.g. "01"). */
 export function useForksOfBud(number: string | undefined) {
   return useForksOfNip(number ? { type: 'bud', number } : undefined);
 }

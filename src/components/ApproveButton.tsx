@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { GraduationCap, Check, X } from 'lucide-react';
+import { GraduationCap, Check, RefreshCw, X } from 'lucide-react';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import {
   useNipApprovals,
@@ -29,6 +29,8 @@ export function ApproveButton({ target, className }: ApproveButtonProps) {
 
   const data = approvalsQuery.data?.[nipTargetKey(target)];
   const alreadyApproved = user ? data?.all.includes(user.pubkey) ?? false : false;
+  // The user approved, but an earlier revision than the one shown.
+  const approvedEarlier = alreadyApproved && !!user && (data?.staleAuthors.includes(user.pubkey) ?? false);
   const ownEventIds = user ? data?.eventIdsByAuthor[user.pubkey] ?? [] : [];
   const isPending = isApproving || isUnapproving;
 
@@ -39,7 +41,7 @@ export function ApproveButton({ target, className }: ApproveButtonProps) {
     }
     if (isPending) return;
 
-    if (alreadyApproved) {
+    if (alreadyApproved && !approvedEarlier) {
       unapprove(
         { eventIds: ownEventIds },
         {
@@ -58,6 +60,7 @@ export function ApproveButton({ target, className }: ApproveButtonProps) {
   };
 
   const label = (() => {
+    if (approvedEarlier) return isApproving ? 'Approving…' : 'Approve this revision';
     if (alreadyApproved) {
       if (isUnapproving) return 'Removing…';
       return hovered ? 'Unapprove' : 'Approved';
@@ -66,9 +69,12 @@ export function ApproveButton({ target, className }: ApproveButtonProps) {
   })();
 
   const icon = (() => {
+    if (approvedEarlier) return <RefreshCw className="size-4" />;
     if (!alreadyApproved) return <GraduationCap className="size-4" />;
     return hovered ? <X className="size-4" /> : <Check className="size-4" />;
   })();
+
+  const showUnapprove = alreadyApproved && !approvedEarlier;
 
   return (
     <Button
@@ -78,9 +84,16 @@ export function ApproveButton({ target, className }: ApproveButtonProps) {
       onFocus={() => setHovered(true)}
       onBlur={() => setHovered(false)}
       disabled={isPending}
-      variant={alreadyApproved ? (hovered ? 'destructive' : 'secondary') : 'default'}
+      variant={showUnapprove ? (hovered ? 'destructive' : 'secondary') : 'default'}
       className={cn('gap-1.5', className)}
-      aria-label={alreadyApproved ? 'Remove your approval' : 'Approve this NIP'}
+      title={approvedEarlier ? 'You approved an earlier revision of this NIP' : undefined}
+      aria-label={
+        approvedEarlier
+          ? 'You approved an earlier revision. Approve this revision'
+          : showUnapprove
+            ? 'Remove your approval'
+            : 'Approve this NIP'
+      }
     >
       {icon}
       {label}

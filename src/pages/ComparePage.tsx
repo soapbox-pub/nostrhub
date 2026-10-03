@@ -110,10 +110,12 @@ const ComparePage = () => {
 
     const inject = (ref: NipRef | null, resolved: ResolvedNip | null | undefined) => {
       if (!ref) return;
+      // Drop a commit pin (`official:01@<sha>`); the resolved title shows it.
+      const code = ref.split(':')[1]?.split('@')[0];
       const prefixLabel = ref.startsWith('official:')
-        ? `NIP-${ref.slice('official:'.length)}`
+        ? `NIP-${code}`
         : ref.startsWith('bud:')
-          ? `BUD-${ref.slice('bud:'.length)}`
+          ? `BUD-${code}`
           : null;
       if (resolved) {
         // Always prefer the resolved title (and overwrite a stale directory label).
@@ -163,7 +165,7 @@ const ComparePage = () => {
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Compare NIPs</h1>
             <p className="text-sm text-muted-foreground">
-              See line-by-line what differs between two NIPs.
+              See line-by-line what differs between two NIPs, or two revisions of one.
             </p>
           </div>
         </div>

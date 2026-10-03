@@ -8,9 +8,10 @@ import { DetailSurface } from '@/components/DetailSurface';
 import { HighlightableMarkdown } from '@/components/HighlightableMarkdown';
 import { officialNipHighlightSource } from '@/lib/highlightSource';
 import { ApproveButton } from '@/components/ApproveButton';
+import { FollowNipButton } from '@/components/FollowNipButton';
 import { ExpertApprovers } from '@/components/ExpertApprovers';
 import { CommentsSection } from '@/components/comments/CommentsSection';
-import { RelatedReposCard, UsedByAppsCard, ExpertForksCard } from '@/components/CrossRefCards';
+import { RelatedReposCard, UsedByAppsCard, ForksCard } from '@/components/CrossRefCards';
 import { LinkAppNudge } from '@/components/LinkAppNudge';
 import { useOfficialNip } from '@/hooks/useOfficialNips';
 import { useAppsForOfficialNip } from '@/hooks/useAppsForNip';
@@ -42,7 +43,7 @@ const OfficialNipPage = () => {
   const apps = appsForNip.data ?? [];
   const repoRefs = uniqueRepoRefs(apps);
 
-  // Expert-authored forks of this NIP (curation signal).
+  // Community forks of this NIP, expert forks first.
   const forksQuery = useForksOfOfficialNip(code || undefined);
   const forks = forksQuery.data ?? [];
 
@@ -86,6 +87,7 @@ const OfficialNipPage = () => {
             primaryAction={<ApproveButton target={target} />}
             actions={
               <>
+                <FollowNipButton target={target} />
                 <Button variant="outline" size="sm" asChild className="gap-1.5">
                   <Link to={`/create?officialFork=${code}`}>
                     <GitFork className="size-4" aria-hidden="true" /> Fork
@@ -126,7 +128,7 @@ const OfficialNipPage = () => {
                   linkedApps={apps}
                 />
                 <UsedByAppsCard apps={apps} />
-                <ExpertForksCard forks={forks} isLoading={forksQuery.isLoading} />
+                <ForksCard forks={forks} isLoading={forksQuery.isLoading} />
                 <RelatedReposCard repoRefs={repoRefs} />
               </aside>
             )}

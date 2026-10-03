@@ -113,7 +113,10 @@ export function useExperts() {
       if (!user) throw new Error('User is not logged in');
 
       const unique = Array.from(new Set(pubkeys));
-      const tags: string[][] = [['client', config.appName]];
+      const tags: string[][] = [
+        ['alt', 'Nostr Experts list (NostrHub)'],
+        ['client', config.appName],
+      ];
       let content = '';
 
       if (isPrivateList) {

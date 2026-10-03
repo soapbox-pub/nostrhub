@@ -19,8 +19,12 @@ Implementation Possibility (NIP). The `content` field holds the NIP body as Mark
 | `title`   | yes      | no         | Human-readable NIP title.                                                   |
 | `k`       | no       | yes        | An event kind this NIP defines or concerns: `["k", "<kind>", "<name>"]`.    |
 | `a`       | no       | yes        | Fork reference to a **custom** NIP: `30817:<pubkey>:<d>` with `fork` marker. |
+| `e`       | no       | no         | With `fork` marker: id of the source **revision** a custom-NIP fork was taken from. |
 | `i`       | no       | yes        | Fork reference to an **official** NIP or **Blossom BUD** (GitHub URL) with `fork` marker. |
+| `fork-commit` | no   | no         | Git commit SHA of the official NIP / BUD file a fork was taken from.        |
 | `p`       | no       | yes        | Author of a forked custom NIP, to notify them of the fork.                  |
+| `status`  | no       | no         | `review`: a public draft whose author is asking for feedback. Absent = final. |
+| `alt`     | yes      | no         | NIP-31 description: `Nostr Implementation Possibility: <title>`.            |
 
 #### `k` tag — kind number + human-readable name
 
@@ -70,6 +74,7 @@ Fork of a **custom** NIP (kind 30817):
     ["d", "my-fork-of-xyz"],
     ["title", "My Fork of XYZ"],
     ["a", "30817:<original-author-pubkey>:<original-d>", "", "fork"],
+    ["e", "<source-revision-event-id>", "", "fork"],
     ["p", "<original-author-pubkey>"]
   ]
 }
@@ -84,10 +89,33 @@ Fork of an **official** NIP:
   "tags": [
     ["d", "improved-nip-xx"],
     ["title", "Improved NIP-XX"],
-    ["i", "https://github.com/nostr-protocol/nips/blob/master/XX.md", "fork"]
+    ["i", "https://github.com/nostr-protocol/nips/blob/master/XX.md", "fork"],
+    ["fork-commit", "<40-char git sha>"]
   ]
 }
 ```
+
+#### Pinning the fork point
+
+A fork's `a` / `i` tag names its source **address**, which keeps changing as the source is
+edited. To record exactly what was forked, clients **SHOULD** also pin the source version:
+
+- **Custom source:** an `e` tag with the `fork` marker holding the id of the source revision
+  (the kind 30817 event) the fork started from.
+- **Official NIP / BUD source:** a `fork-commit` tag holding the SHA of the latest `master`
+  commit touching the source file at fork time.
+
+Both are optional — older forks and clients that can't resolve a version omit them. With a
+pin, clients can diff the fork against the version it came from ("changes since fork") and
+the source's pinned version against its current one ("upstream changes"). Without one, they
+can only diff against the source's current version.
+
+### Review status
+
+A NIP published with `["status", "review"]` is a **public draft**: the author is asking for
+comments, highlights, and forks before calling it final. Republishing without the tag marks it
+final. Unlike NIP-37 drafts (below), review drafts are ordinary public kind 30817 events, so
+every client can read and discuss them; clients that don't know the tag simply see a NIP.
 
 Fork of a **Blossom BUD** — identical to an official-NIP fork, but the `i` URL
 points at the Blossom repo:
@@ -129,10 +157,24 @@ authored by the user's configured **Nostr Experts**.
 - **Label (`l`):** `approve` (with mark `nostrhub`)
 - **Target:** the NIP being approved
   - Custom NIP → `a` tag: `30817:<pubkey>:<d>`
-  - Official NIP → `i` tag (NIP-73 external id / GitHub URL) or `r` tag (URL)
+  - Official NIP → `i` tag: `https://github.com/nostr-protocol/nips/blob/master/<NN>.md`
   - Blossom BUD → `i` tag: `https://github.com/hzrd149/blossom/blob/master/buds/<NN>.md`
+- **Revision (`e`):** for custom NIPs, the id of the kind 30817 revision that was approved.
 - **Author (`p`):** for custom NIPs, the target event's author pubkey, so the approval
   surfaces in their notifications. Official NIPs and BUDs have no Nostr author, so no `p` tag is added.
+
+### Approvals are per revision
+
+A custom NIP's address stays the same across edits, so an approval that only names the address
+would silently carry over to text the approver never saw. Approvals of custom NIPs therefore
+**SHOULD** pin the approved revision with an `e` tag. When displaying a revision, a client treats
+each approver's **latest** approval as covering it when:
+
+- the approval's `e` tag equals the revision's event id, or
+- the approval has no `e` tag (legacy) and was published at or after the revision's `created_at`.
+
+Any other approval is for an **earlier revision**: clients still count it for ranking, but show
+it as stale and let the approver re-approve the current revision.
 
 ### Example — approving a custom NIP
 
@@ -144,6 +186,7 @@ authored by the user's configured **Nostr Experts**.
     ["L", "nostrhub"],
     ["l", "approve", "nostrhub"],
     ["a", "30817:<nip-author-pubkey>:<nip-d-tag>", "<relay-url>"],
+    ["e", "<approved-revision-event-id>"],
     ["p", "<nip-author-pubkey>"]
   ]
 }
@@ -572,9 +615,24 @@ the client. Optional fonts (`f` tags) and a background image (`bg` tag) are also
 NostrHub syncs cross-device app preferences in a **single** kind 30078
 application-specific-data event, **encrypted to self** with [NIP-44](https://github.com/nostr-protocol/nips/blob/master/44.md).
 The decrypted `content` is a JSON object holding `theme` (the mode: `light`/`dark`/
-`system`/`ditto`), `experts`, `communityCap`, `statsProvider`, `useAppBlossomServers`,
-and a `lastSync` logical clock (ms). Device-local secrets (e.g. the AI API key) are
-**never** synced.
+`system`/`ditto`), `communityCap`, `statsProvider`, `useAppBlossomServers`, relay
+preferences, `notifications` (the read cursor), `followedNips`, and a `lastSync` logical
+clock (ms). Device-local secrets (e.g. the AI API key) are **never** synced.
+
+`followedNips` is the private list of NIPs the user follows for notifications:
+
+```jsonc
+"followedNips": [
+  { "target": "30817:<pubkey>:<d>", "since": 1790000000 },
+  { "target": "https://github.com/nostr-protocol/nips/blob/master/22.md", "since": 1790000000 }
+]
+```
+
+`target` is the value other events reference the NIP by — a custom NIP's address (`a`/`A`
+tags) or an official NIP / BUD GitHub URL (`i`/`I` tags) — so notifications are plain relay
+filters: new revisions (`kinds: [30817], authors, #d`), comments (`kinds: [1111], #A / #I`),
+and forks (`kinds: [30817], #a / #i`). `since` (Unix seconds) is when the follow began; only
+later activity is shown.
 
 | Tag     | Description                                              |
 | ------- | -------------------------------------------------------- |
@@ -666,6 +724,65 @@ nostr.query([{ kinds: [9802], "#r": ["https://github.com/nostr-protocol/nips/blo
 NostrHub matches each highlight's `content` excerpt against the rendered prose
 (whitespace- and case-insensitively) to position the inline mark. Highlights are public
 user-generated content: no author filtering is applied to the display query.
+
+---
+
+## Kind `12022` — Nostr Experts List (replaceable)
+
+A user's **Nostr Experts**: the pubkeys whose approvals rank NIPs and whose follow lists
+derive the community author set. A **replaceable** event (one per pubkey, no `d` tag),
+deliberately outside the NIP-51 list kinds so it never collides with a standard list, but
+following NIP-51 list semantics:
+
+- **Public list:** experts as `["p", "<hex pubkey>"]` tags, empty `content`.
+- **Private list:** the same `p` tags as a JSON array, NIP-44-encrypted to self in `content`,
+  with no `p` tags on the event.
+
+| Tag      | Description                                       |
+| -------- | ------------------------------------------------- |
+| `p`      | An expert pubkey (public lists only).             |
+| `alt`    | NIP-31 description: `Nostr Experts list (NostrHub)`. |
+| `client` | Client name.                                      |
+
+```jsonc
+{
+  "kind": 12022,
+  "content": "",
+  "tags": [
+    ["p", "<expert-pubkey>"],
+    ["p", "<expert-pubkey>"],
+    ["alt", "Nostr Experts list (NostrHub)"]
+  ]
+}
+```
+
+```ts
+// The current user's list, or another user's public list. Always filter by author.
+nostr.query([{ kinds: [12022], authors: [pubkey], limit: 1 }]);
+```
+
+Until a user publishes a list, NostrHub falls back to a built-in default set of experts.
+
+---
+
+## App Listings — Kind `31990` read/write markers on `k` tags
+
+NIP-89 `k` tags say which kinds an app handles, but not how. NostrHub appends optional
+markers after the kind:
+
+```jsonc
+["k", "30817", "read", "write"]  // displays and publishes kind 30817
+["k", "1111", "read"]            // displays kind 1111, doesn't publish it
+["k", "1"]                       // unspecified (plain NIP-89)
+```
+
+- `read` — the app displays events of this kind.
+- `write` — the app publishes events of this kind.
+
+Markers are optional and order-independent. Clients **MUST** treat a bare `k` tag as
+"unspecified", not as read-only. Relays still index the kind number, so `#k` filters are
+unaffected. NIP pages use these markers to show what kind of support each implementing app
+has for the NIP's kinds.
 
 ---
 

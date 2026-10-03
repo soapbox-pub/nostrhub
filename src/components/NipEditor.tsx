@@ -2,16 +2,17 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { nip19 } from 'nostr-tools';
-import { Save, GitFork, X, Plus, FileText, ChevronRight } from 'lucide-react';
+import { Save, GitFork, X, Plus, FileText, ChevronRight, MessageSquareDashed } from 'lucide-react';
 import { MarkdownContent } from '@/components/MarkdownContent';
 import { useSaveNip, buildNipTags, type SaveNipParams, type NipKind } from '@/hooks/useSaveNip';
 import { useDrafts } from '@/hooks/useDrafts';
 import { useToast } from '@/hooks/useToast';
-import { slugify, parseCustomNip, CUSTOM_NIP_KIND, type CustomNip } from '@/lib/nips';
+import { slugify, parseCustomNip, CUSTOM_NIP_KIND, type CustomNip, type NipStatus } from '@/lib/nips';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -29,6 +30,8 @@ export interface NipEditorInitial {
   forkLabel?: string;
   /** Slug of the draft being resumed, so repeated saves overwrite it. */
   draftSlug?: string;
+  /** Review status carried over from a resumed draft. */
+  status?: NipStatus;
 }
 
 interface NipEditorProps {
@@ -68,6 +71,11 @@ export function NipEditor({ editing, initial }: NipEditorProps) {
       slugify(editing?.title ?? initial?.title ?? ''),
   );
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  // Publish as a public draft that asks the community for feedback.
+  const [forReview, setForReview] = useState(
+    (editing?.status ?? initial?.status) === 'review',
+  );
+  const status: NipStatus | undefined = forReview ? 'review' : undefined;
   // True once the identifier was carried over (edit/resumed draft) or the user
   // edited it manually — gates the title-based auto-fill below.
   const [identifierTouched, setIdentifierTouched] = useState(
@@ -127,7 +135,7 @@ export function NipEditor({ editing, initial }: NipEditorProps) {
     const finalIdentifier = identifier.trim() || slugify(title);
 
     saveNip(
-      { identifier: finalIdentifier, title, content, kinds, fork, original: editing },
+      { identifier: finalIdentifier, title, content, kinds, fork, status, original: editing },
       {
         onSuccess: (event) => {
           const naddr = nip19.naddrEncode({
@@ -143,7 +151,9 @@ export function NipEditor({ editing, initial }: NipEditorProps) {
           queryClient.setQueryData(['custom-nip-by-address', parsed.address], parsed);
           // Now that it's published, drop the working draft (if any).
           if (draftSlug) deleteDraft.mutate({ slug: draftSlug });
-          toast({ title: editing ? 'NIP updated' : 'NIP published' });
+          toast({
+            title: editing ? 'NIP updated' : forReview ? 'Published for review' : 'NIP published',
+          });
           navigate(`/${naddr}`);
         },
         onError: (err) => toast({ title: 'Failed to publish', description: err.message, variant: 'destructive' }),
@@ -162,6 +172,7 @@ export function NipEditor({ editing, initial }: NipEditorProps) {
       content,
       kinds,
       fork,
+      status,
       original: editing,
     };
     saveDraft.mutate(
@@ -295,6 +306,25 @@ export function NipEditor({ editing, initial }: NipEditorProps) {
         </Tabs>
       </div>
 
+      <div className="flex items-start gap-3 rounded-lg border border-border/60 bg-muted/20 p-4">
+        <Switch
+          id="nip-for-review"
+          checked={forReview}
+          onCheckedChange={setForReview}
+          aria-describedby="nip-for-review-help"
+          className="mt-0.5"
+        />
+        <div className="space-y-1">
+          <Label htmlFor="nip-for-review" className="flex items-center gap-1.5">
+            <MessageSquareDashed className="size-4" aria-hidden="true" /> Open for review
+          </Label>
+          <p id="nip-for-review-help" className="text-sm text-muted-foreground">
+            Publish publicly as a draft proposal so others can comment, highlight, and fork it before
+            you call it finished. Turn this off later to mark it final.
+          </p>
+        </div>
+      </div>
+
       <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
         <CollapsibleTrigger className="flex items-center gap-1 rounded-md text-xs font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <ChevronRight className={cn('size-3.5 transition-transform', advancedOpen && 'rotate-90')} aria-hidden="true" />
@@ -337,7 +367,13 @@ export function NipEditor({ editing, initial }: NipEditorProps) {
         )}
         <Button type="submit" disabled={isPending} className="gap-1.5 sm:w-auto">
           <Save className="size-4" />
-          {isPending ? 'Publishing…' : editing ? 'Update NIP' : 'Publish NIP'}
+          {isPending
+            ? 'Publishing…'
+            : editing
+              ? 'Update NIP'
+              : forReview
+                ? 'Publish for review'
+                : 'Publish NIP'}
         </Button>
       </div>
     </form>

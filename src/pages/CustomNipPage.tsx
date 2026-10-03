@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSeoMeta } from '@unhead/react';
 import { nip19 } from 'nostr-tools';
-import { GitFork, AlertCircle, Pencil, Trash2, History, GitCompare } from 'lucide-react';
+import { GitFork, AlertCircle, Pencil, Trash2, History, GitCompare, MessageSquareDashed } from 'lucide-react';
+import { FollowNipButton } from '@/components/FollowNipButton';
 import { Layout } from '@/components/Layout';
 import { BackLink, DetailHero } from '@/components/DetailHero';
 import { DetailSurface } from '@/components/DetailSurface';
@@ -12,11 +13,13 @@ import { ExpertApprovers } from '@/components/ExpertApprovers';
 import { CommentsSection } from '@/components/comments/CommentsSection';
 import { UserAvatar } from '@/components/UserAvatar';
 import { NipActionsMenu } from '@/components/NipActionsMenu';
-import { RelatedReposCard, UsedByAppsCard, ExpertForksCard } from '@/components/CrossRefCards';
+import { RelatedReposCard, UsedByAppsCard, ForksCard } from '@/components/CrossRefCards';
 import { LinkAppNudge } from '@/components/LinkAppNudge';
 import { RevisionsDialog } from '@/components/RevisionsDialog';
-import { CUSTOM_NIP_KIND } from '@/lib/nips';
-import { useCustomNip, useCustomNipByEventId } from '@/hooks/useCustomNips';
+import { CUSTOM_NIP_KIND, type NipFork } from '@/lib/nips';
+import { useCustomNip, useCustomNipByAddress, useCustomNipByEventId } from '@/hooks/useCustomNips';
+import { forkSourceRefs } from '@/hooks/useResolvedNip';
+import { sanitizeUrl } from '@/lib/sanitizeUrl';
 import { useForksOfCustomNip } from '@/hooks/useForksOfNip';
 import { useDeleteNip } from '@/hooks/useSaveNip';
 import { useAuthor } from '@/hooks/useAuthor';
@@ -24,7 +27,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useToast } from '@/hooks/useToast';
 import { useAppsForCustomNip } from '@/hooks/useAppsForNip';
 import { shortNpub } from '@/lib/nostr';
-import { uniqueRepoRefs, isBudUrl } from '@/lib/apps';
+import { uniqueRepoRefs, isBudUrl, budNumberFromUrl, nipNumberFromUrl } from '@/lib/apps';
 import { cn } from '@/lib/utils';
 import type { NipTarget } from '@/hooks/useNipApprovals';
 import { Button } from '@/components/ui/button';
@@ -40,6 +43,90 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+
+const compareHref = (a: string, b: string) =>
+  `/compare?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`;
+
+/**
+ * "Forked from <source>" with links to diff the fork against its source — both
+ * as the source is now and, when the fork pinned it, as it was when forked.
+ */
+function ForkSourceLine({ fork, naddr }: { fork: NipFork; naddr: string }) {
+  const customSource = useCustomNipByAddress(fork.type === 'custom' ? fork.address : undefined);
+  const sourcePubkey = fork.type === 'custom' ? fork.address.split(':')[1] : undefined;
+  const sourceAuthor = useAuthor(sourcePubkey);
+  const refs = forkSourceRefs(fork);
+
+  let source: React.ReactNode;
+  if (fork.type === 'official') {
+    const bud = budNumberFromUrl(fork.url);
+    const number = bud ?? nipNumberFromUrl(fork.url);
+    source = number ? (
+      <Link to={bud ? `/bud/${bud}` : `/nip/${number}`} className="font-medium text-primary hover:underline">
+        {bud ? `BUD-${bud}` : `NIP-${number}`}
+      </Link>
+    ) : (
+      <a href={sanitizeUrl(fork.url)} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+        {isBudUrl(fork.url) ? 'a Blossom BUD' : 'an official NIP'}
+      </a>
+    );
+  } else {
+    const parts = fork.address.split(':');
+    let to: string | undefined;
+    try {
+      to = `/${nip19.naddrEncode({ kind: CUSTOM_NIP_KIND, pubkey: parts[1], identifier: parts[2] ?? '' })}`;
+    } catch {
+      to = undefined;
+    }
+    const title = customSource.data?.title ?? (customSource.isLoading ? '…' : 'a community NIP');
+    const authorName =
+      sourceAuthor.data?.metadata?.name ||
+      sourceAuthor.data?.metadata?.display_name ||
+      (sourcePubkey && /^[0-9a-f]{64}$/.test(sourcePubkey) ? shortNpub(sourcePubkey) : undefined);
+    source = (
+      <>
+        {to ? (
+          <Link to={to} className="font-medium text-primary hover:underline">{title}</Link>
+        ) : (
+          <span className="font-medium text-foreground">{title}</span>
+        )}
+        {authorName && <> by {authorName}</>}
+      </>
+    );
+  }
+
+  return (
+    <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-muted-foreground">
+      <GitFork className="size-3.5" aria-hidden="true" />
+      <span>Forked from {source}</span>
+      <span aria-hidden="true">·</span>
+      {refs.pinned ? (
+        <>
+          <Link
+            to={compareHref(refs.pinned, naddr)}
+            className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+          >
+            <GitCompare className="size-3.5" aria-hidden="true" /> Changes since fork
+          </Link>
+          <span aria-hidden="true">·</span>
+          <Link
+            to={compareHref(refs.pinned, refs.latest)}
+            className="font-medium text-primary hover:underline"
+          >
+            Upstream changes
+          </Link>
+        </>
+      ) : (
+        <Link
+          to={compareHref(refs.latest, naddr)}
+          className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+        >
+          <GitCompare className="size-3.5" aria-hidden="true" /> Compare with source
+        </Link>
+      )}
+    </p>
+  );
+}
 
 /** Detail view for a community-authored NIP (kind 30817), routed via its naddr. */
 export function CustomNipPage({ naddr, eventId }: { naddr?: string; eventId?: string }) {
@@ -65,7 +152,7 @@ export function CustomNipPage({ naddr, eventId }: { naddr?: string; eventId?: st
   const apps = appsForNip.data ?? [];
   const repoRefs = uniqueRepoRefs(apps);
 
-  // Expert-authored forks of this NIP (curation signal).
+  // Community forks of this NIP, expert forks first.
   const forksQuery = useForksOfCustomNip(nip?.address);
   const forks = forksQuery.data ?? [];
 
@@ -74,7 +161,14 @@ export function CustomNipPage({ naddr, eventId }: { naddr?: string; eventId?: st
     description: nip ? `${nip.title}: a community NIP on NostrHub.` : undefined,
   });
 
-  const target: NipTarget | null = nip ? { type: 'custom', address: nip.address } : null;
+  // Approvals pin the revision on screen, and approvals of others show as stale.
+  const target: NipTarget | null = useMemo(
+    () =>
+      nip
+        ? { type: 'custom', address: nip.address, revision: { id: nip.event.id, createdAt: nip.createdAt } }
+        : null,
+    [nip],
+  );
   const isOwner = !!user && !!nip && user.pubkey === nip.author;
   const showSidebar = apps.length > 0 || forks.length > 0 || forksQuery.isLoading || isOwner;
 
@@ -133,6 +227,7 @@ export function CustomNipPage({ naddr, eventId }: { naddr?: string; eventId?: st
                     </Link>
                   </Button>
                 )}
+                <FollowNipButton target={target} />
                 <Button variant="outline" size="sm" asChild className="gap-1.5">
                   <Link to={`/create?fork=${nip.naddr}`}>
                     <GitFork className="size-4" aria-hidden="true" /> Fork
@@ -151,6 +246,17 @@ export function CustomNipPage({ naddr, eventId }: { naddr?: string; eventId?: st
               </>
             }
           >
+            {nip.status === 'review' && (
+              <Alert>
+                <MessageSquareDashed className="size-4" />
+                <AlertDescription>
+                  <span>
+                    <span className="font-medium text-foreground">Open for review.</span> The author is
+                    asking for feedback before calling this NIP final — comment, highlight, or fork it below.
+                  </span>
+                </AlertDescription>
+              </Alert>
+            )}
             {isPinned && (
               <Alert>
                 <History className="size-4" />
@@ -164,27 +270,7 @@ export function CustomNipPage({ naddr, eventId }: { naddr?: string; eventId?: st
                 </AlertDescription>
               </Alert>
             )}
-            {nip.fork && (
-              <p className="text-sm text-muted-foreground">
-                Forked from{' '}
-                {nip.fork.type === 'official' ? (
-                  <a href={nip.fork.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                    {isBudUrl(nip.fork.url) ? 'a Blossom BUD' : 'an official NIP'}
-                  </a>
-                ) : (
-                  <span className="font-mono">{nip.fork.address}</span>
-                )}
-                {' · '}
-                <Link
-                  to={`/compare?a=${encodeURIComponent(
-                    nip.fork.type === 'official' ? nip.fork.url : nip.fork.address,
-                  )}&b=${encodeURIComponent(nip.naddr)}`}
-                  className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
-                >
-                  <GitCompare className="size-3.5" aria-hidden="true" /> Compare with source
-                </Link>
-              </p>
-            )}
+            {nip.fork && <ForkSourceLine fork={nip.fork} naddr={nip.naddr} />}
           </DetailHero>
           </DetailSurface>
 
@@ -246,8 +332,8 @@ export function CustomNipPage({ naddr, eventId }: { naddr?: string; eventId?: st
                   }}
                   linkedApps={apps}
                 />
-                <UsedByAppsCard apps={apps} />
-                <ExpertForksCard forks={forks} isLoading={forksQuery.isLoading} />
+                <UsedByAppsCard apps={apps} kinds={nip.kinds} />
+                <ForksCard forks={forks} isLoading={forksQuery.isLoading} />
                 <RelatedReposCard repoRefs={repoRefs} />
               </aside>
             )}

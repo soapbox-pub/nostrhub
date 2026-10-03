@@ -7,6 +7,8 @@ import {
   MessageSquare,
   Star,
   BadgeCheck,
+  FilePen,
+  GitFork,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -30,6 +32,8 @@ const TYPE_ICON: Record<NotificationType, LucideIcon> = {
   comment: MessageSquare,
   review: Star,
   approval: BadgeCheck,
+  fork: GitFork,
+  update: FilePen,
 };
 
 const TYPE_ACTION: Record<NotificationType, string> = {
@@ -37,6 +41,8 @@ const TYPE_ACTION: Record<NotificationType, string> = {
   comment: 'commented on',
   review: 'reviewed',
   approval: 'approved',
+  fork: 'forked',
+  update: 'published a new revision of',
 };
 
 /** Relative-time formatter using the platform Intl API (no extra deps). */
@@ -88,7 +94,12 @@ function NotificationRow({ notification }: { notification: Notification }) {
             {contentLabel && (
               <>
                 {' '}
-                <span className="text-muted-foreground">your {contentLabel}</span>
+                {/* Official NIP / BUD titles ("NIP-01") already name the kind. */}
+                {!(notification.followed && /^(NIP|BUD)-/.test(notification.content?.title ?? '')) && (
+                  <span className="text-muted-foreground">
+                    {notification.followed ? 'the' : 'your'} {contentLabel}
+                  </span>
+                )}
                 {notification.content && (
                   <>
                     {' '}
@@ -100,6 +111,21 @@ function NotificationRow({ notification }: { notification: Notification }) {
                     </Link>
                   </>
                 )}
+                {notification.followed && (
+                  <span className="text-muted-foreground"> you follow</span>
+                )}
+              </>
+            )}
+            {notification.subject && (
+              <>
+                {' '}
+                <span className="text-muted-foreground">as</span>{' '}
+                <Link
+                  to={notification.subject.href}
+                  className="font-medium text-primary hover:underline"
+                >
+                  {notification.subject.title}
+                </Link>
               </>
             )}
             {notification.type === 'reaction' && notification.reaction && (
@@ -176,7 +202,7 @@ export function NotificationsPage() {
             Notifications
           </h1>
           <p className="text-muted-foreground">
-            Activity on the apps, NIPs, articles, and repos you created.
+            Activity on the apps, NIPs, articles, and repos you created, and on the NIPs you follow.
           </p>
         </header>
 

@@ -20,7 +20,7 @@ import { useBuds } from '@/hooks/useBuds';
 import { useZapstoreApp, ZAPSTORE_APP_KIND } from '@/hooks/useZapstoreSearch';
 import { shortNpub } from '@/lib/nostr';
 import { sanitizeUrl } from '@/lib/sanitizeUrl';
-import { ownZapstoreRefs } from '@/lib/apps';
+import { kindSupportLabel, ownZapstoreRefs } from '@/lib/apps';
 import type { AppInfo, AppNipRef, AppRepoRef, AppZapstoreRef } from '@/lib/apps';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -379,12 +379,21 @@ export function AppSidebar({ app, hideInstall = false }: { app: AppInfo; hideIns
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-1.5">
-              {app.supportedKinds.map((kind) => (
-                <KindBadge key={kind} kind={kind} />
-              ))}
+              {app.supportedKinds.map((kind) => {
+                const support = app.kindSupport[kind];
+                return (
+                  <span key={kind} className="inline-flex items-center gap-1">
+                    <KindBadge kind={kind} />
+                    {support && (
+                      <span className="text-xs text-muted-foreground">{kindSupportLabel(support)}</span>
+                    )}
+                  </span>
+                );
+              })}
             </div>
             <p className="mt-2 text-xs text-muted-foreground/80">
-              Event kinds this app announces it can display or handle (NIP-89).
+              Event kinds this app announces it can display or handle (NIP-89), and whether it reads
+              or writes them when the listing says.
             </p>
           </CardContent>
         </Card>

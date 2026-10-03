@@ -36,7 +36,7 @@ import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
-import { APP_PLATFORMS, APP_HANDLER_KIND, nipGithubUrl, budGithubUrl, parseAppEvent, type AppPlatform } from '@/lib/apps';
+import { APP_PLATFORMS, APP_HANDLER_KIND, nipGithubUrl, budGithubUrl, parseAppEvent, buildKindTag, type AppPlatform, type KindSupport } from '@/lib/apps';
 import type { CustomNip } from '@/lib/nips';
 import type { GitRepoAnnouncement } from '@/lib/git';
 import { GIT_REPO_KIND } from '@/lib/git';
@@ -987,6 +987,8 @@ export function SubmitAppPage() {
   const [website, setWebsite] = useState('');
   const [nip05, setNip05] = useState('');
   const [kinds, setKinds] = useState<number[]>([]);
+  /** Optional per-kind read/write support, published as `k` tag markers. */
+  const [kindSupport, setKindSupport] = useState<Record<number, KindSupport[]>>({});
   const [customKind, setCustomKind] = useState('');
   const [platforms, setPlatforms] = useState<PlatformEntry[]>([]);
   const [tagInput, setTagInput] = useState('');
@@ -1016,6 +1018,7 @@ export function SubmitAppPage() {
     setWebsite(prefillSource.website ?? '');
     setNip05(prefillSource.nip05 ?? '');
     setKinds(prefillSource.supportedKinds);
+    setKindSupport(prefillSource.kindSupport);
     setTags(prefillSource.hashtags);
 
     // Platform URLs and hints come straight from the event tags.
@@ -1172,6 +1175,13 @@ export function SubmitAppPage() {
   const toggleKind = (k: number) => {
     setKinds((prev) => prev.includes(k) ? prev.filter((x) => x !== k) : [...prev, k].sort((a, b) => a - b));
     clearError('kinds');
+  };
+  const toggleKindSupport = (k: number, mode: KindSupport) => {
+    setKindSupport((prev) => {
+      const current = prev[k] ?? [];
+      const next = current.includes(mode) ? current.filter((m) => m !== mode) : [...current, mode];
+      return { ...prev, [k]: next };
+    });
   };
   const addCustomKind = () => {
     const n = parseInt(customKind.trim(), 10);
@@ -1404,7 +1414,7 @@ export function SubmitAppPage() {
       ['alt', `NIP-89 handler: ${name.trim()}`],
     ];
 
-    for (const k of kinds) eventTags.push(['k', String(k)]);
+    for (const k of kinds) eventTags.push(buildKindTag(k, kindSupport[k]));
     for (const p of platforms) {
       if (!p.url.trim()) continue;
       const row: string[] = [p.platform, p.url.trim()];
@@ -1810,6 +1820,46 @@ export function SubmitAppPage() {
                         <FieldError message={errors.customKind} />
                         <FieldError message={errors.kinds} />
                       </div>
+
+                      {kinds.length > 0 && (
+                        <div className="space-y-2">
+                          <Label className="text-sm">How does it support each kind? <span className="font-normal text-muted-foreground">(optional)</span></Label>
+                          <p className="text-xs text-muted-foreground">
+                            "Reads" means your app displays these events; "writes" means it publishes them.
+                            This tells NIP authors what kind of support your app actually has.
+                          </p>
+                          <ul className="divide-y divide-border/60 rounded-lg border border-border/60">
+                            {kinds.map((k) => {
+                              const label = COMMON_KINDS.find((c) => c.kind === k)?.label;
+                              const support = kindSupport[k] ?? [];
+                              return (
+                                <li key={k} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
+                                  <span className="text-sm">
+                                    <span className="font-mono text-xs text-muted-foreground">{k}</span>
+                                    {label && <span className="ml-1.5">{label}</span>}
+                                  </span>
+                                  <div className="flex gap-1.5" role="group" aria-label={`Support for kind ${k}`}>
+                                    <ToggleChip
+                                      active={support.includes('read')}
+                                      onClick={() => toggleKindSupport(k, 'read')}
+                                      className="px-2.5 py-1 text-xs"
+                                    >
+                                      Reads
+                                    </ToggleChip>
+                                    <ToggleChip
+                                      active={support.includes('write')}
+                                      onClick={() => toggleKindSupport(k, 'write')}
+                                      className="px-2.5 py-1 text-xs"
+                                    >
+                                      Writes
+                                    </ToggleChip>
+                                  </div>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </div>
+                      )}
 
                       {suggestedNips.length > 0 && (
                         <div className="space-y-2 rounded-lg border border-primary/20 bg-primary/5 p-3 motion-safe:animate-in motion-safe:fade-in">
