@@ -2,24 +2,37 @@ import { useEffect } from 'react';
 import { useSeoMeta } from '@unhead/react';
 import { Link } from 'react-router-dom';
 import {
+  AtSign,
   Bell,
   Heart,
   MessageSquare,
   Star,
   BadgeCheck,
+  CircleCheck,
+  CircleDot,
+  CircleX,
   FilePen,
+  GitCommitHorizontal,
   GitFork,
+  GitMerge,
+  GitPullRequest,
   type LucideIcon,
 } from 'lucide-react';
 
 import { Layout } from '@/components/Layout';
+import { PushNotificationsPrompt } from '@/components/PushNotificationsPrompt';
 import { UserAvatar } from '@/components/UserAvatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuthor } from '@/hooks/useAuthor';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { shortNpub } from '@/lib/nostr';
-import { CONTENT_KIND_LABEL } from '@/lib/notifications';
+import {
+  CONTENT_KIND_LABEL,
+  notificationAction,
+  notificationPossessive,
+} from '@/lib/notifications';
+import { GIT_ISSUE_KIND, GIT_STATUS_APPLIED_KIND, GIT_STATUS_CLOSED_KIND } from '@/lib/git';
 import {
   useNotifications,
   type Notification,
@@ -34,16 +47,23 @@ const TYPE_ICON: Record<NotificationType, LucideIcon> = {
   approval: BadgeCheck,
   fork: GitFork,
   update: FilePen,
+  issue: CircleDot,
+  pull: GitPullRequest,
+  mention: AtSign,
+  status: CircleDot,
+  push: GitCommitHorizontal,
 };
 
-const TYPE_ACTION: Record<NotificationType, string> = {
-  reaction: 'reacted to',
-  comment: 'commented on',
-  review: 'reviewed',
-  approval: 'approved',
-  fork: 'forked',
-  update: 'published a new revision of',
-};
+/** The icon for a notification; a state change shows the state it moved to. */
+function NotificationIcon({ notification: n }: { notification: Notification }) {
+  const className = 'size-4';
+  if (n.type === 'status' && n.statusKind === GIT_STATUS_CLOSED_KIND) return <CircleX className={className} />;
+  if (n.type === 'status' && n.statusKind === GIT_STATUS_APPLIED_KIND) {
+    return n.content?.kind === GIT_ISSUE_KIND ? <CircleCheck className={className} /> : <GitMerge className={className} />;
+  }
+  const Icon = TYPE_ICON[n.type];
+  return <Icon className={className} />;
+}
 
 /** Relative-time formatter using the platform Intl API (no extra deps). */
 const RELATIVE = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
@@ -60,15 +80,18 @@ function timeAgo(unixSeconds: number): string {
 
 function NotificationRow({ notification }: { notification: Notification }) {
   const author = useAuthor(notification.actorPubkey);
-  const Icon = TYPE_ICON[notification.type];
   const metadata = author.data?.metadata;
   const actorName =
     metadata?.name || metadata?.display_name || shortNpub(notification.actorPubkey);
 
-  const action = TYPE_ACTION[notification.type];
+  const action = notificationAction(notification);
+  const possessive = notificationPossessive(notification);
+  const followed = notification.relation === 'followed';
   const contentLabel = notification.content
     ? CONTENT_KIND_LABEL[notification.content.kind] ?? 'content'
     : null;
+  // A new issue or PR reads "opened an issue on your repo X: Subject".
+  const subjectJoiner = notification.type === 'fork' ? ' as ' : ': ';
 
   return (
     <Card
@@ -91,35 +114,30 @@ function NotificationRow({ notification }: { notification: Notification }) {
               {actorName}
             </Link>{' '}
             <span className="text-muted-foreground">{action}</span>
-            {contentLabel && (
+            {contentLabel && notification.content ? (
               <>
                 {' '}
-                {/* Official NIP / BUD titles ("NIP-01") already name the kind. */}
-                {!(notification.followed && /^(NIP|BUD)-/.test(notification.content?.title ?? '')) && (
+                {possessive && (
                   <span className="text-muted-foreground">
-                    {notification.followed ? 'the' : 'your'} {contentLabel}
+                    {possessive} {contentLabel}
                   </span>
-                )}
-                {notification.content && (
-                  <>
-                    {' '}
-                    <Link
-                      to={notification.content.href}
-                      className="font-medium text-primary hover:underline"
-                    >
-                      {notification.content.title}
-                    </Link>
-                  </>
-                )}
-                {notification.followed && (
+                )}{' '}
+                <Link
+                  to={notification.content.href}
+                  className="font-medium text-primary hover:underline"
+                >
+                  {notification.content.title}
+                </Link>
+                {followed && (
                   <span className="text-muted-foreground"> you follow</span>
                 )}
               </>
+            ) : (
+              <span className="text-muted-foreground"> a thread you're in</span>
             )}
             {notification.subject && (
               <>
-                {' '}
-                <span className="text-muted-foreground">as</span>{' '}
+                <span className="text-muted-foreground">{subjectJoiner}</span>
                 <Link
                   to={notification.subject.href}
                   className="font-medium text-primary hover:underline"
@@ -152,7 +170,7 @@ function NotificationRow({ notification }: { notification: Notification }) {
           className="shrink-0 rounded-full bg-primary/10 p-2 text-primary"
           aria-hidden="true"
         >
-          <Icon className="size-4" />
+          <NotificationIcon notification={notification} />
         </div>
       </CardContent>
     </Card>
@@ -179,7 +197,7 @@ export function NotificationsPage() {
 
   useSeoMeta({
     title: 'Notifications · NostrHub',
-    description: 'Activity on the apps, NIPs, articles, and repos you created.',
+    description: 'Activity on your repos, issues, pull requests, NIPs, apps, and articles.',
   });
 
   // Mark everything read shortly after the page is viewed.
@@ -202,9 +220,12 @@ export function NotificationsPage() {
             Notifications
           </h1>
           <p className="text-muted-foreground">
-            Activity on the apps, NIPs, articles, and repos you created, and on the NIPs you follow.
+            Issues, pull requests, and discussion on your repos and the threads you're in, mentions,
+            and activity on your NIPs, apps, and articles and the NIPs you follow.
           </p>
         </header>
+
+        <PushNotificationsPrompt />
 
         {!user ? (
           <Card className="border-dashed">
@@ -224,8 +245,9 @@ export function NotificationsPage() {
           <Card className="border-dashed">
             <CardContent className="px-8 py-12 text-center">
               <p className="mx-auto max-w-sm text-muted-foreground">
-                No notifications yet. When someone reacts to, reviews, comments
-                on, or approves something you published, you'll see it here.
+                No notifications yet. When someone opens an issue on your repo,
+                replies in a thread you're in, mentions you, or reacts to,
+                reviews, or comments on something you published, you'll see it here.
               </p>
             </CardContent>
           </Card>

@@ -1,6 +1,6 @@
 import { nip19 } from 'nostr-tools';
 import type { NostrEvent } from '@nostrify/nostrify';
-import { CHAT_ORIGIN } from '@/lib/chat';
+import { CHAT_ORIGIN } from '@/lib/chatOrigin';
 import {
   GIT_PATCH_KIND,
   GIT_PR_UPDATE_KIND,

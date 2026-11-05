@@ -7,6 +7,7 @@ import { InferSeoMetaPlugin } from 'unhead/plugins';
 import { Suspense } from 'react';
 import NostrProvider from '@/components/NostrProvider';
 import { NostrSync } from '@/components/NostrSync';
+import { PushNotificationsSync } from '@/components/PushNotificationsSync';
 import { DittoThemeInjector } from '@/components/DittoThemeInjector';
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -78,6 +79,7 @@ export function App() {
             <NostrLoginProvider storageKey='nostr:login'>
               <NostrProvider>
                 <NostrSync />
+                <PushNotificationsSync />
                 <DittoThemeInjector />
                 <TooltipProvider>
                   <Toaster />

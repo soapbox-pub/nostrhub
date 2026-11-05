@@ -11,8 +11,9 @@
  * interoperable across deployments and local development.
  */
 
-/** Canonical origin used to build chat topic URLs. */
-export const CHAT_ORIGIN = 'https://nostrhub.io';
+import { CHAT_ORIGIN } from '@/lib/chatOrigin';
+
+export { CHAT_ORIGIN };
 
 /** The channel shown when visiting `/chat` with no topic. */
 export const DEFAULT_TOPIC = 'general';

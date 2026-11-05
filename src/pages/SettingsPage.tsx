@@ -32,6 +32,8 @@ import {
 import { DittoIcon } from '@/components/icons/DittoIcon';
 import { useTheme } from '@/hooks/useTheme';
 import { useActiveProfileTheme } from '@/hooks/useActiveProfileTheme';
+import { PushNotificationsSwitch } from '@/components/PushNotificationsPrompt';
+import { getNappPush } from '@/lib/push/napp';
 import { type Theme } from '@/contexts/AppContext';
 
 function ExpertRow({ pubkey, onRemove }: { pubkey: string; onRemove: () => void }) {
@@ -802,6 +804,30 @@ function AppearanceSettings() {
   );
 }
 
+/**
+ * Push notifications, when NostrHub runs inside a napp host (Tenna, Din).
+ * On the web there's nothing to switch, so the card isn't shown.
+ */
+function NotificationSettings() {
+  const { user } = useCurrentUser();
+  if (!user || !getNappPush()) return null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Notifications</CardTitle>
+        <CardDescription>
+          Hear about activity while NostrHub is closed. Notifications are delivered by the app
+          you're running NostrHub in, on this device only.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <PushNotificationsSwitch />
+      </CardContent>
+    </Card>
+  );
+}
+
 function PrivacySettings() {
   const { config, updateConfig } = useAppContext();
   const { user } = useCurrentUser();
@@ -870,6 +896,7 @@ const SettingsPage = () => {
       </div>
       <div className="mt-6 space-y-6">
         <AppearanceSettings />
+        <NotificationSettings />
         <ExpertsSettings />
         <CommunitySettings />
         <RelaySettings />

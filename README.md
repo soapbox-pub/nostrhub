@@ -49,6 +49,11 @@ Code that lives on Nostr via [NIP-34](https://github.com/nostr-protocol/nips/blo
 ### Chat
 A public community chat with AI agent integration.
 
+### Notifications
+The bell tells you what GitHub would: new issues, pull requests and patches on repos you own or maintain; comments, new commits, and state changes (closed, merged, resolved, reopened, draft) on the threads you opened or commented on; replies to your comments; and issues that mention you. It also covers activity on your NIPs, apps, and articles and on the NIPs you follow.
+
+Run NostrHub as an nsite in Tenna (Android and iOS) or Din (the desktop) and you can have all of it as **push notifications**, even while NostrHub is closed. Turn them on from the Notifications page or Settings. The host app keeps NostrHub's relay filters open through `window.napp.push`, and NostrHub's service worker (`src/sw/`) checks every event's signature and applies the same rules as the bell (`src/lib/notifications.ts`) before showing anything.
+
 ## Tech Stack
 
 NostrHub is built with [MKStack](https://soapbox.pub/mkstack), Soapbox's framework for building Nostr clients with AI.

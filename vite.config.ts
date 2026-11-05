@@ -70,6 +70,90 @@ function npanelPreview(): Plugin {
   };
 }
 
+/**
+ * Build `src/sw/worker.ts` into a single self-contained `/sw.js`.
+ *
+ * A second, separate build rather than another input to the app's: the app
+ * build splits shared code into chunks, and a worker that imports chunks has
+ * to be registered as a module. As one IIFE the worker stays a classic script
+ * at a fixed, unhashed root path — the only place a `/`-scoped worker can
+ * live. In dev it's rebuilt on every request for it.
+ */
+const SERVICE_WORKER_FILE = "sw.js";
+const SERVICE_WORKER_ENTRY = path.resolve(__dirname, "src/sw/worker.ts");
+
+async function buildServiceWorker(mode: string): Promise<string> {
+  const dev = mode === "development";
+  const result = await build({
+    configFile: false,
+    mode,
+    logLevel: "warn",
+    publicDir: false,
+    resolve: {
+      alias: [{ find: "@", replacement: path.resolve(__dirname, "./src") }],
+    },
+    define: {
+      "process.env.NODE_ENV": JSON.stringify(dev ? "development" : "production"),
+    },
+    build: {
+      write: false,
+      target: "esnext",
+      minify: !dev,
+      sourcemap: false,
+      emptyOutDir: false,
+      copyPublicDir: false,
+      reportCompressedSize: false,
+      lib: {
+        entry: SERVICE_WORKER_ENTRY,
+        formats: ["iife"],
+        name: "nostrhubServiceWorker",
+        fileName: () => SERVICE_WORKER_FILE,
+      },
+    },
+  });
+
+  for (const output of Array.isArray(result) ? result : [result]) {
+    if (!("output" in output)) continue;
+    const entry = output.output.find((file) => file.type === "chunk" && file.isEntry);
+    if (entry?.type === "chunk") return entry.code;
+  }
+  throw new Error("Service worker build produced no entry chunk");
+}
+
+function serviceWorker(): Plugin {
+  let mode = "production";
+
+  return {
+    name: "nostrhub:service-worker",
+
+    configResolved(config) {
+      mode = config.mode;
+    },
+
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (!req.url) return next();
+        const { pathname } = new URL(req.url, "http://localhost");
+        if (pathname !== `/${SERVICE_WORKER_FILE}`) return next();
+
+        buildServiceWorker(mode).then((code) => {
+          res.setHeader("Content-Type", "text/javascript; charset=utf-8");
+          res.setHeader("Cache-Control", "no-cache");
+          res.end(code);
+        }, next);
+      });
+    },
+
+    async generateBundle() {
+      this.emitFile({
+        type: "asset",
+        fileName: SERVICE_WORKER_FILE,
+        source: await buildServiceWorker(mode),
+      });
+    },
+  };
+}
+
 // https://vitejs.dev/config/
 export default defineConfig(() => ({
   server: {
@@ -80,6 +164,7 @@ export default defineConfig(() => ({
     react(),
     tailwindcss(),
     npanelPreview(),
+    serviceWorker(),
   ],
   test: {
     globals: true,
