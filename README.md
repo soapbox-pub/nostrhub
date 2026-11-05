@@ -76,6 +76,10 @@ npm run test
 npm run build
 ```
 
+### Link previews
+
+NostrHub is a single-page app, so a crawler fetching `/naddr1…` or `/nip/23` would get only `index.html`. The build also emits `dist/.well-known/npanel/preview.js` (from `src/npanel/`), a script npanel, the gateway serving the site, runs for crawlers on the site's pages. It gives NIPs, articles, repositories, issues, pull requests, patches, apps, releases, plan nodes, profiles, notes, official NIPs and BUDs, and event kinds a title, a description, a readable article, and, where it has no picture of its own, a drawn card. It only runs when link previews are turned on for the site in npanel.
+
 ## Source
 
 NostrHub is open source and hosts its own source code on Nostr, at [nostrhub.io/alex@gleasonator.com/nostrhub](https://nostrhub.io/alex@gleasonator.com/nostrhub).
